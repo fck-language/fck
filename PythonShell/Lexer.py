@@ -24,7 +24,7 @@ class Lexer:
                                         ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE, ';': TT_NEWLINE}
         self.multi_char_token_methods = {'!': self.make_not_equals, '=': self.make_equals, '<': self.make_less_than,
                                          '>': self.make_greater_than, '*': self.make_mult_pow, ':': self.make_set,
-                                         '/': self.make_div, '"': self.make_string}
+                                         '/': self.make_div, '"': self.make_string, '#': self.skip_comment}
 
     def advance(self) -> None:
         self.pos.advance(self.current_char)
@@ -229,3 +229,11 @@ class Lexer:
 
         self.advance()
         return Token(operation_type, pos_start=pos_start, pos_end=self.pos), None
+
+    def skip_comment(self):
+        self.advance()
+
+        while self.current_char != '\n':
+            self.advance()
+
+        self.advance()

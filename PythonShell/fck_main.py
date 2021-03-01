@@ -10,6 +10,37 @@ global_symbol_table.set("log", BuiltInFunction("log"))
 global_symbol_table.set("print", BuiltInFunction("print"))
 global_symbol_table.set("input", BuiltInFunction("input"))
 global_symbol_table.set("clear", BuiltInFunction("clear"))
+global_symbol_table.set("run", BuiltInFunction("run"))
+
+
+def execute_run(self, exec_ctx):
+    fn = exec_ctx.symbol_table.get("fn")
+
+    if not isinstance(fn, String):
+        return RTResult().failure(RTError(self.pos_start, self.pos_end, "Filename must be a string", exec_ctx))
+
+    fn = fn.value
+
+    try:
+        with open(fn, 'r') as f:
+            script = f.read()
+    except Exception as e:
+        return RTResult().failure(RTError(self.pos_start, self.pos_end, f'Failed to load script \"{fn}\"\n'
+                                          + str(e), exec_ctx))
+
+    _, error = run(fn, script)
+
+    if error:
+        return RTResult().failure(RTError(self.pos_start, self.pos_end, f"An error was returned while running"
+                                                                        f" \"{fn}\"\n{error.as_string()}", exec_ctx))
+
+    return RTResult().success(None)
+
+
+execute_run.arg_names = ["fn"]
+
+
+BuiltInFunction.execute_run = execute_run
 
 
 def run(fn, text):

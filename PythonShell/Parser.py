@@ -233,7 +233,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        statements = res.register(self.statement())
+        statements = res.register(self.statements())
         if res.error: return res
         cases.append((condition, statements, True))
 

@@ -71,7 +71,7 @@ class Interpreter:
 
         previous_value = context.symbol_table.get(var_name)
         methods = {TT_SET_PLUS: previous_value.added_to, TT_SET_MINUS: previous_value.subbed_by, TT_SET_MULT:
-                   previous_value.multed_by, TT_SET_DIV: previous_value.dived_by, TT_SET_FDIV: previous_value.fdived_by,
+            previous_value.multed_by, TT_SET_DIV: previous_value.dived_by, TT_SET_FDIV: previous_value.fdived_by,
                    TT_SET_MOD: previous_value.modded_by, TT_SET_POW: previous_value.powed_by}
 
         value, error = methods.get(token)(value)
@@ -227,7 +227,7 @@ class Interpreter:
         func_name = node.var_name_tok.value if node.var_name_tok else None
         suite_node = node.suite_node
         arg_names = [arg_name.value for arg_name in node.arg_name_toks]
-        func_value = Function(func_name, suite_node, arg_names).set_context(context)\
+        func_value = Function(func_name, suite_node, arg_names).set_context(context) \
             .set_pos(node.pos_start, node.pos_end)
 
         if node.var_name_tok:
@@ -249,8 +249,10 @@ class Interpreter:
 
         return_value = res.register(value_to_call.execute(args))
         if res.should_return(): return res
-        return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
-        return res.success(return_value)
+        if return_value:
+            return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
+            return res.success(return_value)
+        return res.success(None)
 
     def visit_ReturnNode(self, node, context):
         res = RTResult()
@@ -590,6 +592,7 @@ class BuiltInFunction(BaseFunction):
         exec_ctx = self.generate_new_context()
 
         method = getattr(self, f'execute_{self.name}', self.no_visit_method)
+        print(method.__name__)
         res.register(self.check_and_populate_args(method.arg_names, args, exec_ctx))
         if res.should_return(): return res
 
@@ -623,6 +626,11 @@ class BuiltInFunction(BaseFunction):
         return RTResult().success(None)
 
     execute_clear.arg_names = []
+
+    def execute_run(self, exec_ctx):
+        pass
+
+    execute_run.arg_names = ["fn"]
 
     def copy(self):
         copy = BuiltInFunction(self.name)
