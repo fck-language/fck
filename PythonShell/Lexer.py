@@ -188,9 +188,10 @@ class Lexer:
         pos_start = self.pos.copy()
         self.advance()
         operation_type = None
-        set_op = {"+": [TT_SET_PLUS, TT_SET_RET_PLUS], "-": [TT_SET_MINUS, TT_SET_RET_MINUS], "*":
-                  [TT_SET_MULT, TT_SET_RET_MULT], "%": [TT_SET_MOD, TT_SET_RET_MOD]}
-        set_op_double = {"/": [[TT_SET_DIV, TT_SET_RET_DIV], [TT_SET_FDIV, TT_SET_RET_FDIV]]}
+        set_op = {"+": [TT_SET_PLUS, TT_SET_RET_PLUS], "-": [TT_SET_MINUS, TT_SET_RET_MINUS],
+                  "%": [TT_SET_MOD, TT_SET_RET_MOD]}
+        set_op_double = {"/": [[TT_SET_DIV, TT_SET_RET_DIV], [TT_SET_FDIV, TT_SET_RET_FDIV]],
+                         "*": [[TT_SET_MULT, TT_SET_RET_MULT], [TT_SET_POW, TT_SET_RET_POW]]}
 
         if self.current_char == ':':
             self.advance()
