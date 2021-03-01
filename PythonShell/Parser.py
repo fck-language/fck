@@ -272,6 +272,11 @@ class Parser:
             self.advance()
             return res.success(NumberNode(tok))
 
+        if tok.type == TT_STRING:
+            res.register_advancement()
+            self.advance()
+            return res.success(StringNode(tok))
+
         elif tok.type == TT_IDENTIFIER:
             res.register_advancement()
             self.advance()
@@ -289,6 +294,11 @@ class Parser:
             else:
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
                                                       "Expected ')'"))
+
+        elif tok.type == TT_LPAREN_SQUARE:
+            list_expr = res.register(self.list_expr())
+            if res.error: return res
+            return res.success(list_expr)
 
         elif tok.matches(TT_KEYWORD, "if"):
             if_expr = res.register(self.if_expr())
@@ -354,6 +364,44 @@ class Parser:
             ))
 
         return res.success(node)
+
+    def list_expr(self):
+        res = ParseRes()
+        element_nodes = []
+        pos_start = self.current_tok.pos_start.copy()
+
+        if not self.current_tok.type == TT_LPAREN_SQUARE:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                  "Expected '['"))
+
+        res.register_advancement()
+        self.advance()
+
+        if self.current_tok.type == TT_RPAREN_SQUARE:
+            res.register_advancement()
+            self.advance()
+        else:
+            element_nodes.append(res.register(self.expr()))
+            if res.error:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                      "Expected ']', method , int, float, identifier, "
+                                                      "'+', or '-'"))
+            while self.current_tok.type == TT_COMMA:
+                res.register_advancement()
+                self.advance()
+
+                element_nodes.append(res.register(self.expr()))
+                if res.error: return res
+
+            if self.current_tok.type != TT_RPAREN_SQUARE:
+                print(self.current_tok)
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                      "Expected ',' or ']"))
+
+            res.register_advancement()
+            self.advance()
+
+        return res.success(ListNode(element_nodes, pos_start, self.current_tok.pos_end.copy()))
 
     def arith_expr(self):
         return self.bin_op(self.term, (TT_PLUS, TT_MINUS))

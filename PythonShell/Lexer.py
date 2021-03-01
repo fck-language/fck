@@ -20,10 +20,11 @@ class Lexer:
         self.current_char = None
         self.advance()
         self.single_char_token_names = {'+': TT_PLUS, '%': TT_MOD, '(': TT_LPAREN, ')': TT_RPAREN, '{': TT_LPAREN_CURLY,
-                                        '}': TT_RPAREN_CURLY, ',': TT_COMMA, '-': TT_MINUS}
+                                        '}': TT_RPAREN_CURLY, ',': TT_COMMA, '-': TT_MINUS, '[': TT_LPAREN_SQUARE,
+                                        ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE}
         self.multi_char_token_methods = {'!': self.make_not_equals, '=': self.make_equals, '<': self.make_less_than,
                                          '>': self.make_greater_than, '*': self.make_mult_pow, ':': self.make_set,
-                                         '/': self.make_div}
+                                         '/': self.make_div, '"': self.make_string}
 
     def advance(self) -> None:
         self.pos.advance(self.current_char)
@@ -81,6 +82,28 @@ class Lexer:
             return Token(TT_FLOAT, float(num_str), pos_start=pos_start, pos_end=self.pos)
         else:
             return Token(TT_INT, int(num_str), pos_start=pos_start, pos_end=self.pos)
+
+    def make_string(self):
+        string = ""
+        pos_start = self.pos.copy()
+        escape_character = False
+        self.advance()
+
+        escape_characters = {'n': '\n', 't': '\t'}
+
+        while self.current_char is not None and (self.current_char != '"' or escape_character):
+            if escape_character:
+                string += escape_characters.get(self.current_char, self.current_char)
+                escape_character = False
+            else:
+                if self.current_char == '\\':
+                    escape_character = True
+                else:
+                    string += self.current_char
+            self.advance()
+
+        self.advance()
+        return Token(TT_STRING, string, pos_start, self.pos), None
 
     def make_identifier(self):
         id_str = ""

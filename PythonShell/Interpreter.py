@@ -1,5 +1,6 @@
 from Nodes import *
 from Errors import *
+import os
 
 
 class Interpreter:
@@ -21,6 +22,19 @@ class Interpreter:
     def visit_NumberNode(self, node, context):
         return RTResult().success(Number(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end))
 
+    def visit_StringNode(self, node, context):
+        return RTResult().success(String(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end))
+
+    def visit_ListNode(self, node, context):
+        res = RTResult()
+        elements = []
+
+        for element_node in node.element_nodes:
+            elements.append(res.register(self.visit(element_node, context)))
+            if res.error: return res
+
+        return res.success(List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
+
     def visit_VarAccessNode(self, node, context):
         res = RTResult()
         var_name = node.var_name_tok.value
@@ -29,7 +43,7 @@ class Interpreter:
         if not value:
             return res.failure(RTError(node.pos_start, node.pos_end, f'\'{var_name}\' is not defined. Duuuuh', context))
 
-        value = value.copy().set_pos(node.pos_start, node.pos_end)
+        value = value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
 
     def visit_VarAssignNode(self, node, context):
@@ -101,6 +115,7 @@ class Interpreter:
 
     def visit_ForNode(self, node, context):
         res = RTResult()
+        elements = []
 
         if node.start_value_node:
             start_value = res.register(self.visit(node.start_value_node, context))
@@ -137,7 +152,7 @@ class Interpreter:
             if node.var_name_tok:
                 context.symbol_table.set(node.var_name_tok.value, Number(i))
 
-            res.register(self.visit(node.suite_node, context))
+            elements.append(res.register(self.visit(node.suite_node, context)))
             if res.error: return res
 
             if node.var_name_tok:
@@ -147,7 +162,7 @@ class Interpreter:
         if node.var_name_tok:
             context.symbol_table.remove(node.var_name_tok.value)
 
-        return res.success(None)
+        return res.success(List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
 
     def visit_WhileNode(self, node: WhileNode, context):
         res = RTResult()
@@ -169,7 +184,7 @@ class Interpreter:
         func_name = node.var_name_tok.value if node.var_name_tok else None
         suite_node = node.suite_node
         arg_names = [arg_name.value for arg_name in node.arg_name_toks]
-        func_value = Function(func_name, suite_node, arg_names).set_context(context)\
+        func_value = Function(func_name, suite_node, arg_names).set_context(context) \
             .set_pos(node.pos_start, node.pos_end)
 
         if node.var_name_tok:
@@ -191,6 +206,8 @@ class Interpreter:
 
         return_value = res.register(value_to_call.execute(args))
         if res.error: return res
+        if return_value:
+            return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(return_value)
 
 
@@ -374,34 +391,124 @@ class Number(Value):
         return str(self.value)
 
 
-class Function(Value):
-    def __init__(self, name, suite_node, arg_names):
+class String(Value):
+    def __init__(self, value):
+        super().__init__()
+        self.value = value
+
+    def added_to(self, other):
+        if isinstance(other, String):
+            return String(self.value + other.value).set_context(self.context), None
+        elif isinstance(other, Number):
+            return String(self.value + str(other.value)).set_context(self.context), None
+        return self.illegal_operation()
+
+    def multed_by(self, other):
+        if isinstance(other, Number):
+            return String(self.value * other.value).set_context(self.context), None
+        return self.illegal_operation()
+
+    def is_true(self):
+        return len(self.value) > 0, None
+
+    def copy(self):
+        copy = String(self.value)
+        copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
+        return copy
+
+    def __str__(self):
+        return f'{self.value}'
+
+    def __repr__(self):
+        return f'\"{self.value}\"'
+
+
+class List(Value):
+    def __init__(self, elements):
+        super().__init__()
+        self.elements = elements
+
+    def added_to(self, other):
+        if isinstance(other, List):
+            self.elements.extend(other.elements)
+            return self, None
+        elif isinstance(other, Number):
+            self.elements = [i.value + other.value for i in self.elements]
+            return self, None
+        else:
+            return self.illegal_operation()
+
+    def multed_by(self, other):
+        if isinstance(other, Number):
+            self.elements = [i.value * other.value for i in self.elements]
+            return self, None
+        else:
+            return self.illegal_operation()
+
+    def copy(self):
+        copy = List(self.elements)
+        copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
+        return copy
+
+    def __str__(self):
+        return ", ".join([str(i) for i in self.elements])
+
+    def __repr__(self):
+        return f'[{", ".join([str(i) for i in self.elements])}]'
+
+
+class BaseFunction(Value):
+    def __init__(self, name):
         super().__init__()
         self.name = name or "<no one knows(anonymous)>"
+
+    def generate_new_context(self):
+        new_context = Context(self.name, self.context, self.pos_start)
+        new_context.symbol_table = SymbolTable(new_context.parent.symbol_table)
+        return new_context
+
+    def check_args(self, arg_names, args):
+        res = RTResult()
+
+        if len(args) > len(arg_names):
+            return res.failure(RTError(self.pos_start, self.pos_end, f"{len(args) - len(arg_names)} too many args "
+                                                                     f"passed into '{self.name}'", self.context))
+
+        if len(args) < len(arg_names):
+            return res.failure(RTError(self.pos_start, self.pos_end, f"{len(arg_names) - len(args)} too few args "
+                                                                     f"passed into '{self.name}'", self.context))
+
+        return res.success(None)
+
+    def populate_arge(self, arg_names, args, exec_ctx):
+        for i in range(len(args)):
+            arg_name = arg_names[i]
+            arg_value = args[i]
+            arg_value.set_context(exec_ctx)
+            exec_ctx.symbol_table.set(arg_name, arg_value)
+
+    def check_and_populate_args(self, arg_names, args, exec_ctx):
+        res = RTResult()
+        res.register(self.check_args(arg_names, args))
+        if res.error: return res
+        self.populate_arge(arg_names, args, exec_ctx)
+        return res.success(None)
+
+
+class Function(BaseFunction):
+    def __init__(self, name, suite_node, arg_names):
+        super().__init__(name)
         self.suite_node = suite_node
         self.arg_names = arg_names
 
     def execute(self, args):
         res = RTResult()
         interpreter = Interpreter()
-        new_context = Context(self.name, self.context, self.pos_start)
-        new_context.symbol_table = SymbolTable(new_context.parent.symbol_table)
+        exec_ctx = self.generate_new_context()
 
-        if len(args) > len(self.arg_names):
-            return res.failure(RTError(self.pos_start, self.pos_end, f"{len(args) - len(self.arg_names)} too many args "
-                                                                     f"passed into '{self.name}'", self.context))
+        self.check_and_populate_args(self.arg_names, args, exec_ctx)
 
-        if len(args) < len(self.arg_names):
-            return res.failure(RTError(self.pos_start, self.pos_end, f"{len(self.arg_names) - len(args)} too few args "
-                                                                     f"passed into '{self.name}'", self.context))
-
-        for i in range(len(args)):
-            arg_name = self.arg_names[i]
-            arg_value = args[i]
-            arg_value.set_context(new_context)
-            new_context.symbol_table.set(arg_name, arg_value)
-
-        value = res.register(interpreter.visit(self.suite_node, new_context))
+        value = res.register(interpreter.visit(self.suite_node, exec_ctx))
         if res.error: return res
         return res.success(value)
 
@@ -413,6 +520,58 @@ class Function(Value):
 
     def __repr__(self):
         return f'<function {self.name}>'
+
+
+class BuiltInFunction(BaseFunction):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def execute(self, args):
+        res = RTResult()
+        exec_ctx = self.generate_new_context()
+
+        method = getattr(self, f'execute_{self.name}', self.no_visit_method)
+        res.register(self.check_and_populate_args(method.arg_names, args, exec_ctx))
+        if res.error: return res
+
+        return_value = res.register(method(exec_ctx))
+        if res.error: return res
+        return res.success(return_value)
+
+    def no_visit_method(self, context):
+        raise Exception(f'No \'execute_{self.name}\' method defined silly x')
+
+    def execute_log(self, exec_ctx):
+        print(repr(exec_ctx.symbol_table.get("value")))
+        return RTResult().success(None)
+
+    execute_log.arg_names = ['value']
+
+    def execute_print(self, exec_ctx):
+        print(str(exec_ctx.symbol_table.get("value")))
+        return RTResult().success(None)
+
+    execute_print.arg_names = ['value']
+
+    def execute_input(self, exec_ctx):
+        text = input()
+        return RTResult().success((String(text)))
+
+    execute_input.arg_names = []
+
+    def execute_clear(self, exec_ctx):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        return RTResult().success(None)
+
+    execute_clear.arg_names = []
+
+    def copy(self):
+        copy = BuiltInFunction(self.name)
+        copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
+        return copy
+
+    def __repr__(self):
+        return f'<built-in function {self.name}>'
 
 
 class RTResult:
