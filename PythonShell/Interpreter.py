@@ -57,6 +57,28 @@ class Interpreter:
             return res.success(value)
         return res.success(None)
 
+    def visit_VarReassignNode(self, node: VarReassignNode, context):
+        res = RTResult()
+        var_name = node.var_name_tok.value
+        value = res.register(self.visit(node.value_node, context))
+        if res.error: return res
+        token = node.token
+
+        if token == TT_SET:
+            return self.visit_VarAssignNode(node, context)
+
+        previous_value = context.symbol_table.get(var_name)
+        assert isinstance(previous_value, Value)
+        methods = {TT_SET_PLUS: previous_value.added_to, TT_SET_MINUS: previous_value.subbed_by, TT_SET_MULT:
+                   previous_value.multed_by, TT_SET_DIV: previous_value.dived_by, TT_SET_FDIV: previous_value.fdived_by,
+                   TT_SET_MOD: previous_value.modded_by}
+
+        value, error = methods.get(token)(value)
+        if error: return None, error
+        context.symbol_table.set(var_name, value)
+
+        return res.success(value if node.ret else None)
+
     def visit_BinOpNode(self, node, context):
         res = RTResult()
         left = res.register(self.visit(node.left_node, context))
@@ -129,19 +151,19 @@ class Interpreter:
         if res.error: return res
 
         if node.step_value_node:
-            step_value = res.register(self.visit(node.step_value_node, context))
+            step_value = res.register(self.visit(node.step_value_node, context)).value
             if res.error: return res
         else:
-            step_value = Number(1)
+            step_value = 1
 
         i = start_value.value
 
-        if step_value.value > 0:
+        if step_value > 0:
             if start_value.value > end_value.value:
                 return res.failure(RTError(node.pos_start, node.pos_end, f'Step value for iteration would never end. '
                                                                          f'Just do a while true', context))
             condition = lambda: i < end_value.value
-        elif step_value.value < 0:
+        elif step_value < 0:
             if start_value.value < end_value.value:
                 return res.failure(RTError(node.pos_start, node.pos_end, f'Step value for iteration would never end. '
                                                                          f'Just do a while true', context))
@@ -159,7 +181,7 @@ class Interpreter:
 
             if node.var_name_tok:
                 i = context.symbol_table.get(node.var_name_tok.value).value
-            i += step_value.value
+            i += step_value
 
         if node.var_name_tok:
             context.symbol_table.remove(node.var_name_tok.value)

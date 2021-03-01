@@ -116,33 +116,17 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type == TT_NEWLINE:
-            res.register_advancement()
-            self.advance()
-
-            suite = res.register(self.statements())
-            if res.error: return res
-
-            if self.current_tok.type != TT_RPAREN_CURLY:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected '}'"))
-
-            res.register_advancement()
-            self.advance()
-
-            return res.success(ForNode(iterable_var, starting_value, ending_value, step, suite, True))
-
-        suite = res.register(self.expr())
+        suite = res.register(self.statements())
         if res.error: return res
 
-        if not self.current_tok.type == TT_RPAREN_CURLY:
+        if self.current_tok.type != TT_RPAREN_CURLY:
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
                                                   "Expected '}'"))
 
         res.register_advancement()
         self.advance()
 
-        return res.success(ForNode(iterable_var, starting_value, ending_value, step, suite, False))
+        return res.success(ForNode(iterable_var, starting_value, ending_value, step, suite, True))
 
     def while_expr(self):
         res = ParseRes()
@@ -164,23 +148,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type == TT_NEWLINE:
-            res.register_advancement()
-            self.advance()
-
-            suite = res.register(self.statements())
-            if res.error: return res
-
-            if self.current_tok.type != TT_RPAREN_CURLY:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected '}'"))
-
-            res.register_advancement()
-            self.advance()
-
-            return res.success(WhileNode(condition, suite, True))
-
-        suite = res.register(self.expr())
+        suite = res.register(self.statements())
         if res.error: return res
 
         if self.current_tok.type != TT_RPAREN_CURLY:
@@ -190,7 +158,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        return res.success(WhileNode(condition, suite, False))
+        return res.success(WhileNode(condition, suite, True))
 
     def if_expr(self):
         res = ParseRes()
@@ -512,13 +480,30 @@ class Parser:
 
             if tok_type not in (TT_SET, TT_SET_RET):
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected \'::\' or \'->\'"))
+                                                      "Expected variable assignment operator"))
 
             res.register_advancement()
             self.advance()
             expr = res.register(self.expr())
             if res.error: return res
             return res.success(VarAssignNode(var_name, expr, True if tok_type == TT_SET_RET else False))
+
+        elif self.current_tok.type == TT_IDENTIFIER:
+            var_name = self.current_tok
+            res.register_advancement()
+            self.advance()
+
+            tok_type = self.current_tok.type
+
+            if tok_type in VAR_SET:
+                tok = VAR_EQUIV.get(tok_type, tok_type)
+                res.register_advancement()
+                self.advance()
+                expr = res.register(self.expr())
+                if res.error: return res
+                return res.success(VarReassignNode(var_name, expr, True if tok_type in VAR_SET_RET else False, tok))
+
+            self.reverse()
 
         node = res.register(self.bin_op(self.comp_expr, ((TT_KEYWORD, "and"), (TT_KEYWORD, "or"))))
 

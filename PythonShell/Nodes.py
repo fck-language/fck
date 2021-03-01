@@ -51,6 +51,15 @@ class VarAssignNode:
         self.pos_end = self.value_node.pos_end
 
 
+class VarReassignNode:
+    def __init__(self, var_name_tok, value_node, ret, token):
+        self.var_name_tok = var_name_tok
+        self.value_node = value_node
+        self.ret = ret
+        self.token = token
+        self.pos_start = self.var_name_tok.pos_start
+        self.pos_end = self.value_node.pos_end
+
 ##################################################
 # OPERATORS                                      #
 ##################################################

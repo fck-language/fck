@@ -187,6 +187,10 @@ class Lexer:
     def make_set(self):
         pos_start = self.pos.copy()
         self.advance()
+        operation_type = None
+        set_op = {"+": [TT_SET_PLUS, TT_SET_RET_PLUS], "-": [TT_SET_MINUS, TT_SET_RET_MINUS], "*":
+                  [TT_SET_MULT, TT_SET_RET_MULT], "%": [TT_SET_MOD, TT_SET_RET_MOD]}
+        set_op_double = {"/": [[TT_SET_DIV, TT_SET_RET_DIV], [TT_SET_FDIV, TT_SET_RET_FDIV]]}
 
         if self.current_char == ':':
             self.advance()
@@ -194,6 +198,33 @@ class Lexer:
         elif self.current_char == '>':
             self.advance()
             return Token(TT_SET_RET, pos_start=pos_start, pos_end=self.pos), None
+        else:
+            found = False
+            for i, n in set_op.items():
+                if self.current_char == i:
+                    operation_type = n
+                    self.advance()
+                    found = True
+                    break
+            if not found:
+                for i, n in set_op_double.items():
+                    if self.current_char == i:
+                        operation_type = n
+                        found = True
+                        self.advance()
+                        if self.current_char == i:
+                            operation_type = operation_type[1]
+                            self.advance()
+                        else:
+                            operation_type = operation_type[0]
+                        break
+            if not found:
+                return None, ExpectedCharError(pos_start, self.pos, "Expected assignment operator")
+
+        if self.current_char not in (':', ">"):
+            return None, ExpectedCharError(pos_start, self.pos, "Expected assignment operator")
+
+        operation_type = operation_type[0 if self.current_char == ":" else 1]
 
         self.advance()
-        return None, ExpectedCharError(pos_start, self.pos, "Expected '::'")
+        return Token(operation_type, pos_start=pos_start, pos_end=self.pos), None
