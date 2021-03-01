@@ -21,7 +21,7 @@ class Lexer:
         self.advance()
         self.single_char_token_names = {'+': TT_PLUS, '%': TT_MOD, '(': TT_LPAREN, ')': TT_RPAREN, '{': TT_LPAREN_CURLY,
                                         '}': TT_RPAREN_CURLY, ',': TT_COMMA, '-': TT_MINUS, '[': TT_LPAREN_SQUARE,
-                                        ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE}
+                                        ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE, ';': TT_NEWLINE}
         self.multi_char_token_methods = {'!': self.make_not_equals, '=': self.make_equals, '<': self.make_less_than,
                                          '>': self.make_greater_than, '*': self.make_mult_pow, ':': self.make_set,
                                          '/': self.make_div, '"': self.make_string}

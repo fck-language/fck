@@ -97,25 +97,27 @@ class Interpreter:
     def visit_IfNode(self, node, context):
         res = RTResult()
 
-        for condition, expr in node.cases:
+        for condition, expr, should_return_null in node.cases:
             condition_value = res.register(self.visit(condition, context))
             if res.error: return res
 
             if condition_value.is_true():
                 expr_value = res.register(self.visit(expr, context))
                 if res.error: return res
-                return res.success(expr_value)
+                return res.success(None if should_return_null else expr_value)
 
         if node.else_case:
-            else_value = res.register(self.visit(node.else_case, context))
+            expr, should_return_null = node.else_case
+            else_value = res.register(self.visit(expr, context))
             if res.error: return res
-            return res.success(else_value)
+            return res.success(None if should_return_null else else_value)
 
         return res.success(None)
 
     def visit_ForNode(self, node, context):
         res = RTResult()
         elements = []
+        should_return_null = node.should_return_null
 
         if node.start_value_node:
             start_value = res.register(self.visit(node.start_value_node, context))
@@ -162,7 +164,8 @@ class Interpreter:
         if node.var_name_tok:
             context.symbol_table.remove(node.var_name_tok.value)
 
-        return res.success(List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
+        return res.success(None if should_return_null else
+                           List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
 
     def visit_WhileNode(self, node: WhileNode, context):
         res = RTResult()
@@ -184,7 +187,7 @@ class Interpreter:
         func_name = node.var_name_tok.value if node.var_name_tok else None
         suite_node = node.suite_node
         arg_names = [arg_name.value for arg_name in node.arg_name_toks]
-        func_value = Function(func_name, suite_node, arg_names).set_context(context) \
+        func_value = Function(func_name, suite_node, arg_names, node.should_return_null).set_context(context) \
             .set_pos(node.pos_start, node.pos_end)
 
         if node.var_name_tok:
@@ -496,10 +499,11 @@ class BaseFunction(Value):
 
 
 class Function(BaseFunction):
-    def __init__(self, name, suite_node, arg_names):
+    def __init__(self, name, suite_node, arg_names, should_return_null):
         super().__init__(name)
         self.suite_node = suite_node
         self.arg_names = arg_names
+        self.should_return_null = should_return_null
 
     def execute(self, args):
         res = RTResult()
@@ -510,10 +514,10 @@ class Function(BaseFunction):
 
         value = res.register(interpreter.visit(self.suite_node, exec_ctx))
         if res.error: return res
-        return res.success(value)
+        return res.success(None if self.should_return_null else value)
 
     def copy(self):
-        copy = Function(self.name, self.suite_node, self.arg_names)
+        copy = Function(self.name, self.suite_node, self.arg_names, self.should_return_null)
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
         return copy
