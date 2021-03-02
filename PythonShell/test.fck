@@ -1,9 +1,9 @@
 def add(a,b){
     if a==1{
+        log("so, a is 1 so no other value right?")
         return
     }
     return a + b
 }
 
 log(add(1,2))
-log(add(5,3))

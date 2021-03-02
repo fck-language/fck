@@ -1,5 +1,6 @@
 from Nodes import *
 from Errors import *
+# from inspect import currentframe, getframeinfo
 
 
 class ParseRes:
@@ -457,6 +458,8 @@ class Parser:
                 self.reverse(res.to_reverse_count)
                 more_statements = False
                 continue
+            if isinstance(statement, ReturnNode):
+                print(f"{statement.node_to_return} from {type(statement.node_to_return)}")
             statements.append(statement)
 
         return res.success(ListNode(statements, pos_start, self.current_tok.pos_end.copy()))
@@ -605,23 +608,7 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            if self.current_tok.type == TT_NEWLINE:
-                res.register_advancement()
-                self.advance()
-
-                suite = res.register(self.statements())
-                if res.error: return res
-
-                if self.current_tok.type != TT_RPAREN_CURLY:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                          "Expected '}'"))
-
-                res.register_advancement()
-                self.advance()
-
-                return res.success(FuncDefNode(var_name_tok, arg_name_toks, suite))
-
-            suite = res.register(self.statement())
+            suite = res.register(self.statements())
             if res.error: return res
 
             if self.current_tok.type != TT_RPAREN_CURLY:
