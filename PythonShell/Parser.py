@@ -458,8 +458,6 @@ class Parser:
                 self.reverse(res.to_reverse_count)
                 more_statements = False
                 continue
-            if isinstance(statement, ReturnNode):
-                print(f"{statement.node_to_return} from {type(statement.node_to_return)}")
             statements.append(statement)
 
         return res.success(ListNode(statements, pos_start, self.current_tok.pos_end.copy()))

@@ -3,7 +3,9 @@ def add(a,b){
         log("so, a is 1 so no other value right?")
         return
     }
+    log("a not 1 so can return a+b")
     return a + b
 }
 
 log(add(1,2))
+log(add(2,1))

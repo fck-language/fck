@@ -236,29 +236,22 @@ class Interpreter:
         return res.success(None)
 
     def visit_CallNode(self, node: CallNode, context):
-        print(f'Call node -> {node.node_to_call} of type {type(node.node_to_call)}')
         res = RTResult()
         args = []
 
         value_to_call = res.register(self.visit(node.node_to_call, context))
-        print(f'    Returned value -> {value_to_call}')
         if res.should_return(): return res
-        print(f'    No return the value')
 
         for arg_node in node.arg_nodes:
             args.append(res.register(self.visit(arg_node, context)))
             if res.should_return(): return res
 
-        print(f'    Args -> {args}')
-
         return_value = res.register(value_to_call.execute(args))
-        print(f'    Value returned from func -> {return_value}')
 
         if res.should_return(): return res
         if return_value:
             return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
             return res.success(return_value)
-        print('*'*25)
         return res.success(None)
 
     def visit_ReturnNode(self, node, context):
@@ -570,21 +563,18 @@ class Function(BaseFunction):
         self.arg_names = arg_names
 
     def execute(self, args):
-        print(f'    Execute method:')
         res = RTResult()
         interpreter = Interpreter()
         exec_ctx = self.generate_new_context()
 
         self.check_and_populate_args(self.arg_names, args, exec_ctx)
 
-        print(f'        context values -> {exec_ctx.symbol_table}')
-
         value = res.register(interpreter.visit(self.suite_node, exec_ctx))
-        print(f'        value returned -> {value}')
-        print(f'        out value -> {value or res.func_return_value or None}')
-        print(f'                  -> {value is None}')
-        if res.should_return() and res.func_return_value is None: return res
-        return res.success(value or res.func_return_value or None)
+
+        return res
+
+        # if res.should_return() and (res.func_return_value is None): return res
+        # return res.success(value or res.func_return_value or None)
 
     def copy(self):
         copy = Function(self.name, self.suite_node, self.arg_names)
