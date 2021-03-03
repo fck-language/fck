@@ -7,3 +7,5 @@ def add(a,b){
 
 print(add(1,2))
 log(add(1,2))
+print("add(2,1) returns " + add(2,1) + " in the print method")
+log("add(1,2) returns " + add(1,2) + " in the log method")

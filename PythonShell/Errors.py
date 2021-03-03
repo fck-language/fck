@@ -2,7 +2,7 @@ from Arrows import string_with_arrows
 
 
 class Error:
-    def __init__(self, pos_start, pos_end, error_name, details):
+    def __init__(self, pos_start, pos_end, error_name, details=""):
         self.pos_start = pos_start
         self.pos_end = pos_end
         self.error_name = error_name
@@ -32,7 +32,7 @@ class InvalidSyntaxError(Error):
 
 class IllegalOperationError(Error):
     def __init__(self, pos_start, pos_end):
-        super().__init__(pos_start, pos_end, 'Illegal operation. Basically, no can use operation here', '')
+        super().__init__(pos_start, pos_end, 'Illegal operation. Basically, no can use operation here')
 
 
 class RTError(Error):

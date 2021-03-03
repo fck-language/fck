@@ -92,6 +92,11 @@ class Null(Value):
     def __init__(self):
         super().__init__()
 
+    def added_to(self, other):
+        if isinstance(other, String):
+            return String(self.__repr__() + other.value).set_context(self.context), None
+        return other
+
     def __repr__(self):
         return "<Null value>"
 
@@ -104,12 +109,12 @@ class Number(Value):
     def added_to(self, other):
         if isinstance(other, Number):
             return Number(self.value + other.value).set_context(self.context), None
-        return None, IllegalOperationError(self.pos_start, self.pos_end)
+        return self.illegal_operation(other)
 
     def subbed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value - other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def multed_by(self, other):
         if isinstance(other, Number):
@@ -202,6 +207,8 @@ class String(Value):
             return String(self.value + other.value).set_context(self.context), None
         elif isinstance(other, Number):
             return String(self.value + str(other.value)).set_context(self.context), None
+        elif isinstance(other, Null):
+            return String(self.value + other.__repr__()).set_context(self.context), None
         return self.illegal_operation()
 
     def multed_by(self, other):
@@ -366,30 +373,7 @@ class BuiltInFunction(BaseFunction):
     execute_clear.arg_names = []
 
     def execute_run(self, exec_ctx):
-        fn = exec_ctx.symbol_table.get("fn")
-
-        if not isinstance(fn, String):
-            return RTResult().failure(RTError(self.pos_start, self.pos_end, "Filename must be a string", exec_ctx))
-
-        fn = fn.value
-
-        try:
-            with open(fn, 'r') as f:
-                script = f.read()
-        except Exception as e:
-            return RTResult().failure(RTError(self.pos_start, self.pos_end, f'Failed to load script \"{fn}\"\n'
-                                              + str(e), exec_ctx))
-
-        _, error = run(fn, script)
-
-        if error:
-            return RTResult().failure(RTError(self.pos_start, self.pos_end, f"An error was returned while running"
-                                                                            f" \"{fn}\"\n{error.as_string()}",
-                                              exec_ctx))
-
-        return RTResult().success(None)
-
-    execute_run.arg_names = ["fn"]
+        pass
 
     def copy(self):
         copy = BuiltInFunction(self.name)
