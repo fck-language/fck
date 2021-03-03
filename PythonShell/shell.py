@@ -1,5 +1,4 @@
 import fck_main
-import test
 
 while True:
     text = input(">>> ")

@@ -1,12 +1,5 @@
-from Tokens import *
-
-
-##################################################
-# OTHER                                          #
-##################################################
-
 class NumberNode:
-    def __init__(self, tok: Token):
+    def __init__(self, tok):
         self.tok = tok
 
         self.pos_start = self.tok.pos_start
@@ -17,7 +10,7 @@ class NumberNode:
 
 
 class StringNode:
-    def __init__(self, tok: Token):
+    def __init__(self, tok):
         self.tok = tok
 
         self.pos_start = self.tok.pos_start
@@ -28,7 +21,7 @@ class StringNode:
 
 
 class ListNode:
-    def __init__(self, element_nodes: list, pos_start, pos_end):
+    def __init__(self, element_nodes, pos_start, pos_end):
         self.element_nodes = element_nodes
 
         self.pos_start = pos_start
@@ -38,6 +31,7 @@ class ListNode:
 class VarAccessNode:
     def __init__(self, var_name_tok):
         self.var_name_tok = var_name_tok
+
         self.pos_start = self.var_name_tok.pos_start
         self.pos_end = self.var_name_tok.pos_end
 
@@ -60,9 +54,6 @@ class VarReassignNode:
         self.pos_start = self.var_name_tok.pos_start
         self.pos_end = self.value_node.pos_end
 
-##################################################
-# OPERATORS                                      #
-##################################################
 
 class BinOpNode:
     def __init__(self, left_node, op_tok, right_node):
@@ -94,8 +85,8 @@ class IfNode:
         self.cases = cases
         self.else_case = else_case
 
-        self.pos_start = self.cases[0][0].pos_end
-        self.pos_end = (self.else_case or self.cases[-1])[0].pos_end
+        self.pos_start = self.cases[0][0].pos_start
+        self.pos_end = (self.else_case or self.cases[len(self.cases) - 1])[0].pos_end
 
 
 class IterateNode:
@@ -112,29 +103,29 @@ class IterateNode:
 
 
 class WhileNode:
-    def __init__(self, condition_node, suite_node, should_return_null):
+    def __init__(self, condition_node, body_node, should_return_null):
         self.condition_node = condition_node
-        self.suite_node = suite_node
+        self.body_node = body_node
         self.should_return_null = should_return_null
 
         self.pos_start = self.condition_node.pos_start
-        self.pos_end = self.suite_node.pos_end
+        self.pos_end = self.body_node.pos_end
 
 
 class FuncDefNode:
-    def __init__(self, var_name_tok, arg_name_toks, suite_node):
+    def __init__(self, var_name_tok, arg_name_toks, body_node):
         self.var_name_tok = var_name_tok
         self.arg_name_toks = arg_name_toks
-        self.suite_node = suite_node
+        self.body_node = body_node
 
         if self.var_name_tok:
             self.pos_start = self.var_name_tok.pos_start
         elif len(self.arg_name_toks) > 0:
             self.pos_start = self.arg_name_toks[0].pos_start
         else:
-            self.pos_start = self.suite_node.pos_start
+            self.pos_start = self.body_node.pos_start
 
-        self.pos_end = self.suite_node.pos_end
+        self.pos_end = self.body_node.pos_end
 
 
 class CallNode:
@@ -145,7 +136,7 @@ class CallNode:
         self.pos_start = self.node_to_call.pos_start
 
         if len(self.arg_nodes) > 0:
-            self.pos_end = self.arg_nodes[-1].pos_end
+            self.pos_end = self.arg_nodes[len(self.arg_nodes) - 1].pos_end
         else:
             self.pos_end = self.node_to_call.pos_end
 
@@ -153,6 +144,7 @@ class CallNode:
 class ReturnNode:
     def __init__(self, node_to_return, pos_start, pos_end):
         self.node_to_return = node_to_return
+
         self.pos_start = pos_start
         self.pos_end = pos_end
 
