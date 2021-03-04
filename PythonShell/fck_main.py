@@ -64,6 +64,8 @@ class Lexer:
         num_str = ''
         dot_count = 0
         pos_start = self.pos.copy()
+        num_str += self.current_char
+        self.advance()
 
         while self.current_char is not None and self.current_char in DIGITS + '.':
             if self.current_char == '.':
@@ -85,6 +87,8 @@ class Lexer:
         pos_start = self.pos.copy()
         escape_character = False
         self.advance()
+        string += self.current_char
+        self.advance()
 
         escape_characters = {'n': '\n', 't': '\t'}
 
@@ -105,6 +109,8 @@ class Lexer:
     def make_identifier(self):
         id_str = ""
         pos_start = self.pos.copy()
+        id_str += self.current_char
+        self.advance()
 
         while self.current_char is not None and self.current_char in LETTERS_DIGITS + "_":
             id_str += self.current_char
@@ -642,10 +648,6 @@ class Parser:
         res = ParseResult()
         cases = []
 
-        if not self.current_tok.matches(TT_KEYWORD, case_keyword):
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  f"Expected '{case_keyword}'"))
-
         res.register_advancement()
         self.advance()
 
@@ -678,10 +680,6 @@ class Parser:
     def iterate_expr(self):
         res = ParseResult()
         starting_value = None
-
-        if not self.current_tok.matches(TT_KEYWORD, "iterate"):
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected 'iterate'"))
 
         res.register_advancement()
         self.advance()
@@ -742,10 +740,6 @@ class Parser:
 
     def while_expr(self):
         res = ParseResult()
-
-        if not self.current_tok.matches(TT_KEYWORD, "while"):
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected 'while'"))
 
         res.register_advancement()
         self.advance()
@@ -837,117 +831,6 @@ class Parser:
             self.advance()
 
             return res.success(FuncDefNode(var_name_tok, arg_name_toks, suite))
-
-    # def func_def(self):
-    #     res = ParseResult()
-    #
-    #     if not self.current_tok.matches(TT_KEYWORD, 'def'):
-    #         return res.failure(InvalidSyntaxError(
-    #             self.current_tok.pos_start, self.current_tok.pos_end,
-    #             f"Expected 'def'"
-    #         ))
-    #
-    #     res.register_advancement()
-    #     self.advance()
-    #
-    #     if self.current_tok.type == TT_IDENTIFIER:
-    #         var_name_tok = self.current_tok
-    #         res.register_advancement()
-    #         self.advance()
-    #         if self.current_tok.type != TT_LPAREN:
-    #             return res.failure(InvalidSyntaxError(
-    #                 self.current_tok.pos_start, self.current_tok.pos_end,
-    #                 f"Expected '('"
-    #             ))
-    #     else:
-    #         var_name_tok = None
-    #         if self.current_tok.type != TT_LPAREN:
-    #             return res.failure(InvalidSyntaxError(
-    #                 self.current_tok.pos_start, self.current_tok.pos_end,
-    #                 f"Expected identifier or '('"
-    #             ))
-    #
-    #     res.register_advancement()
-    #     self.advance()
-    #     arg_name_toks = []
-    #
-    #     if self.current_tok.type == TT_IDENTIFIER:
-    #         arg_name_toks.append(self.current_tok)
-    #         res.register_advancement()
-    #         self.advance()
-    #
-    #         while self.current_tok.type == TT_COMMA:
-    #             res.register_advancement()
-    #             self.advance()
-    #
-    #             if self.current_tok.type != TT_IDENTIFIER:
-    #                 return res.failure(InvalidSyntaxError(
-    #                     self.current_tok.pos_start, self.current_tok.pos_end,
-    #                     f"Expected identifier"
-    #                 ))
-    #
-    #             arg_name_toks.append(self.current_tok)
-    #             res.register_advancement()
-    #             self.advance()
-    #
-    #         if self.current_tok.type != TT_RPAREN:
-    #             return res.failure(InvalidSyntaxError(
-    #                 self.current_tok.pos_start, self.current_tok.pos_end,
-    #                 f"Expected ',' or ')'"
-    #             ))
-    #     else:
-    #         if self.current_tok.type != TT_RPAREN:
-    #             return res.failure(InvalidSyntaxError(
-    #                 self.current_tok.pos_start, self.current_tok.pos_end,
-    #                 f"Expected identifier or ')'"
-    #             ))
-    #
-    #     res.register_advancement()
-    #     self.advance()
-    #
-    #     if self.current_tok.type == TT_ARROW:
-    #         res.register_advancement()
-    #         self.advance()
-    #
-    #         body = res.register(self.expr())
-    #         if res.error: return res
-    #
-    #         return res.success(FuncDefNode(
-    #             var_name_tok,
-    #             arg_name_toks,
-    #             body,
-    #             True
-    #         ))
-    #
-    #     if self.current_tok.type != TT_NEWLINE:
-    #         return res.failure(InvalidSyntaxError(
-    #             self.current_tok.pos_start, self.current_tok.pos_end,
-    #             f"Expected '->' or NEWLINE"
-    #         ))
-    #
-    #     res.register_advancement()
-    #     self.advance()
-    #
-    #     body = res.register(self.statements())
-    #     if res.error: return res
-    #
-    #     if not self.current_tok.matches(TT_KEYWORD, 'END'):
-    #         return res.failure(InvalidSyntaxError(
-    #             self.current_tok.pos_start, self.current_tok.pos_end,
-    #             f"Expected 'END'"
-    #         ))
-    #
-    #     res.register_advancement()
-    #     self.advance()
-    #
-    #     return res.success(FuncDefNode(
-    #         var_name_tok,
-    #         arg_name_toks,
-    #         body,
-    #         False
-    #     ))
-
-    ###################################
 
     def bin_op(self, func_a, ops, func_b=None):
         if func_b is None:
