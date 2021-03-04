@@ -1,4 +1,8 @@
 from Arrows import string_with_arrows
+from random import randint
+from ErrorParser import *
+
+err_warn = get_err_warns()
 
 
 class Error:
@@ -57,3 +61,30 @@ class RTError(Error):
             ctx = ctx.parent
 
         return 'Traceback (most recent call last):\n' + result
+
+
+class NonBreakError:
+    def __init__(self, pos_start, pos_end, context, error_name):
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+        self.context = context
+        self.error_name = err_warn_names[error_name]
+        self.value = err_warn[error_name]
+
+    def generate_traceback(self):
+        result = ''
+        pos = self.pos_start
+        ctx = self.context
+
+        while ctx:
+            result = f'  File {pos.fn}, line {str(pos.ln + 1)}, in {ctx.display_name}\n' + result
+            pos = ctx.parent_entry_pos
+            ctx = ctx.parent
+
+        return 'Traceback (most recent call):\n' + result[:-1]
+    
+    def print_method(self):
+        value = self.value[randint(0, len(self.value) - 1)]
+        out = f'{self.error_name}: {value}\n{self.generate_traceback()}'
+        longest = max([len(i) for i in out.split("\n")])
+        print("*" * longest + "\nWarning:\n" + out + "\n" + "*" * longest)

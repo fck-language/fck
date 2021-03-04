@@ -1,0 +1,2 @@
+DivideByZero=["Darling, you can't really do that, but okay","Why. Divide by zero bad"]
+ModByZero="We're just going to pretend that the remainder is 0"

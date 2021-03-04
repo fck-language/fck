@@ -101,6 +101,70 @@ class Null(Value):
         return "<Null value>"
 
 
+class Infinity(Value):
+    def __init__(self, value):
+        super().__init__()
+        self.mult_zero = value
+
+    def added_to(self, other):
+        return self.illegal_operation()
+
+    def subbed_by(self, other):
+        return self.illegal_operation()
+
+    def multed_by(self, other):
+        if isinstance(other, Number):
+            if other.value == 0:
+                return Number(self.mult_zero).set_context(self.context), None
+            return self
+        return self.illegal_operation()
+
+    def dived_by(self, other):
+        return self.illegal_operation()
+
+    def fdived_by(self, other):
+        return self.illegal_operation()
+
+    def modded_by(self, other):
+        return self.illegal_operation()
+
+    def powed_by(self, other):
+        return self.illegal_operation()
+
+    def get_comparison_lt(self, other):
+        return self.illegal_operation()
+
+    def get_comparison_gt(self, other):
+        return self.illegal_operation()
+
+    def get_comparison_lte(self, other):
+        return self.illegal_operation()
+
+    def get_comparison_gte(self, other):
+        return self.illegal_operation()
+
+    def get_comparison_eq(self, other):
+        return self.illegal_operation()
+
+    def get_comparison_ne(self, other):
+        return self.illegal_operation()
+
+    def anded_by(self, other):
+        return self.illegal_operation()
+
+    def ored_by(self, other):
+        return self.illegal_operation()
+
+    def notted(self):
+        return self.illegal_operation()
+
+    def is_true(self):
+        return self.illegal_operation()
+
+    def __repr__(self):
+        return "<Infinity>"
+
+
 class Number(Value):
     def __init__(self, value):
         super().__init__()
@@ -124,21 +188,24 @@ class Number(Value):
     def dived_by(self, other):
         if isinstance(other, Number):
             if other.value == 0:
-                return None, RTError(other.pos_start, other.pos_end, "Division by zero. No", self.context)
+                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
+                return Infinity(self.value).set_context(self.context), None
             return Number(self.value / other.value).set_context(self.context), None
         return self.illegal_operation()
 
     def fdived_by(self, other):
         if isinstance(other, Number):
             if other.value == 0:
-                return None, RTError(other.pos_start, other.pos_end, "Division by zero. No", self.context)
+                repr(NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero))
+                return Infinity(self.value).set_context(self.context), None
             return Number(self.value // other.value).set_context(self.context), None
         return self.illegal_operation()
 
     def modded_by(self, other):
         if isinstance(other, Number):
             if other.value == 0:
-                return None, RTError(other.pos_start, other.pos_end, "Division by zero. No", self.context)
+                repr(NonBreakError(self.pos_start, other.pos_end, self.context, ET_ModByZero))
+                return Number(0).set_context(self.context), None
             return Number(self.value % other.value).set_context(self.context), None
         return self.illegal_operation()
 
