@@ -989,32 +989,24 @@ class Interpreter:
                 return res.failure(
                     IllegalValueError(higher.pos_start, higher.pos_end, "List index must be a single value"))
 
-        if abs(lower) >= list_len:
-            NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()
-            lower %= list_len
-        if abs(higher) >= list_len:
-            NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()
-            higher %= list_len
+        lower = list_len + lower - 1 if lower < 0 else lower
+        higher = list_len + higher - 1 if higher < 0 else higher
 
-        if higher < 0:
-            if lower > list_len + higher:
-                NonBreakError(node.lower.pos_start, node.higher.pos_end, context,
-                              ET_ListIndexRangeReversed).print_method()
-                temp = lower
-                lower = list_len + higher
-                higher = temp
-                del temp
-        else:
-            if lower > higher:
-                NonBreakError(node.lower.pos_start, node.higher.pos_end, context,
-                              ET_ListIndexRangeReversed).print_method()
-                temp = lower
-                lower = list_len + higher
-                higher = temp
-                del temp
+        if lower > list_len:
+            NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()
+            lower = list_len - 1
+        if higher > list_len:
+            NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()
+            higher = list_len - 1
+
+        if higher < lower and node.range_get:
+            NonBreakError(node.lower.pos_start, node.higher.pos_end, context, ET_ListIndexRangeReversed).print_method()
+            temp = lower
+            lower = higher
+            higher = temp
 
         if range_get:
-            value = List(value.elements[lower:higher]).set_pos(node.pos_start, node.pos_end).set_context(context)
+            value = List(value.elements[lower:higher + 1]).set_pos(node.pos_start, node.pos_end).set_context(context)
         else:
             value = value.elements[lower].set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
