@@ -94,6 +94,9 @@ class Token:
     def matches(self, type_, value):
         return self.type == type_ and self.value == value
 
+    def list_matches(self, type_, value_list):
+        return self.type == type_ and self.value in value_list
+
     def __repr__(self):
         return f'{self.type}:{self.value}' if self.value else f'{self.type}'
 

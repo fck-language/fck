@@ -2,10 +2,24 @@ from string import ascii_letters
 
 ET_DivideByZero = "DivideByZero"
 ET_ModByZero = "ModByZero"
+ET_ValueMultString = "ValueMultString"
+ET_StringMultFloat = "StringMultFloat"
+ET_InfinityDivValue = "InfinityDivValue"
+ET_InfinityDivInfinity = "InfinityDivInfinity"
 
-err_warn = {ET_DivideByZero: ['Divide by zero found. Returned infinity'],
-            ET_ModByZero: ['Modulo by zero found. Returned 0']}
-err_warn_names = {ET_DivideByZero: "Divide by zero", ET_ModByZero: "Modulo by zero"}
+err_warn = {ET_DivideByZero: ['Divide by zero found'],
+            ET_ModByZero: ['Modulo by zero found'],
+            ET_ValueMultString: ['Cannot multiply a value by a string'],
+            ET_StringMultFloat: ['Cannot multiply a string by a Float'],
+            ET_InfinityDivValue: ['Infinity divided by value found'],
+            ET_InfinityDivInfinity: ['Infinity divided by infinity found']}
+
+err_warn_names = {ET_DivideByZero: "Divide by zero. Returned infinity",
+                  ET_ModByZero: "Modulo by zero. Returned 0",
+                  ET_ValueMultString: "Value multiplied by string. Returned string multiplied by value",
+                  ET_StringMultFloat: "String was multiplied by a float. Value has been rounded",
+                  ET_InfinityDivValue: "Infinity divided by value. Returned infinity",
+                  ET_InfinityDivInfinity: "Infinity divided by infinity. Returned zero"}
 
 
 def get_err_warns():

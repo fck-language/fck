@@ -15,7 +15,7 @@ class Error:
     def as_string(self):
         result = f'{self.error_name}: {self.details}\n'
         result += f'File {self.pos_start.fn}, line {self.pos_start.ln + 1}'
-        result += '\n\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
+        result += '\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
         return result
 
 
@@ -47,7 +47,7 @@ class RTError(Error):
     def as_string(self):
         result = self.generate_traceback()
         result += f'{self.error_name}: {self.details}'
-        result += '\n\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
+        result += '\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
         return result
 
     def generate_traceback(self):
@@ -81,8 +81,9 @@ class NonBreakError:
             pos = ctx.parent_entry_pos
             ctx = ctx.parent
 
-        return 'Traceback (most recent call):\n' + result[:-1]
-    
+        return f'Traceback (most recent call):\n{result[:-1]}\n' \
+               f'{string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)}'
+
     def print_method(self):
         value = self.value[randint(0, len(self.value) - 1)]
         out = f'{self.error_name}: {value}\n{self.generate_traceback()}'

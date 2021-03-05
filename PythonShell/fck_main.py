@@ -349,12 +349,10 @@ class Parser:
     def expr(self):
         res = ParseResult()
 
-        if self.current_tok.matches(TT_KEYWORD, "var"):
+        if self.current_tok.list_matches(TT_KEYWORD, VAR_TYPES):
+            var_type = self.current_tok.value
             res.register_advancement()
             self.advance()
-            if self.current_tok.type != TT_IDENTIFIER:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected identifier"))
 
             var_name = self.current_tok
             res.register_advancement()
@@ -370,7 +368,7 @@ class Parser:
             self.advance()
             expr = res.register(self.expr())
             if res.error: return res
-            return res.success(VarAssignNode(var_name, expr, True if tok_type == TT_SET_RET else False))
+            return res.success(VarAssignNode(var_type, var_name, expr, True if tok_type == TT_SET_RET else False))
 
         elif self.current_tok.type == TT_IDENTIFIER:
             var_name = self.current_tok
@@ -424,7 +422,7 @@ class Parser:
         return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
 
     def term(self):
-        return self.bin_op(self.factor, (TT_MULT, TT_DIV))
+        return self.bin_op(self.factor, (TT_MULT, TT_DIV, TT_FDIV))
 
     def factor(self):
         res = ParseResult()
@@ -910,10 +908,12 @@ class Interpreter:
         value = value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
 
-    def visit_VarAssignNode(self, node, context):
+    def visit_VarAssignNode(self, node: VarAssignNode, context):
         res = RTResult()
+        class_type = {'int': Int, 'float': Float, 'bool': Bool}.get(node.var_type)
         var_name = node.var_name_tok.value
-        value = res.register(self.visit(node.value_node, context))
+        value = class_type(res.register(self.visit(node.value_node, context)).value)
+
         if res.should_return(): return res
 
         context.symbol_table.set(var_name, value)
@@ -1146,13 +1146,11 @@ class Interpreter:
 #######################################
 
 global_symbol_table = SymbolTable()
-global_symbol_table.set("true", Number(1))
-global_symbol_table.set("false", Number(0))
-global_symbol_table.set("log", BuiltInFunction("log"))
-global_symbol_table.set("print", BuiltInFunction("print"))
-global_symbol_table.set("input", BuiltInFunction("input"))
-global_symbol_table.set("clear", BuiltInFunction("clear"))
-global_symbol_table.set("run", BuiltInFunction("run"))
+global_symbol_table.set("true", Bool(1))
+global_symbol_table.set("false", Bool(0))
+built_in_funcs = ['log', 'print', 'type', 'input', 'clear', 'run']
+for i in built_in_funcs:
+    global_symbol_table.set(i, BuiltInFunction(i))
 
 
 def run(fn, text):

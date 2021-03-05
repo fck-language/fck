@@ -9,6 +9,39 @@ class NumberNode:
         return f'{self.tok}'
 
 
+class IntNode:
+    def __init__(self, tok):
+        self.tok = tok
+
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
+
+    def __repr__(self):
+        return f'{self.tok}'
+
+
+class FloatNode:
+    def __init__(self, tok):
+        self.tok = tok
+
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
+
+    def __repr__(self):
+        return f'{self.tok}'
+
+
+class BoolNode:
+    def __init__(self, tok):
+        self.tok = tok
+
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
+
+    def __repr__(self):
+        return f'{self.tok}'
+
+
 class StringNode:
     def __init__(self, tok):
         self.tok = tok
@@ -37,7 +70,8 @@ class VarAccessNode:
 
 
 class VarAssignNode:
-    def __init__(self, var_name_tok, value_node, ret):
+    def __init__(self, var_type, var_name_tok, value_node, ret):
+        self.var_type = var_type
         self.var_name_tok = var_name_tok
         self.value_node = value_node
         self.ret = ret
