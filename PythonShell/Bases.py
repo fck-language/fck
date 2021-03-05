@@ -21,6 +21,7 @@ TT_LPAREN_SQUARE = "LPAREN_SQUARE"
 TT_RPAREN_SQUARE = "RPAREN_SQUARE"
 TT_EOF = "EOF"
 TT_POW = "POW"
+TT_SEMICOLON = "SEMICOLON"
 TT_IDENTIFIER = "IDENTIFIER"
 TT_KEYWORD = "KEYWORD"
 TT_SET = "SET"
@@ -57,12 +58,13 @@ VAR_SET_RET = [TT_SET_RET, TT_SET_RET_PLUS, TT_SET_RET_MINUS, TT_SET_RET_MULT, T
 VAR_EQUIV = {TT_SET_RET: TT_SET, TT_SET_RET_PLUS: TT_SET_PLUS, TT_SET_RET_MINUS: TT_SET_MINUS, TT_SET_RET_MULT:
              TT_SET_MULT, TT_SET_RET_DIV: TT_SET_DIV, TT_SET_RET_FDIV: TT_SET_FDIV, TT_SET_RET_MOD: TT_SET_MOD,
              TT_SET_RET_POW: TT_SET_POW}
-VAR_TYPES = ['int', 'float', 'bool']
+VAR_TYPES = ['int', 'float', 'bool', 'list']
 
 KEYWORDS = [
     "int",
     "float",
     "bool",
+    "list",
     "and",
     "or",
     "not",
@@ -124,6 +126,13 @@ class Position:
         if current_char == '\n':
             self.ln += 1
             self.col = 0
+
+        return self
+
+    def devance(self):
+        if self.idx != 0:
+            self.idx -= 1
+            self.col -= 1
 
         return self
 

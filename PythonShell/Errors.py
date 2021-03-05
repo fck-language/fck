@@ -1,6 +1,7 @@
 from Arrows import string_with_arrows
 from random import randint
 from ErrorParser import *
+from textwrap import wrap
 
 err_warn = get_err_warns()
 
@@ -13,7 +14,7 @@ class Error:
         self.details = details
 
     def as_string(self):
-        result = f'{self.error_name}: {self.details}\n'
+        result = "\n".join(wrap(f'{self.error_name}: {self.details}\n'))
         result += f'File {self.pos_start.fn}, line {self.pos_start.ln + 1}'
         result += '\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
         return result
@@ -37,6 +38,11 @@ class InvalidSyntaxError(Error):
 class IllegalOperationError(Error):
     def __init__(self, pos_start, pos_end):
         super().__init__(pos_start, pos_end, 'Illegal operation. Basically, no can use operation here')
+
+
+class IllegalValueError(Error):
+    def __init__(self, pos_start, pos_end, details=None):
+        super().__init__(pos_start, pos_end, 'Illegal value' + f':\n{details}' if details else 'Illegal value')
 
 
 class RTError(Error):
@@ -86,6 +92,6 @@ class NonBreakError:
 
     def print_method(self):
         value = self.value[randint(0, len(self.value) - 1)]
-        out = f'{self.error_name}: {value}\n{self.generate_traceback()}'
+        out = "\n".join(wrap(f'{self.error_name}: {value}')) + f"\n{self.generate_traceback()}"
         longest = max([len(i) for i in out.split("\n")])
         print("*" * longest + "\nWarning:\n" + out + "\n" + "*" * longest)

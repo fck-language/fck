@@ -656,10 +656,10 @@ class List(Value):
         return copy
 
     def __str__(self):
-        return ", ".join([str(i) for i in self.elements])
+        return repr(self)
 
     def __repr__(self):
-        return f'[{", ".join([str(i) for i in self.elements])}]'
+        return f'[{", ".join([repr(i) for i in self.elements])}]'
 
 
 class BaseFunction(Value):

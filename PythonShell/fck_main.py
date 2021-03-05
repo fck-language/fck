@@ -25,6 +25,10 @@ class Lexer:
         self.pos.advance(self.current_char)
         self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
 
+    def devance(self) -> None:
+        self.pos.devance()
+        self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
+
     def make_tokens(self) -> (list, Error):
         tokens = []
 
@@ -223,10 +227,13 @@ class Lexer:
                             operation_type = operation_type[0]
                         break
             if not found:
-                return None, ExpectedCharError(pos_start, self.pos, "Expected assignment operator")
+                return Token(TT_SEMICOLON, pos_start=pos_start, pos_end=self.pos), None
 
         if self.current_char not in (':', ">"):
-            return None, ExpectedCharError(pos_start, self.pos, "Expected assignment operator")
+            if operation_type not in ([TT_SET_PLUS, TT_SET_RET_PLUS], [TT_SET_MINUS, TT_SET_RET_MINUS]):
+                return None, ExpectedCharError(pos_start, self.pos, "Expected assignment operator")
+            self.devance()
+            return Token(TT_SEMICOLON, pos_start=pos_start, pos_end=self.pos), None
 
         operation_type = operation_type[0 if self.current_char == ":" else 1]
 
@@ -384,6 +391,41 @@ class Parser:
                 expr = res.register(self.expr())
                 if res.error: return res
                 return res.success(VarReassignNode(var_name, expr, True if tok_type in VAR_SET_RET else False, tok))
+            elif tok_type == TT_LPAREN_SQUARE:
+                res.register_advancement()
+                self.advance()
+                if self.current_tok.type == TT_SEMICOLON:
+                    lower = 0
+                    res.register_advancement()
+                    self.advance()
+                    if self.current_tok.type == TT_RPAREN_SQUARE:
+                        return res.success(VarAccessNode(var_name))
+                    higher = res.register(self.expr())
+                else:
+                    lower = res.register(self.expr())
+                    if self.current_tok.type == TT_SEMICOLON:
+                        res.register_advancement()
+                        self.advance()
+                        if self.current_tok.type == TT_RPAREN_SQUARE:
+                            res.register_advancement()
+                            self.advance()
+                            higher = 0
+                        else:
+                            higher = res.register(self.expr())
+                    elif self.current_tok.type == TT_RPAREN_SQUARE:
+                        pos_end = self.current_tok.pos_end
+                        res.register_advancement()
+                        self.advance()
+                        return res.success(VarGetItemNode(var_name, lower, 0, False, pos_end))
+
+                if self.current_tok.type != TT_RPAREN_SQUARE:
+                    return res.failure(InvalidSyntaxError(var_name.pos_start,
+                                                          self.current_tok.pos_end, 'Expected \']\''))
+                pos_end = self.current_tok.pos_end
+                res.register_advancement()
+                self.advance()
+
+                return res.success(VarGetItemNode(var_name, lower, higher, True, pos_end))
 
             self.reverse()
 
@@ -908,11 +950,88 @@ class Interpreter:
         value = value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
 
+    def visit_VarGetItemNode(self, node: VarGetItemNode, context):
+        res = RTResult()
+        var_name = node.var_name_tok.value
+        value = context.symbol_table.get(var_name)
+        list_len = len(value.elements)
+        range_get = node.range_get
+
+        if not value:
+            return res.failure(RTError(
+                node.pos_start, node.pos_end,
+                f"'{var_name}' is not defined",
+                context
+            ))
+
+        if node.lower == 0:
+            lower = 0
+        else:
+            lower = res.register(self.visit(node.lower, context))
+            if res.should_return(): return res
+            if isinstance(lower, Number):
+                if isinstance(lower.value, float):
+                    NonBreakError(lower.pos_start, lower.pos_end, context, ET_ListIndexFloat).print_method()
+                lower = int(lower.value)
+            else:
+                return res.failure(IllegalValueError(lower.pos_start,
+                                                     lower.pos_end, "List index must be a single value"))
+        if node.higher == 0:
+            higher = 0
+        else:
+            higher = res.register(self.visit(node.higher, context))
+            if res.should_return(): return res
+            if isinstance(higher, Number):
+                if isinstance(higher.value, float):
+                    NonBreakError(higher.pos_start, higher.pos_end, context, ET_ListIndexFloat).print_method()
+                higher = int(higher.value)
+            else:
+                return res.failure(
+                    IllegalValueError(higher.pos_start, higher.pos_end, "List index must be a single value"))
+
+        if abs(lower) >= list_len:
+            NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()
+            lower %= list_len
+        if abs(higher) >= list_len:
+            NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()
+            higher %= list_len
+
+        if higher < 0:
+            if lower > list_len + higher:
+                NonBreakError(node.lower.pos_start, node.higher.pos_end, context,
+                              ET_ListIndexRangeReversed).print_method()
+                temp = lower
+                lower = list_len + higher
+                higher = temp
+                del temp
+        else:
+            if lower > higher:
+                NonBreakError(node.lower.pos_start, node.higher.pos_end, context,
+                              ET_ListIndexRangeReversed).print_method()
+                temp = lower
+                lower = list_len + higher
+                higher = temp
+                del temp
+
+        if range_get:
+            value = List(value.elements[lower:higher]).set_pos(node.pos_start, node.pos_end).set_context(context)
+        else:
+            value = value.elements[lower].set_pos(node.pos_start, node.pos_end).set_context(context)
+        return res.success(value)
+
     def visit_VarAssignNode(self, node: VarAssignNode, context):
         res = RTResult()
-        class_type = {'int': Int, 'float': Float, 'bool': Bool}.get(node.var_type)
+        class_type = {'int': Int, 'float': Float, 'bool': Bool, 'list': List}.get(node.var_type)
         var_name = node.var_name_tok.value
-        value = class_type(res.register(self.visit(node.value_node, context)).value)
+        value = res.register(self.visit(node.value_node, context))
+        if node.var_type != 'list':
+            if isinstance(value, List):
+                return res.failure(RTError(node.pos_start, node.pos_end, f'Cannot assign a {node.var_type} variable to '
+                                                                         f'a list', context))
+            value = class_type(value.value)
+        elif isinstance(value, Number):
+            NonBreakError(node.pos_start, node.pos_end, context, ET_ListFromValue).print_method()
+            value = List([value.value])
 
         if res.should_return(): return res
 
