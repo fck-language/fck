@@ -412,10 +412,7 @@ class Parser:
                         if self.current_tok.type == TT_SEMICOLON:
                             res.register_advancement()
                             self.advance()
-                            if self.current_tok.type == TT_RPAREN_SQUARE:
-                                res.register_advancement()
-                                self.advance()
-                            else:
+                            if self.current_tok.type != TT_RPAREN_SQUARE:
                                 higher = res.register(self.expr())
                         elif self.current_tok.type in (TT_RPAREN_SQUARE, TT_COMMA):
                             return VarGetItemNode(lower, 0, False, pos_start, self.current_tok.pos_start)
@@ -1003,7 +1000,7 @@ class Interpreter:
                 return res.failure(IllegalValueError(lower.pos_start,
                                                      lower.pos_end, "List index must be a single value"))
         if node.higher == 0:
-            higher = 0
+            higher = list_len - 1
         else:
             higher = res.register(self.visit(node.higher, context))
             if res.should_return(): return res
@@ -1025,14 +1022,17 @@ class Interpreter:
             NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()
             higher = list_len - 1
 
+        reverse = False
         if higher < lower and node.range_get:
-            NonBreakError(node.lower.pos_start, node.higher.pos_end, context, ET_ListIndexRangeReversed).print_method()
             temp = lower
             lower = higher
             higher = temp
+            reverse = True
 
         if range_get:
             value = List(value.elements[lower:higher + 1]).set_pos(node.pos_start, node.pos_end).set_context(context)
+            if reverse:
+                value.elements.reverse()
         else:
             value = value.elements[lower].set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
