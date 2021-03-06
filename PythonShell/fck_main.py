@@ -922,9 +922,10 @@ class Interpreter:
 
     ###################################
 
-    def visit_NumberNode(self, node, context):
+    def visit_NumberNode(self, node: NumberNode, context):
+        ret_class = {'INT': Int, 'FLOAT': Float}.get(node.tok.type)
         return RTResult().success(
-            Number(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end)
+            ret_class(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end)
         )
 
     def visit_StringNode(self, node, context):
