@@ -394,38 +394,50 @@ class Parser:
             elif tok_type == TT_LPAREN_SQUARE:
                 res.register_advancement()
                 self.advance()
-                if self.current_tok.type == TT_SEMICOLON:
+
+                def get_list_range():
                     lower = 0
-                    res.register_advancement()
-                    self.advance()
-                    if self.current_tok.type == TT_RPAREN_SQUARE:
-                        return res.success(VarAccessNode(var_name))
-                    higher = res.register(self.expr())
-                else:
-                    lower = res.register(self.expr())
+                    higher = 0
+                    pos_start = self.current_tok.pos_start
                     if self.current_tok.type == TT_SEMICOLON:
                         res.register_advancement()
                         self.advance()
                         if self.current_tok.type == TT_RPAREN_SQUARE:
+                            return VarAccessNode(var_name)
+                        higher = res.register(self.expr())
+                    else:
+                        if self.current_tok.type == TT_RPAREN_SQUARE:
+                            return VarAccessNode(var_name)
+                        lower = res.register(self.expr())
+                        if self.current_tok.type == TT_SEMICOLON:
                             res.register_advancement()
                             self.advance()
-                            higher = 0
-                        else:
-                            higher = res.register(self.expr())
-                    elif self.current_tok.type == TT_RPAREN_SQUARE:
-                        pos_end = self.current_tok.pos_end
-                        res.register_advancement()
-                        self.advance()
-                        return res.success(VarGetItemNode(var_name, lower, 0, False, pos_end))
+                            if self.current_tok.type == TT_RPAREN_SQUARE:
+                                res.register_advancement()
+                                self.advance()
+                            else:
+                                higher = res.register(self.expr())
+                        elif self.current_tok.type in (TT_RPAREN_SQUARE, TT_COMMA):
+                            return VarGetItemNode(lower, 0, False, pos_start, self.current_tok.pos_start)
 
+                    return VarGetItemNode(lower, higher, True, pos_start, self.current_tok.pos_start)
+
+                ref_items = [get_list_range()]
+                if isinstance(ref_items[0], VarAccessNode):
+                    res.register_advancement()
+                    self.advance()
+                    return res.success(ref_items[0])
+                while self.current_tok.type == TT_COMMA:
+                    res.register_advancement()
+                    self.advance()
+                    ref_items.append(get_list_range())
                 if self.current_tok.type != TT_RPAREN_SQUARE:
                     return res.failure(InvalidSyntaxError(var_name.pos_start,
                                                           self.current_tok.pos_end, 'Expected \']\''))
-                pos_end = self.current_tok.pos_end
                 res.register_advancement()
                 self.advance()
 
-                return res.success(VarGetItemNode(var_name, lower, higher, True, pos_end))
+                return res.success(VarGetSetNode(var_name, ref_items))
 
             self.reverse()
 
@@ -950,19 +962,33 @@ class Interpreter:
         value = value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
 
-    def visit_VarGetItemNode(self, node: VarGetItemNode, context):
+    def visit_VarGetSetNode(self, node: VarGetSetNode, context):
         res = RTResult()
         var_name = node.var_name_tok.value
         value = context.symbol_table.get(var_name)
-        list_len = len(value.elements)
-        range_get = node.range_get
-
         if not value:
             return res.failure(RTError(
                 node.pos_start, node.pos_end,
                 f"'{var_name}' is not defined",
                 context
             ))
+
+        for range_get_node in node.rangeList:
+            if not isinstance(value, List):
+                return res.failure(RTError(
+                    range_get_node.pos_start, range_get_node.pos_end,
+                    f"'{value}' is not a list and so cannot use the [] operators to access members of itself",
+                    context
+                ))
+            value_len = len(value.elements)
+            value = res.register(self.visit_VarGetItemNode(range_get_node, context, value, value_len))
+            if res.should_return(): return res
+
+        return res.success(value)
+
+    def visit_VarGetItemNode(self, node: VarGetItemNode, context, value, list_len):
+        res = RTResult()
+        range_get = node.range_get
 
         if node.lower == 0:
             lower = 0
@@ -989,8 +1015,8 @@ class Interpreter:
                 return res.failure(
                     IllegalValueError(higher.pos_start, higher.pos_end, "List index must be a single value"))
 
-        lower = list_len + lower - 1 if lower < 0 else lower
-        higher = list_len + higher - 1 if higher < 0 else higher
+        lower = list_len + lower if lower < 0 else lower
+        higher = list_len + higher if higher < 0 else higher
 
         if lower > list_len:
             NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()

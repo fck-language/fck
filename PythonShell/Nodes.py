@@ -69,14 +69,22 @@ class VarAccessNode:
         self.pos_end = self.var_name_tok.pos_end
 
 
-class VarGetItemNode:
-    def __init__(self, var_name_tok, lower, higher, range_get, pos_end):
+class VarGetSetNode:
+    def __init__(self, var_name_tok, rangeList):
         self.var_name_tok = var_name_tok
+        self.rangeList = rangeList
+
+        self.pos_start = self.var_name_tok.pos_start
+        self.pos_end = self.rangeList[-1].pos_end
+
+
+class VarGetItemNode:
+    def __init__(self, lower, higher, range_get, pos_start, pos_end):
         self.lower = lower
         self.higher = higher
         self.range_get = range_get
 
-        self.pos_start = self.var_name_tok.pos_start
+        self.pos_start = pos_start
         self.pos_end = pos_end
 
 

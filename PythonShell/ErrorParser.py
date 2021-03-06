@@ -1,4 +1,5 @@
 from string import ascii_letters
+from os.path import dirname
 
 ET_DivideByZero = "DivideByZero"
 ET_ModByZero = "ModByZero"
@@ -36,7 +37,7 @@ err_warn_names = {ET_DivideByZero: "Divide by zero. Returned infinity",
 
 
 def get_err_warns():
-    with open("errors.txt") as f:
+    with open(dirname(__file__) + "/errors.txt") as f:
         lines = f.readlines()
         for line in lines:
             key = ""
