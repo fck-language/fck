@@ -16,7 +16,7 @@ class Lexer:
         self.advance()
         self.single_char_token_names = {'+': TT_PLUS, '%': TT_MOD, '(': TT_LPAREN, ')': TT_RPAREN, '{': TT_LPAREN_CURLY,
                                         '}': TT_RPAREN_CURLY, ',': TT_COMMA, '-': TT_MINUS, '[': TT_LPAREN_SQUARE,
-                                        ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE, ';': TT_NEWLINE}
+                                        ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE, ';': TT_NEWLINE, '?':TT_QUESTION_MARK}
         self.multi_char_token_methods = {'!': self.make_not_equals, '=': self.make_equals, '<': self.make_less_than,
                                          '>': self.make_greater_than, '*': self.make_mult_pow, ':': self.make_set,
                                          '/': self.make_div, '"': self.make_string, '#': self.skip_comment}
@@ -404,15 +404,18 @@ class Parser:
                         if self.current_tok.type == TT_RPAREN_SQUARE:
                             return VarAccessNode(var_name)
                         higher = res.register(self.expr())
+                        if res.error: return res
                     else:
                         if self.current_tok.type == TT_RPAREN_SQUARE:
                             return VarAccessNode(var_name)
                         lower = res.register(self.expr())
+                        if res.error: return res
                         if self.current_tok.type == TT_SEMICOLON:
                             res.register_advancement()
                             self.advance()
                             if self.current_tok.type != TT_RPAREN_SQUARE:
                                 higher = res.register(self.expr())
+                                if res.error: return res
                         elif self.current_tok.type in (TT_RPAREN_SQUARE, TT_COMMA):
                             return VarGetItemNode(lower, 0, False, pos_start, self.current_tok.pos_start)
 
@@ -438,6 +441,20 @@ class Parser:
             self.reverse()
 
         node = res.register(self.bin_op(self.comp_expr, ((TT_KEYWORD, "and"), (TT_KEYWORD, "or"))))
+
+        if self.current_tok.type == TT_QUESTION_MARK:
+            res.register_advancement()
+            self.advance()
+            if_true = res.register(self.expr())
+            if res.error: return res
+            if self.current_tok.type != TT_SEMICOLON:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                      'Expected \':\''))
+            res.register_advancement()
+            self.advance()
+            if_false = res.register(self.expr())
+            if res.error: return res
+            return res.success(TrueFalseNode(node, if_true, if_false))
 
         if res.error:
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
@@ -944,6 +961,17 @@ class Interpreter:
             List(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
         )
 
+    def visit_TrueFalseNode(self, node: TrueFalseNode, context):
+        res = RTResult()
+        condition = res.register(self.visit(node.condition, context)).is_true()
+        if res.should_return(): return res
+        if condition:
+            value = res.register(self.visit(node.if_true, context))
+        else:
+            value = res.register(self.visit(node.if_false, context))
+        if res.should_return(): return res
+        return res.success(value)
+
     def visit_VarAccessNode(self, node: VarAccessNode, context):
         res = RTResult()
         var_name = node.var_name_tok.value
@@ -1071,7 +1099,8 @@ class Interpreter:
         var_name = node.var_name_tok
         previous = context.symbol_table.get(var_name.value).set_pos(node.pos_start, node.pos_end)
         if previous is None:
-            return res.failure(RTError(node.pos_start, node.pos_end, f"Variable {var_name.value} is undefined", context))
+            return res.failure(
+                RTError(node.pos_start, node.pos_end, f"Variable {var_name.value} is undefined", context))
         if res.should_return(): return res
         token = node.token
         value = res.register(self.visit(node.value_node, context))

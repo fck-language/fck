@@ -108,6 +108,16 @@ class VarReassignNode:
         self.pos_end = self.value_node.pos_end
 
 
+class TrueFalseNode:
+    def __init__(self, condition, if_true, if_false):
+        self.condition = condition
+        self.if_true = if_true
+        self.if_false = if_false
+
+        self.pos_start = self.condition.pos_start
+        self.pos_end = self.if_false.pos_end
+
+
 class BinOpNode:
     def __init__(self, left_node, op_tok, right_node):
         self.left_node = left_node
