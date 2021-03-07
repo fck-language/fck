@@ -107,22 +107,22 @@ class Null(Value):
 
 
 class Infinity(Value):
-    def __init__(self, value):
+    def __init__(self, value, previous_type):
         super().__init__()
         self.mult_zero = value
+        self.previous_type = previous_type
 
     def added_to(self, other):
-        return self
+        return self, None
 
     def subbed_by(self, other):
-        self.mult_zero = -self.mult_zero
-        return self
+        return self, None
 
     def multed_by(self, other):
         if isinstance(other, Number):
             if other.value == 0:
-                return Number(self.mult_zero).set_context(self.context), None
-            return self
+                return self.previous_type(self.mult_zero).set_context(self.context), None
+            return Infinity(self.mult_zero * other.value, self.previous_type).set_context(self.context), None
         return self.illegal_operation()
 
     def dived_by(self, other):
@@ -183,6 +183,11 @@ class Infinity(Value):
     def get_type(self, log: bool):
         return "<" * log + 'Infinity' + f' ({self.mult_zero})>' * log
 
+    def copy(self):
+        copy = Infinity(self.mult_zero, self.previous_type)
+        copy.set_context(self.context).set_pos(self.pos_start, self.pos_start)
+        return copy
+
     def __repr__(self):
         return f'<Infinity ({self.mult_zero})>'
 
@@ -195,36 +200,54 @@ class Number(Value):
     def added_to(self, other):
         if isinstance(other, Number):
             return Number(self.value + other.value).set_context(self.context), None
+        elif isinstance(other, Infinity):
+            return Infinity(other.mult_zero, other.previous_type).set_context(self.context), None
         return self.illegal_operation(other)
 
     def subbed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value - other.value).set_context(self.context), None
+        elif isinstance(other, Infinity):
+            return Infinity(-other.mult_zero, other.previous_type).set_context(self.context), None
         return self.illegal_operation(other)
 
     def multed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value * other.value).set_context(self.context), None
+        elif isinstance(other, Infinity):
+            return Infinity(self.value * other.mult_zero, other.previous_type).set_context(self.context), None
         return self.illegal_operation()
 
     def dived_by(self, other):
         if isinstance(other, Number):
+            if isinstance(other.value, Infinity):
+                NonBreakError(self.pos_start, other.pos_end, self.context, ET_ValueDivInfinity).print_method()
+                return Number(0).set_context(self.context), None
             if other.value == 0:
                 NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
-                return Infinity(self.value).set_context(self.context), None
+                return Infinity(self.value, Int).set_context(self.context), None
             return Number(self.value / other.value).set_context(self.context), None
+        elif isinstance(other, Infinity):
+            return Int(0).set_context(self.context), None
         return self.illegal_operation()
 
     def fdived_by(self, other):
         if isinstance(other, Number):
+            if isinstance(other.value, Infinity):
+                NonBreakError(self.pos_start, other.pos_end, self.context, ET_ValueDivInfinity).print_method()
+                return Number(0).set_context(self.context), None
             if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero)
-                return Infinity(self.value).set_context(self.context), None
+                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
+                return Infinity(self.value, Int).set_context(self.context), None
             return Number(self.value // other.value).set_context(self.context), None
+        elif isinstance(other, Infinity):
+            return Int(0).set_context(self.context), None
         return self.illegal_operation()
 
     def modded_by(self, other):
         if isinstance(other, Number):
+            if isinstance(other.value, Infinity):
+                return self.illegal_operation()
             if other.value == 0:
                 NonBreakError(self.pos_start, other.pos_end, self.context, ET_ModByZero).print_method()
                 return Number(0).set_context(self.context), None
@@ -233,6 +256,8 @@ class Number(Value):
 
     def powed_by(self, other):
         if isinstance(other, Number):
+            if isinstance(other.value, Infinity):
+                return self.illegal_operation()
             return Number(self.value ** other.value).set_context(self.context), None
         return self.illegal_operation()
 
@@ -293,56 +318,12 @@ class Number(Value):
 
 class Int(Number):
     def __init__(self, value):
-        super().__init__(round(value))
+        super().__init__(Infinity(round(value.mult_zero), Int) if isinstance(value, Infinity) else round(value))
 
     def copy(self):
         copy = Int(self.value)
         copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
         return copy
-
-    def added_to(self, other):
-        if isinstance(other, Number):
-            return Number(self.value + other.value).set_context(self.context), None
-        return self.illegal_operation(other)
-
-    def subbed_by(self, other):
-        if isinstance(other, Number):
-            return Number(self.value - other.value).set_context(self.context), None
-        return self.illegal_operation(other)
-
-    def multed_by(self, other):
-        if isinstance(other, Number):
-            return Number(self.value * other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def dived_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
-                return Infinity(self.value).set_context(self.context), None
-            return Number(self.value / other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def fdived_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
-                return Infinity(self.value).set_context(self.context), None
-            return Number(self.value // other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def modded_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_ModByZero).print_method()
-                return Number(0).set_context(self.context), None
-            return Number(self.value % other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def powed_by(self, other):
-        if isinstance(other, Number):
-            return Number(self.value ** other.value).set_context(self.context), None
-        return self.illegal_operation()
 
     def get_type(self, log: bool):
         return "<" * log + 'int' + ">" * log
@@ -359,50 +340,6 @@ class Float(Number):
         copy = Float(self.value)
         copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
         return copy
-
-    def added_to(self, other):
-        if isinstance(other, Number):
-            return Number(self.value + other.value).set_context(self.context), None
-        return self.illegal_operation(other)
-
-    def subbed_by(self, other):
-        if isinstance(other, Number):
-            return Number(self.value - other.value).set_context(self.context), None
-        return self.illegal_operation(other)
-
-    def multed_by(self, other):
-        if isinstance(other, Number):
-            return Number(self.value * other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def dived_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
-                return Infinity(self.value).set_context(self.context), None
-            return Number(self.value / other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def fdived_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                repr(NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero))
-                return Infinity(self.value).set_context(self.context), None
-            return Number(self.value // other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def modded_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                repr(NonBreakError(self.pos_start, other.pos_end, self.context, ET_ModByZero))
-                return Number(0).set_context(self.context), None
-            return Number(self.value % other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def powed_by(self, other):
-        if isinstance(other, Number):
-            return Number(self.value ** other.value).set_context(self.context), None
-        return self.illegal_operation()
 
     def get_type(self, log: bool):
         return "<" * log + 'float' + ">" * log
@@ -520,67 +457,6 @@ class Bool(Number):
         copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
         return copy
 
-    def added_to(self, other):
-        if isinstance(other, Number):
-            ret_type = None
-            if isinstance(other, Int) or isinstance(other, Bool):
-                ret_type = Int
-            elif isinstance(other, Float):
-                ret_type = Float
-            if ret_type:
-                return ret_type(self.value + other.value).set_context(self.context), None
-        elif isinstance(other, String):
-            return String(f'{repr(self)}' + other.value).set_context(self.context), None
-        return self.illegal_operation(other)
-
-    def subbed_by(self, other):
-        if isinstance(other, Number):
-            return Number(self.value - other.value).set_context(self.context), None
-        return self.illegal_operation(other)
-
-    def multed_by(self, other):
-        if isinstance(other, Number):
-            ret_type = None
-            if isinstance(other, Int) or isinstance(other, Bool):
-                ret_type = Int
-            elif isinstance(other, Float):
-                ret_type = Float
-            if ret_type:
-                return ret_type(self.value * other.value).set_context(self.context), None
-        elif isinstance(other, String):
-            NonBreakError(self.pos_start, other.pos_end, self.context, ET_ValueMultString).print_method()
-            return String(other.value * self.value).set_context(self.context), None
-        return self.illegal_operation(other)
-
-    def dived_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
-                return Infinity(self.value).set_context(self.context), None
-            return Number(self.value / other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def fdived_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
-                return Infinity(self.value).set_context(self.context), None
-            return Number(self.value // other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def modded_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_ModByZero).print_method()
-                return Number(0).set_context(self.context), None
-            return Number(self.value % other.value).set_context(self.context), None
-        return self.illegal_operation()
-
-    def powed_by(self, other):
-        if isinstance(other, Number):
-            return Number(self.value ** other.value).set_context(self.context), None
-        return self.illegal_operation()
-
     def is_true(self):
         return self.value
 
@@ -606,7 +482,7 @@ class String(Value):
         return self.illegal_operation()
 
     def multed_by(self, other):
-        if isinstance(other, Number):
+        if isinstance(other, Number) and not isinstance(other.value, Infinity):
             return String(self.value * other.value).set_context(self.context), None
         return self.illegal_operation()
 

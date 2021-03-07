@@ -1039,16 +1039,16 @@ class Interpreter:
             value = value.elements[lower].set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
 
-    def visit_VarAssignNode(self, node: VarAssignNode, context):
+    def assignChecks(self, var_name, value, previous, node, context):
         res = RTResult()
-        class_type = {'int': Int, 'float': Float, 'bool': Bool, 'list': List}.get(node.var_type, node.var_type)
-        var_name = node.var_name_tok.value
-        value = res.register(self.visit(node.value_node, context))
-        if class_type != List:
+        if isinstance(previous, Infinity):
+            previous = previous.previous_type
+        if previous != List:
             if isinstance(value, List):
                 return res.failure(RTError(node.pos_start, node.pos_end, f'Cannot assign a {node.var_type} variable to '
                                                                          f'a list', context))
-            value = class_type(value.value)
+            if not isinstance(value, Infinity):
+                value = previous(value.value)
         elif isinstance(value, Number):
             NonBreakError(node.pos_start, node.pos_end, context, ET_ListFromValue).print_method()
             value = List([value.value])
@@ -1058,19 +1058,25 @@ class Interpreter:
         context.symbol_table.set(var_name, value)
         return res.success(value if node.ret else None)
 
+    def visit_VarAssignNode(self, node: VarAssignNode, context):
+        res = RTResult()
+        class_type = {'int': Int, 'float': Float, 'bool': Bool, 'list': List}.get(node.var_type)
+        var_name = node.var_name_tok.value
+        value = res.register(self.visit(node.value_node, context))
+        return self.assignChecks(var_name, value, class_type, node, context)
+
     def visit_VarReassignNode(self, node: VarReassignNode, context):
         res = RTResult()
         var_name = node.var_name_tok
-        previous = context.symbol_table.get(var_name.value)
+        previous = context.symbol_table.get(var_name.value).set_pos(node.pos_start, node.pos_end)
         if previous is None:
             return res.failure(RTError(node.pos_start, node.pos_end, f"Variable {var_name.value} is undefined", context))
         if res.should_return(): return res
         token = node.token
+        value = res.register(self.visit(node.value_node, context))
 
         if token == TT_SET:
-            return self.visit_VarAssignNode(VarAssignNode(type(previous), var_name, node.value_node, node.ret), context)
-
-        value = res.register(self.visit(node.value_node, context))
+            return self.assignChecks(var_name.value, value, previous, node, context)
 
         methods = {TT_SET_PLUS: previous.added_to, TT_SET_MINUS: previous.subbed_by, TT_SET_MULT: previous.multed_by,
                    TT_SET_DIV: previous.dived_by, TT_SET_FDIV: previous.fdived_by, TT_SET_MOD: previous.modded_by,
@@ -1078,9 +1084,7 @@ class Interpreter:
 
         value, error = methods.get(token)(value)
         if error: return None, error
-        context.symbol_table.set(var_name.value, value)
-
-        return res.success(value if node.ret else None)
+        return self.assignChecks(var_name.value, value, previous, node, context)
 
     def visit_BinOpNode(self, node: BinOpNode, context):
         res = RTResult()

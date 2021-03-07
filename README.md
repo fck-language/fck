@@ -1,5 +1,5 @@
 # fck
-A new coding language to go along with my quite probably abismal OS
+A new coding language to go along with my quite probably abysmal OS
 
 
 [Website](https://RosiePuddles.github.io)

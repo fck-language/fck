@@ -6,6 +6,7 @@ ET_ModByZero = "ModByZero"
 ET_ValueMultString = "ValueMultString"
 ET_StringMultFloat = "StringMultFloat"
 ET_InfinityDivValue = "InfinityDivValue"
+ET_ValueDivInfinity = "ValueDivInfinity"
 ET_InfinityDivInfinity = "InfinityDivInfinity"
 ET_ListFromValue = "ListFromValue"
 ET_ListIndexOutOfRange = "ListIndexOutOfRange"
@@ -16,16 +17,18 @@ err_warn = {ET_DivideByZero: ['Divide by zero found'],
             ET_ValueMultString: ['Cannot multiply a value by a string'],
             ET_StringMultFloat: ['Cannot multiply a string by a Float'],
             ET_InfinityDivValue: ['Infinity divided by value found'],
+            ET_ValueDivInfinity: ['Value divided by infinity'],
             ET_InfinityDivInfinity: ['Infinity divided by infinity found'],
             ET_ListFromValue: ['List assigned to a non-list value'],
             ET_ListIndexOutOfRange: ['List index value was too large for this list'],
-            ET_ListIndexFloat: ['List index was a float'],}
+            ET_ListIndexFloat: ['List index was a float']}
 
 err_warn_names = {ET_DivideByZero: "Divide by zero. Returned infinity",
                   ET_ModByZero: "Modulo by zero. Returned 0",
                   ET_ValueMultString: "Value multiplied by string. Returned string multiplied by value",
                   ET_StringMultFloat: "String was multiplied by a float. Value has been rounded",
                   ET_InfinityDivValue: "Infinity divided by value. Returned infinity",
+                  ET_ValueDivInfinity: "Value divided by infinity. Returned zero",
                   ET_InfinityDivInfinity: "Infinity divided by infinity. Returned zero",
                   ET_ListFromValue: "List assigned to a value. Value has been converted into a list",
                   ET_ListIndexOutOfRange: "Index for list was out of range. Changed value to fit list range",
