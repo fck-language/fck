@@ -102,6 +102,10 @@ class Null(Value):
     def get_type(self, log: bool):
         return "<" * log + 'Null' + ">" * log
 
+    def copy(self):
+        copy = Null()
+        return copy.set_pos(self.pos_start, self.pos_end).set_context(self.context)
+
     def __repr__(self):
         return "<Null value>"
 

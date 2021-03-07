@@ -367,15 +367,13 @@ class Parser:
 
             tok_type = self.current_tok.type
 
-            if tok_type not in (TT_SET, TT_SET_RET):
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected variable assignment operator"))
-
-            res.register_advancement()
-            self.advance()
-            expr = res.register(self.expr())
-            if res.error: return res
-            return res.success(VarAssignNode(var_type, var_name, expr, True if tok_type == TT_SET_RET else False))
+            if tok_type in (TT_SET, TT_SET_RET):
+                res.register_advancement()
+                self.advance()
+                expr = res.register(self.expr())
+                if res.error: return res
+                return res.success(VarAssignNode(var_type, var_name, expr, True if tok_type == TT_SET_RET else False))
+            return res.success(VarAssignNode(var_type, var_name, None, True if tok_type == TT_SET_RET else False))
 
         elif self.current_tok.type == TT_IDENTIFIER:
             var_name = self.current_tok
@@ -1062,7 +1060,10 @@ class Interpreter:
         res = RTResult()
         class_type = {'int': Int, 'float': Float, 'bool': Bool, 'list': List}.get(node.var_type)
         var_name = node.var_name_tok.value
-        value = res.register(self.visit(node.value_node, context))
+        if node.value_node:
+            value = res.register(self.visit(node.value_node, context))
+        else:
+            value = {'int': Int(0), 'float': Float(0), 'bool': Bool(False), 'list': List([])}.get(node.var_type)
         return self.assignChecks(var_name, value, class_type, node, context)
 
     def visit_VarReassignNode(self, node: VarReassignNode, context):
@@ -1076,6 +1077,7 @@ class Interpreter:
         value = res.register(self.visit(node.value_node, context))
 
         if token == TT_SET:
+            previous = type(previous)
             return self.assignChecks(var_name.value, value, previous, node, context)
 
         methods = {TT_SET_PLUS: previous.added_to, TT_SET_MINUS: previous.subbed_by, TT_SET_MULT: previous.multed_by,
@@ -1084,7 +1086,7 @@ class Interpreter:
 
         value, error = methods.get(token)(value)
         if error: return None, error
-        return self.assignChecks(var_name.value, value, previous, node, context)
+        return self.assignChecks(var_name.value, value, type(previous), node, context)
 
     def visit_BinOpNode(self, node: BinOpNode, context):
         res = RTResult()
@@ -1294,6 +1296,7 @@ class Interpreter:
 global_symbol_table = SymbolTable()
 global_symbol_table.set("true", Bool(1))
 global_symbol_table.set("false", Bool(0))
+global_symbol_table.set("null", Null())
 built_in_funcs = ['log', 'print', 'type', 'input', 'clear', 'run']
 for i in built_in_funcs:
     global_symbol_table.set(i, BuiltInFunction(i))

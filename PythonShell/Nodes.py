@@ -95,7 +95,7 @@ class VarAssignNode:
         self.value_node = value_node
         self.ret = ret
         self.pos_start = self.var_name_tok.pos_start
-        self.pos_end = self.value_node.pos_end
+        self.pos_end = self.value_node.pos_end if self.value_node else self.var_name_tok.pos_end
 
 
 class VarReassignNode:
