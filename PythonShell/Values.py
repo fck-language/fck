@@ -201,23 +201,31 @@ class Number(Value):
         super().__init__()
         self.value = value
 
+    def ret_type(self, other):
+        return_types = {0.5: Float, 0: Int}
+        value_type = class_identifier_values.get(type(self.value))
+        value_type += class_identifier_values.get(type(other.value))
+        for i, n in enumerate(return_types.keys()):
+            if value_type >= n:
+                return list(return_types.values())[i]
+
     def added_to(self, other):
         if isinstance(other, Number):
-            return Number(self.value + other.value).set_context(self.context), None
+            return self.ret_type(other)(self.value + other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
             return Infinity(other.mult_zero, other.previous_type).set_context(self.context), None
         return self.illegal_operation(other)
 
     def subbed_by(self, other):
         if isinstance(other, Number):
-            return Number(self.value - other.value).set_context(self.context), None
+            return self.ret_type(other)(self.value - other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
             return Infinity(-other.mult_zero, other.previous_type).set_context(self.context), None
         return self.illegal_operation(other)
 
     def multed_by(self, other):
         if isinstance(other, Number):
-            return Number(self.value * other.value).set_context(self.context), None
+            return self.ret_type(other)(self.value * other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
             return Infinity(self.value * other.mult_zero, other.previous_type).set_context(self.context), None
         return self.illegal_operation()
@@ -226,11 +234,11 @@ class Number(Value):
         if isinstance(other, Number):
             if isinstance(other.value, Infinity):
                 NonBreakError(self.pos_start, other.pos_end, self.context, ET_ValueDivInfinity).print_method()
-                return Number(0).set_context(self.context), None
+                return Int(0).set_context(self.context), None
             if other.value == 0:
                 NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
                 return Infinity(self.value, Int).set_context(self.context), None
-            return Number(self.value / other.value).set_context(self.context), None
+            return Float(self.value / other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
             return Int(0).set_context(self.context), None
         return self.illegal_operation()
@@ -239,11 +247,11 @@ class Number(Value):
         if isinstance(other, Number):
             if isinstance(other.value, Infinity):
                 NonBreakError(self.pos_start, other.pos_end, self.context, ET_ValueDivInfinity).print_method()
-                return Number(0).set_context(self.context), None
+                return Int(0).set_context(self.context), None
             if other.value == 0:
                 NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
                 return Infinity(self.value, Int).set_context(self.context), None
-            return Number(self.value // other.value).set_context(self.context), None
+            return Int(self.value // other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
             return Int(0).set_context(self.context), None
         return self.illegal_operation()
@@ -254,15 +262,15 @@ class Number(Value):
                 return self.illegal_operation()
             if other.value == 0:
                 NonBreakError(self.pos_start, other.pos_end, self.context, ET_ModByZero).print_method()
-                return Number(0).set_context(self.context), None
-            return Number(self.value % other.value).set_context(self.context), None
+                return Int(0).set_context(self.context), None
+            return self.ret_type(other)(self.value % other.value).set_context(self.context), None
         return self.illegal_operation()
 
     def powed_by(self, other):
         if isinstance(other, Number):
             if isinstance(other.value, Infinity):
                 return self.illegal_operation()
-            return Number(self.value ** other.value).set_context(self.context), None
+            return self.ret_type(other)(self.value ** other.value).set_context(self.context), None
         return self.illegal_operation()
 
     def get_comparison_lt(self, other):
@@ -672,3 +680,6 @@ class BuiltInFunction(BaseFunction):
 
 def __value_to_bool__(value):
     return True if value > 0 else False
+
+
+class_identifier_values = {int: 0, float: 0.5, bool: 0}
