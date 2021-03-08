@@ -152,7 +152,7 @@ class IfNode:
         self.pos_end = (self.else_case or self.cases[len(self.cases) - 1])[0].pos_end
 
 
-class CasesNode:
+class CaseNode:
     def __init__(self, condition, cases, pos_start, pos_end, default=None):
         self.condition = condition
         self.cases = cases

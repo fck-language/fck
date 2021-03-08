@@ -73,7 +73,7 @@ KEYWORDS = [
     "if",
     "else",
     "elif",
-    'cases',
+    'case',
     'option',
     'default',
     "iterate",

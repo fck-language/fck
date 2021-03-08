@@ -605,7 +605,7 @@ class Parser:
             if res.error: return res
             return res.success(func_def)
 
-        elif tok.matches(TT_KEYWORD, 'cases'):
+        elif tok.matches(TT_KEYWORD, 'case'):
             cases_expr = res.register(self.cases_expr())
             if res.error: return res
             return res.success(cases_expr)
@@ -732,7 +732,7 @@ class Parser:
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
                                                       'Expected \'option\', \'default\', or \'}\''))
 
-        return res.success(CasesNode(condition, cases, start_pos, end_pos, default))
+        return res.success(CaseNode(condition, cases, start_pos, end_pos, default))
 
     def if_expr(self):
         res = ParseResult()
@@ -1257,7 +1257,7 @@ class Interpreter:
 
         return res.success(None)
 
-    def visit_CasesNode(self, node: CasesNode, context):
+    def visit_CaseNode(self, node: CaseNode, context):
         res = RTResult()
         value = res.register(self.visit(node.condition, context))
         if res.should_return(): return res
