@@ -605,6 +605,11 @@ class Parser:
             if res.error: return res
             return res.success(func_def)
 
+        elif tok.matches(TT_KEYWORD, 'cases'):
+            cases_expr = res.register(self.cases_expr())
+            if res.error: return res
+            return res.success(cases_expr)
+
         return res.failure(InvalidSyntaxError(
             tok.pos_start, tok.pos_end,
             "Expected int, float, identifier, '+', '-', '(', '[', IF', 'FOR', 'WHILE', 'FUN'"
@@ -656,6 +661,78 @@ class Parser:
             pos_start,
             self.current_tok.pos_end.copy()
         ))
+
+    def cases_expr(self):
+        res = ParseResult()
+        start_pos = self.current_tok.pos_start
+        res.register_advancement()
+        self.advance()
+        condition = res.register(self.expr())
+        if self.current_tok.type != TT_LPAREN_CURLY:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                  'Expected \'{\''))
+        res.register_advancement()
+        self.advance()
+        cases = []
+        default = None
+        while True:
+            pos_start = self.current_tok.pos_start
+            if self.current_tok.matches(TT_KEYWORD, 'option'):
+                res.register_advancement()
+                self.advance()
+                if self.current_tok.type != TT_LPAREN:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                          'Expected \'(\''))
+                res.register_advancement()
+                self.advance()
+                option = res.register(self.expr())
+                if res.error: return res
+                if self.current_tok.type != TT_RPAREN:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                          'Expected \')\''))
+                res.register_advancement()
+                self.advance()
+                if self.current_tok.type != TT_LPAREN_CURLY:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                          'Expected \'{\''))
+                res.register_advancement()
+                self.advance()
+                expr = res.register(self.statement())
+                if res.error: return res
+                if self.current_tok.type != TT_RPAREN_CURLY:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                          'Expected \'}\''))
+                cases.append(OptionNode(option, expr, pos_start, self.current_tok.pos_end))
+                res.register_advancement()
+                self.advance()
+                continue
+            elif self.current_tok.matches(TT_KEYWORD, 'default'):
+                res.register_advancement()
+                self.advance()
+                if self.current_tok.type != TT_LPAREN_CURLY:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                          'Expected \'{\''))
+                res.register_advancement()
+                self.advance()
+                expr = res.register(self.statement())
+                if res.error: return res
+                if self.current_tok.type != TT_RPAREN_CURLY:
+                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                          'Expected \'}\''))
+                default = OptionNode(None, expr, pos_start, self.current_tok.pos_end)
+                res.register_advancement()
+                self.advance()
+                continue
+            elif self.current_tok.type == TT_RPAREN_CURLY:
+                end_pos = self.current_tok.pos_end
+                res.register_advancement()
+                self.advance()
+                break
+            else:
+                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                      'Expected \'option\', \'default\', or \'}\''))
+
+        return res.success(CasesNode(condition, cases, start_pos, end_pos, default))
 
     def if_expr(self):
         res = ParseResult()
@@ -1179,6 +1256,23 @@ class Interpreter:
             return res.success(None if should_return_null else expr_value)
 
         return res.success(None)
+
+    def visit_CasesNode(self, node: CasesNode, context):
+        res = RTResult()
+        value = res.register(self.visit(node.condition, context))
+        if res.should_return(): return res
+        for i in node.cases:
+            value_to_check = res.register(self.visit(i.option, context))
+            if res.should_return(): return res
+            if value_to_check == value:
+                return_value = res.register(self.visit(i.expr, context))
+                if res.should_return(): return res
+                return res.success(return_value)
+        if node.default:
+            return_value = res.register(self.visit(node.default.expr, context))
+            if res.should_return(): return res
+            return res.success(return_value)
+        return res.success(Null())
 
     def visit_IterateNode(self, node: IterateNode, context):
         res = RTResult()

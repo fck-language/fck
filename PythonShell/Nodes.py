@@ -152,6 +152,25 @@ class IfNode:
         self.pos_end = (self.else_case or self.cases[len(self.cases) - 1])[0].pos_end
 
 
+class CasesNode:
+    def __init__(self, condition, cases, pos_start, pos_end, default=None):
+        self.condition = condition
+        self.cases = cases
+        self.default = default
+
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+
+class OptionNode:
+    def __init__(self, option, expr, pos_start, pos_end):
+        self.option = option
+        self.expr = expr
+
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+
 class IterateNode:
     def __init__(self, var_name_tok, start_value_node, end_value_node, step_value_node, suite_node, should_return_null):
         self.var_name_tok = var_name_tok
