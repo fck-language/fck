@@ -21,6 +21,7 @@ TT_LPAREN_SQUARE = "LPAREN_SQUARE"
 TT_RPAREN_SQUARE = "RPAREN_SQUARE"
 TT_EOF = "EOF"
 TT_POW = "POW"
+TT_NOT = "NOT"
 TT_SEMICOLON = "SEMICOLON"
 TT_IDENTIFIER = "IDENTIFIER"
 TT_KEYWORD = "KEYWORD"
@@ -75,6 +76,7 @@ KEYWORDS = [
     "elif",
     "iterate",
     "to",
+    "import",
     "step",
     "while",
     "def",

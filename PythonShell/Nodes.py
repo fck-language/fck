@@ -165,6 +165,13 @@ class IterateNode:
         self.pos_end = self.suite_node.pos_end
 
 
+class ImportNode:
+    def __init__(self, file_name):
+        self.file_name = file_name
+        self.pos_start = self.file_name.pos_start
+        self.pos_end = self.file_name.pos_end
+
+
 class WhileNode:
     def __init__(self, condition_node, body_node, should_return_null):
         self.condition_node = condition_node

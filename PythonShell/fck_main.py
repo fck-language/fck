@@ -131,7 +131,9 @@ class Lexer:
             self.advance()
             return Token(TT_NE, pos_start=pos_start, pos_end=self.pos), None
         elif self.current_char in LETTERS + "_":
-            return Token(TT_KEYWORD, 'not', pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos), None
+        elif self.current_char == '!':
+            return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos), None
 
         self.advance()
         return None, ExpectedCharError(pos_start, self.pos, "Expected '!='")
@@ -494,8 +496,7 @@ class Parser:
     def factor(self):
         res = ParseResult()
         tok = self.current_tok
-        # TODO: Add in the ! operator here I think
-        if tok.type in (TT_PLUS, TT_MINUS):
+        if tok.type in (TT_PLUS, TT_MINUS, TT_NOT):
             res.register_advancement()
             self.advance()
             factor = res.register(self.factor())
@@ -605,6 +606,11 @@ class Parser:
             if res.error: return res
             return res.success(func_def)
 
+        elif tok.matches(TT_KEYWORD, 'import'):
+            file_name = res.register(self.import_expr())
+            if res.error: return res
+            return res.success(file_name)
+
         return res.failure(InvalidSyntaxError(
             tok.pos_start, tok.pos_end,
             "Expected int, float, identifier, '+', '-', '(', '[', IF', 'FOR', 'WHILE', 'FUN'"
@@ -656,6 +662,24 @@ class Parser:
             pos_start,
             self.current_tok.pos_end.copy()
         ))
+
+    def import_expr(self):
+        res = ParseResult()
+        res.register_advancement()
+        self.advance()
+        if self.current_tok.type != TT_LPAREN:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                  "Expected '('"))
+        res.register_advancement()
+        self.advance()
+        name = res.register(self.expr())
+        if res.error: return res
+        if self.current_tok.type != TT_RPAREN:
+            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                                  "Expected ')'"))
+        res.register_advancement()
+        self.advance()
+        return res.success(ImportNode(name))
 
     def if_expr(self):
         res = ParseResult()
@@ -949,6 +973,15 @@ class Interpreter:
             String(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end)
         )
 
+    def visit_ImportNode(self, node: ImportNode, context):
+        res = RTResult()
+        name = res.register(self.visit(node.file_name, context))
+        if res.should_return(): return res
+        if not isinstance(name, String):
+            return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end, 'Expected string'))
+        result = res.register(self.visit(CallNode(BuiltInFunction('run'), name), context))
+        print(result)
+
     def visit_ListNode(self, node: ListNode, context):
         res = RTResult()
         elements = []
@@ -1152,7 +1185,7 @@ class Interpreter:
 
         if node.op_tok.type == TT_MINUS:
             number, error = number.multed_by(Number(-1))
-        elif node.op_tok.matches(TT_KEYWORD, 'not'):
+        elif node.op_tok.type == TT_NOT:
             number, error = number.notted()
 
         if error:
