@@ -676,6 +676,9 @@ class Parser:
         cases = []
         default = None
         while True:
+            while self.current_tok.type == TT_NEWLINE:
+                res.register_advancement()
+                self.advance()
             pos_start = self.current_tok.pos_start
             if self.current_tok.matches(TT_KEYWORD, 'option'):
                 res.register_advancement()
@@ -697,7 +700,7 @@ class Parser:
                                                           'Expected \'{\''))
                 res.register_advancement()
                 self.advance()
-                expr = res.register(self.statement())
+                expr = res.register(self.statements())
                 if res.error: return res
                 if self.current_tok.type != TT_RPAREN_CURLY:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
@@ -714,7 +717,7 @@ class Parser:
                                                           'Expected \'{\''))
                 res.register_advancement()
                 self.advance()
-                expr = res.register(self.statement())
+                expr = res.register(self.statements())
                 if res.error: return res
                 if self.current_tok.type != TT_RPAREN_CURLY:
                     return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
