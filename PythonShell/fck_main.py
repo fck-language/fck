@@ -1260,10 +1260,18 @@ class Interpreter:
     def visit_CaseNode(self, node: CaseNode, context):
         res = RTResult()
         value = res.register(self.visit(node.condition, context))
+        if isinstance(value, Number) or isinstance(value, String):
+            value = value.value
+        elif isinstance(value, List):
+            value = value.elements
         if res.should_return(): return res
         for i in node.cases:
             value_to_check = res.register(self.visit(i.option, context))
             if res.should_return(): return res
+            if isinstance(value_to_check, Number) or isinstance(value_to_check, String):
+                value_to_check = value_to_check.value
+            elif isinstance(value_to_check, List):
+                value_to_check = value_to_check.elements
             if value_to_check == value:
                 return_value = res.register(self.visit(i.expr, context))
                 if res.should_return(): return res
