@@ -153,13 +153,15 @@ class IfNode:
 
 
 class IterateNode:
-    def __init__(self, var_name_tok, start_value_node, end_value_node, step_value_node, suite_node, should_return_null):
+    def __init__(self, var_name_tok, start_value_node, end_value_node, step_value_node,
+                 suite_node, should_return_null, reference_name=None):
         self.var_name_tok = var_name_tok
         self.start_value_node = start_value_node
         self.end_value_node = end_value_node
         self.step_value_node = step_value_node
         self.suite_node = suite_node
         self.should_return_null = should_return_null
+        self.reference_name = reference_name
 
         self.pos_start = (self.start_value_node or self.end_value_node).pos_start
         self.pos_end = self.suite_node.pos_end
@@ -226,6 +228,7 @@ class ContinueNode:
 
 
 class BreakNode:
-    def __init__(self, pos_start, pos_end):
+    def __init__(self, pos_start, pos_end, break_to=None):
+        self.break_to = break_to
         self.pos_start = pos_start
         self.pos_end = pos_end

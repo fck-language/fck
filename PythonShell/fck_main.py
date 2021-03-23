@@ -16,7 +16,8 @@ class Lexer:
         self.advance()
         self.single_char_token_names = {'+': TT_PLUS, '%': TT_MOD, '(': TT_LPAREN, ')': TT_RPAREN, '{': TT_LPAREN_CURLY,
                                         '}': TT_RPAREN_CURLY, ',': TT_COMMA, '-': TT_MINUS, '[': TT_LPAREN_SQUARE,
-                                        ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE, ';': TT_NEWLINE, '?':TT_QUESTION_MARK}
+                                        ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE, ';': TT_NEWLINE, '?': TT_QUESTION_MARK,
+                                        '@': TT_AT}
         self.multi_char_token_methods = {'!': self.make_not_equals, '=': self.make_equals, '<': self.make_less_than,
                                          '>': self.make_greater_than, '*': self.make_mult_pow, ':': self.make_set,
                                          '/': self.make_div, '"': self.make_string, '#': self.skip_comment}
@@ -345,6 +346,16 @@ class Parser:
         if self.current_tok.matches(TT_KEYWORD, 'break'):
             res.register_advancement()
             self.advance()
+            if self.current_tok.type == TT_AT:
+                res.register_advancement()
+                self.advance()
+                if not self.current_tok.type == TT_IDENTIFIER:
+                    return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
+                                                          'Expected loop identifier after \'@\''))
+                loop_name = self.current_tok.value
+                res.register_advancement()
+                self.advance()
+                return res.success(BreakNode(pos_start, self.current_tok.pos_start.copy(), loop_name))
             return res.success(BreakNode(pos_start, self.current_tok.pos_start.copy()))
 
         expr = res.register(self.expr())
@@ -390,7 +401,6 @@ class Parser:
                 self.advance()
                 expr = res.register(self.expr())
                 if res.error: return res
-                # TODO: return res.success(VarReassignNode)
                 return res.success(VarReassignNode(var_name, expr, True if tok_type in VAR_SET_RET else False, tok))
             elif tok_type == TT_LPAREN_SQUARE:
                 res.register_advancement()
@@ -590,6 +600,25 @@ class Parser:
             if_expr = res.register(self.if_expr())
             if res.error: return res
             return res.success(if_expr)
+
+        elif tok.type == TT_AT:
+            pos_start = tok.pos_start
+            res.register_advancement()
+            self.advance()
+            if not self.current_tok.type == TT_IDENTIFIER:
+                return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
+                                                      'Expected identifier after \'@\''))
+            loop_name = self.current_tok.value
+            res.register_advancement()
+            self.advance()
+            if not self.current_tok.matches(TT_KEYWORD, 'iterate'):
+                return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
+                                                      'Expected \'iterate\' loop after \'@\' named identifier'))
+            for_expr = res.register(self.iterate_expr())
+            if res.error: return res
+            for_expr.pos_start = pos_start
+            for_expr.reference_name = loop_name
+            return res.success(for_expr)
 
         elif tok.matches(TT_KEYWORD, 'iterate'):
             for_expr = res.register(self.iterate_expr())
@@ -819,6 +848,7 @@ class Parser:
         if res.error: return res
 
         if self.current_tok.type != TT_RPAREN_CURLY:
+            print(self.current_tok)
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
                                                   "Expected '}'"))
 
@@ -1213,10 +1243,12 @@ class Interpreter:
 
         return res.success(None)
 
-    def visit_IterateNode(self, node: IterateNode, context):
+    def visit_IterateNode(self, node: IterateNode, context: Context):
         res = RTResult()
         elements = []
         should_return_null = node.should_return_null
+        if node.reference_name:
+            context.named_loops.append(node.reference_name)
 
         if node.start_value_node:
             start_value = res.register(self.visit(node.start_value_node, context))
@@ -1254,6 +1286,9 @@ class Interpreter:
                 context.symbol_table.set(node.var_name_tok.value, Number(i))
 
             value = res.register(self.visit(node.suite_node, context))
+            if res.loop_should_break:
+                if res.loop_name != node.reference_name:
+                    return res
             if res.should_return() and (not res.loop_should_continue) and (not res.loop_should_break): return res
 
             if node.var_name_tok:
@@ -1270,6 +1305,9 @@ class Interpreter:
 
         if node.var_name_tok:
             context.symbol_table.remove(node.var_name_tok.value)
+
+        if node.reference_name:
+            del context.named_loops[-1]
 
         return res.success(None if should_return_null else
                            List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
@@ -1348,7 +1386,12 @@ class Interpreter:
         return RTResult().success_continue()
 
     def visit_BreakNode(self, node: BreakNode, context):
-        return RTResult().success_break()
+        if node.break_to:
+            if node.break_to not in context.named_loops:
+                return RTResult().failure(InvalidSyntaxError(node.pos_start, node.pos_end,
+                                                             f'Loop \'@{node.break_to}\' is undefined in'
+                                                             f' the current scope'))
+        return RTResult().success_break(node.break_to)
 
 
 #######################################

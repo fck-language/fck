@@ -13,6 +13,7 @@ TT_MULT = "MULT"
 TT_DIV = "DIV"
 TT_FDIV = "FDIV"
 TT_MOD = "MOD"
+TT_AT = "AT"
 TT_LPAREN = "LPAREN"
 TT_RPAREN = "RPAREN"
 TT_LPAREN_CURLY = "LPAREN_CURLY"
@@ -112,6 +113,7 @@ class Context:
         self.parent = parent
         self.parent_entry_pos = parent_entry_pos
         self.symbol_table = None
+        self.named_loops = []
 
 
 class Position:
