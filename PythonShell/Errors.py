@@ -45,6 +45,11 @@ class IllegalValueError(Error):
         super().__init__(pos_start, pos_end, 'Illegal value' + f':\n{details}' if details else 'Illegal value')
 
 
+class UnknownAttributeError(Error):
+    def __init__(self, pos_start, pos_end, attribute, trace):
+        super().__init__(pos_start, pos_end, f'Attribute \'{attribute}\' does not exist for \'{trace}\'')
+
+
 class RTError(Error):
     def __init__(self, pos_start, pos_end, details, context):
         super().__init__(pos_start, pos_end, 'Runtime Error', details)

@@ -11,6 +11,7 @@ ET_InfinityDivInfinity = "InfinityDivInfinity"
 ET_ListFromValue = "ListFromValue"
 ET_ListIndexOutOfRange = "ListIndexOutOfRange"
 ET_ListIndexFloat = "ListIndexFloat"
+ET_SilentCaseResetDefault = "SilentCaseReset"
 
 err_warn = {ET_DivideByZero: ['Divide by zero found'],
             ET_ModByZero: ['Modulo by zero found'],
@@ -21,7 +22,8 @@ err_warn = {ET_DivideByZero: ['Divide by zero found'],
             ET_InfinityDivInfinity: ['Infinity divided by infinity found'],
             ET_ListFromValue: ['List assigned to a non-list value'],
             ET_ListIndexOutOfRange: ['List index value was too large for this list'],
-            ET_ListIndexFloat: ['List index was a float']}
+            ET_ListIndexFloat: ['List index was a float'],
+            ET_SilentCaseResetDefault: ['You reset the default option']}
 
 err_warn_names = {ET_DivideByZero: "Divide by zero. Returned infinity",
                   ET_ModByZero: "Modulo by zero. Returned 0",
@@ -32,7 +34,8 @@ err_warn_names = {ET_DivideByZero: "Divide by zero. Returned infinity",
                   ET_InfinityDivInfinity: "Infinity divided by infinity. Returned zero",
                   ET_ListFromValue: "List assigned to a value. Value has been converted into a list",
                   ET_ListIndexOutOfRange: "Index for list was out of range. Changed value to fit list range",
-                  ET_ListIndexFloat: "Given index for list was a float. Rounded value"}
+                  ET_ListIndexFloat: "Given index for list was a float. Rounded value",
+                  ET_SilentCaseResetDefault: "case type default option was redefined"}
 
 
 def get_err_warns():
