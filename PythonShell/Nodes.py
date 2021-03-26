@@ -1,3 +1,6 @@
+from Errors import *
+
+
 class NumberNode:
     def __init__(self, tok):
         self.tok = tok
@@ -63,10 +66,10 @@ class ListNode:
 
 class VarAccessNode:
     def __init__(self, var_name_tok):
-        self.var_name_tok = var_name_tok
+        self.name_tok = var_name_tok
 
-        self.pos_start = self.var_name_tok.pos_start
-        self.pos_end = self.var_name_tok.pos_end
+        self.pos_start = self.name_tok.pos_start
+        self.pos_end = self.name_tok.pos_end
 
 
 class VarGetSetNode:
@@ -108,6 +111,20 @@ class VarReassignNode:
         self.pos_end = self.value_node.pos_end
 
 
+class VarSubFuncNode:
+    def __init__(self, trace, pos_start, pos_end):
+        self.trace = trace
+
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+
+class MethodCallNode:
+    def __init__(self, method_name, args):
+        self.name_tok = method_name
+        self.args = args
+
+
 class TrueFalseNode:
     def __init__(self, condition, if_true, if_false):
         self.condition = condition
@@ -143,6 +160,14 @@ class UnaryOpNode:
         return f'({self.op_tok}, {self.node})'
 
 
+class SilentNode:
+    def __init__(self, silenced_node, pos_start):
+        self.silenced_node = silenced_node
+
+        self.pos_start = pos_start
+        self.pos_end = self.silenced_node.pos_end
+
+
 class IfNode:
     def __init__(self, cases, else_case):
         self.cases = cases
@@ -150,6 +175,44 @@ class IfNode:
 
         self.pos_start = self.cases[0][0].pos_start
         self.pos_end = (self.else_case or self.cases[len(self.cases) - 1])[0].pos_end
+
+
+class CaseNode:
+    def __init__(self, condition, cases, pos_start, pos_end, default=None):
+        self.condition = condition
+        self.cases = cases
+        self.default = default
+
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+    def new_option(self, option_expr, option_method, option_name=None, context=None):
+        self.cases.append(OptionNode(option_expr, option_method, option_expr.pos_start, option_method.pos_end))
+        return self
+    new_option.args = {'option_expr': None, 'option_method': None}
+    new_option.optional_args = {'option_name': None}
+
+    def new_default(self, default_method, context=None):
+        if self.default is not None:
+            NonBreakError(default_method.pos_start, default_method.pos_end, context,
+                          ET_SilentCaseResetDefault).print_method()
+        self.default = OptionNode(None, default_method, default_method.pos_start, default_method.pos_end)
+    new_default.args = {'default_method': None}
+    new_default.optional_args = {}
+
+    def execute(self):
+        return
+    execute.args = {}
+    execute.optional_args = {}
+
+
+class OptionNode:
+    def __init__(self, option, expr, pos_start, pos_end):
+        self.option = option
+        self.expr = expr
+
+        self.pos_start = pos_start
+        self.pos_end = pos_end
 
 
 class IterateNode:

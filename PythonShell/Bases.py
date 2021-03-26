@@ -27,6 +27,7 @@ TT_SEMICOLON = "SEMICOLON"
 TT_IDENTIFIER = "IDENTIFIER"
 TT_KEYWORD = "KEYWORD"
 TT_QUESTION_MARK = "QUESTION_MARK"
+TT_DOT = "DOT"
 TT_SET = "SET"
 TT_SET_RET = "SET_RET"
 TT_EQ = "EQ"
@@ -62,6 +63,7 @@ VAR_EQUIV = {TT_SET_RET: TT_SET, TT_SET_RET_PLUS: TT_SET_PLUS, TT_SET_RET_MINUS:
              TT_SET_MULT, TT_SET_RET_DIV: TT_SET_DIV, TT_SET_RET_FDIV: TT_SET_FDIV, TT_SET_RET_MOD: TT_SET_MOD,
              TT_SET_RET_POW: TT_SET_POW}
 VAR_TYPES = ['int', 'float', 'bool', 'list']
+SILENCABLE_TYPES = ['case']
 
 KEYWORDS = [
     "int",
@@ -75,6 +77,9 @@ KEYWORDS = [
     "if",
     "else",
     "elif",
+    "case",
+    "option",
+    "default",
     "iterate",
     "to",
     "import",
@@ -83,7 +88,8 @@ KEYWORDS = [
     "def",
     "return",
     "continue",
-    "break"
+    "break",
+    "silent",
 ]
 
 
