@@ -195,7 +195,7 @@ class CaseNode:
     def new_default(self, default_method, context=None):
         if self.default is not None:
             NonBreakError(default_method.pos_start, default_method.pos_end, context,
-                          ET_SilentCaseResetDefault).print_method()
+                          WT_SilentCaseResetDefault).print_method()
         self.default = OptionNode(None, default_method, default_method.pos_start, default_method.pos_end)
     new_default.args = {'default_method': None}
     new_default.optional_args = {}

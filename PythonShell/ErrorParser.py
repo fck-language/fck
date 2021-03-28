@@ -1,41 +1,48 @@
 from string import ascii_letters
 from os.path import dirname
 
-ET_DivideByZero = "DivideByZero"
-ET_ModByZero = "ModByZero"
-ET_ValueMultString = "ValueMultString"
-ET_StringMultFloat = "StringMultFloat"
-ET_InfinityDivValue = "InfinityDivValue"
-ET_ValueDivInfinity = "ValueDivInfinity"
-ET_InfinityDivInfinity = "InfinityDivInfinity"
-ET_ListFromValue = "ListFromValue"
-ET_ListIndexOutOfRange = "ListIndexOutOfRange"
-ET_ListIndexFloat = "ListIndexFloat"
-ET_SilentCaseResetDefault = "SilentCaseReset"
+WT_DivideByZero = "DivideByZero"
+WT_ModByZero = "ModByZero"
+WT_ValueMultString = "ValueMultString"
+WT_StringMultFloat = "StringMultFloat"
+WT_InfinityDivValue = "InfinityDivValue"
+WT_ValueDivInfinity = "ValueDivInfinity"
+WT_InfinityDivInfinity = "InfinityDivInfinity"
+WT_ListFromValue = "ListFromValue"
+WT_ListIndexOutOfRange = "ListIndexOutOfRange"
+WT_ListIndexFloat = "ListIndexFloat"
+WT_SilentCaseResetDefault = "SilentCaseReset"
+WT_IterateStepLoop = "IterateStepLoop"
+WT_IterateStepZero = "IterateStepZero"
 
-err_warn = {ET_DivideByZero: ['Divide by zero found'],
-            ET_ModByZero: ['Modulo by zero found'],
-            ET_ValueMultString: ['Cannot multiply a value by a string'],
-            ET_StringMultFloat: ['Cannot multiply a string by a Float'],
-            ET_InfinityDivValue: ['Infinity divided by value found'],
-            ET_ValueDivInfinity: ['Value divided by infinity'],
-            ET_InfinityDivInfinity: ['Infinity divided by infinity found'],
-            ET_ListFromValue: ['List assigned to a non-list value'],
-            ET_ListIndexOutOfRange: ['List index value was too large for this list'],
-            ET_ListIndexFloat: ['List index was a float'],
-            ET_SilentCaseResetDefault: ['You reset the default option']}
+err_warn = {WT_DivideByZero: ['Divide by zero found'],
+            WT_ModByZero: ['Modulo by zero found'],
+            WT_ValueMultString: ['Cannot multiply a value by a string'],
+            WT_StringMultFloat: ['Cannot multiply a string by a Float'],
+            WT_InfinityDivValue: ['Infinity divided by value found'],
+            WT_ValueDivInfinity: ['Value divided by infinity'],
+            WT_InfinityDivInfinity: ['Infinity divided by infinity found'],
+            WT_ListFromValue: ['List assigned to a non-list value'],
+            WT_ListIndexOutOfRange: ['List index value was too large for this list'],
+            WT_ListIndexFloat: ['List index was a float'],
+            WT_SilentCaseResetDefault: ['You reset the default option'],
+            WT_IterateStepLoop: ['You would have made an infinite loop, just do a while true'],
+            WT_IterateStepZero: ['You would have made an infinite loop with that step value']}
 
-err_warn_names = {ET_DivideByZero: "Divide by zero. Returned infinity",
-                  ET_ModByZero: "Modulo by zero. Returned 0",
-                  ET_ValueMultString: "Value multiplied by string. Returned string multiplied by value",
-                  ET_StringMultFloat: "String was multiplied by a float. Value has been rounded",
-                  ET_InfinityDivValue: "Infinity divided by value. Returned infinity",
-                  ET_ValueDivInfinity: "Value divided by infinity. Returned zero",
-                  ET_InfinityDivInfinity: "Infinity divided by infinity. Returned zero",
-                  ET_ListFromValue: "List assigned to a value. Value has been converted into a list",
-                  ET_ListIndexOutOfRange: "Index for list was out of range. Changed value to fit list range",
-                  ET_ListIndexFloat: "Given index for list was a float. Rounded value",
-                  ET_SilentCaseResetDefault: "case type default option was redefined"}
+err_warn_names = {WT_DivideByZero: "Divide by zero. Returned infinity",
+                  WT_ModByZero: "Modulo by zero. Returned 0",
+                  WT_ValueMultString: "Value multiplied by string. Returned string multiplied by value",
+                  WT_StringMultFloat: "String was multiplied by a float. Value has been rounded",
+                  WT_InfinityDivValue: "Infinity divided by value. Returned infinity",
+                  WT_ValueDivInfinity: "Value divided by infinity. Returned zero",
+                  WT_InfinityDivInfinity: "Infinity divided by infinity. Returned zero",
+                  WT_ListFromValue: "List assigned to a value. Value has been converted into a list",
+                  WT_ListIndexOutOfRange: "Index for list was out of range. Changed value to fit list range",
+                  WT_ListIndexFloat: "Given index for list was a float. Rounded value",
+                  WT_SilentCaseResetDefault: "case type default option was redefined",
+                  WT_IterateStepLoop: "Given step value would result in an infinite loop. Step value has been changed",
+                  WT_IterateStepZero: "Given step value would result in an infinite loop. Step value has been ignored"
+                                      " and the default value of 1 or -1 used instead."}
 
 
 def get_err_warns():

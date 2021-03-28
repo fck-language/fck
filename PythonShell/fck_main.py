@@ -1030,7 +1030,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        condition = res.register(self.statements())
+        condition = res.register(self.statement())
         if res.error: return res
 
         if not self.current_tok.type == TT_LPAREN_CURLY:
@@ -1223,6 +1223,7 @@ class Interpreter:
                 return False, getattr(parent_, method_)
             except AttributeError:
                 return True, None
+
         res = RTResult()
         if isinstance(node.trace[0], VarAccessNode):
             parent = context.symbol_table.get(node.trace[0].name_tok.value)
@@ -1286,7 +1287,7 @@ class Interpreter:
             if res.should_return(): return res
             if isinstance(lower, Number):
                 if isinstance(lower.value, float):
-                    NonBreakError(lower.pos_start, lower.pos_end, context, ET_ListIndexFloat).print_method()
+                    NonBreakError(lower.pos_start, lower.pos_end, context, WT_ListIndexFloat).print_method()
                 lower = int(lower.value)
             else:
                 return res.failure(IllegalValueError(lower.pos_start,
@@ -1298,7 +1299,7 @@ class Interpreter:
             if res.should_return(): return res
             if isinstance(higher, Number):
                 if isinstance(higher.value, float):
-                    NonBreakError(higher.pos_start, higher.pos_end, context, ET_ListIndexFloat).print_method()
+                    NonBreakError(higher.pos_start, higher.pos_end, context, WT_ListIndexFloat).print_method()
                 higher = int(higher.value)
             else:
                 return res.failure(
@@ -1308,10 +1309,10 @@ class Interpreter:
         higher = list_len + higher if higher < 0 else higher
 
         if lower > list_len:
-            NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()
+            NonBreakError(node.pos_start, node.pos_end, context, WT_ListIndexOutOfRange).print_method()
             lower = list_len - 1
         if higher > list_len:
-            NonBreakError(node.pos_start, node.pos_end, context, ET_ListIndexOutOfRange).print_method()
+            NonBreakError(node.pos_start, node.pos_end, context, WT_ListIndexOutOfRange).print_method()
             higher = list_len - 1
 
         reverse = False
@@ -1340,7 +1341,7 @@ class Interpreter:
             if not isinstance(value, Infinity):
                 value = previous(value.value)
         elif isinstance(value, Number):
-            NonBreakError(node.pos_start, node.pos_end, context, ET_ListFromValue).print_method()
+            NonBreakError(node.pos_start, node.pos_end, context, WT_ListFromValue).print_method()
             value = List([value.value])
 
         if res.should_return(): return res
@@ -1471,7 +1472,7 @@ class Interpreter:
             return_value = res.register(self.visit(node.default.expr, context))
             if res.should_return(): return res
             return res.success(return_value)
-        return res.success(Null())
+        return res.success(None)
 
     def visit_IterateNode(self, node: IterateNode, context):
         res = RTResult()
@@ -1489,27 +1490,40 @@ class Interpreter:
         end_value = res.register(self.visit(node.end_value_node, context))
         if res.should_return(): return res
 
-        if node.step_value_node:
-            step_value = res.register(self.visit(node.step_value_node, context)).value
-            if res.should_return(): return res
-        else:
-            step_value = 1
+        end_value = end_value.value
+        start_value = start_value.value
+        i = start_value
 
-        i = start_value.value
+        if node.step_value_node:
+            step_value = res.register(self.visit(node.step_value_node, context))
+            if res.should_return(): return res
+            step_value = step_value.value
+        else:
+            step_value = 1 if start_value < end_value else -1
 
         if step_value > 0:
-            if start_value.value > end_value.value:
-                return res.failure(RTError(node.pos_start, node.pos_end, f'Step value for iteration would never end. '
-                                                                         f'Just do a while true', context))
-            condition = lambda: i < end_value.value
+            if start_value > end_value:
+                step_value *= -1
+                NonBreakError((node.start_value_node if node.step_value_node else node.end_value_node).pos_start
+                              , node.step_value_node.pos_end, context, WT_IterateStepLoop).print_method()
+            condition = lambda: i < end_value
         elif step_value < 0:
-            if start_value.value < end_value.value:
-                return res.failure(RTError(node.pos_start, node.pos_end, f'Step value for iteration would never end. '
-                                                                         f'Just do a while true', context))
-            condition = lambda: i > end_value.value
+            if start_value < end_value:
+                step_value *= -1
+                NonBreakError((node.start_value_node if node.step_value_node else node.end_value_node).pos_start
+                              , node.step_value_node.pos_end, context, WT_IterateStepLoop).print_method()
+            condition = lambda: i > end_value
         else:
-            return res.failure(RTError(node.pos_start, node.pos_end, f'Step value for iterate method cannot be 0... '
-                                                                     f'come on really?', context))
+            NonBreakError(node.step_value_node.pos_start, node.step_value_node.pos_end,
+                          context, WT_IterateStepZero).print_method()
+            step_value = 1 if start_value < end_value else -1
+            if start_value < end_value:
+                condition = lambda: i < end_value
+            else:
+                condition = lambda: i > end_value
+
+        # iterable = [start_value + offset * step_value for offset in
+        #             list(range(int(end_value - step_value) // step_value))]
 
         while condition():
             if node.var_name_tok:
@@ -1554,7 +1568,7 @@ class Interpreter:
                 break
 
             value = res.register(self.visit(node.body_node, context))
-            if res.should_return() and res.loop_should_continue == False and res.loop_should_break == False: return res
+            if res.should_return() and res.loop_should_continue is False and res.loop_should_break is False: return res
 
             if res.loop_should_continue:
                 continue
@@ -1635,26 +1649,6 @@ global_symbol_table.set("null", Null())
 built_in_funcs = ['log', 'print', 'type', 'input', 'clear', 'run']
 for i in built_in_funcs:
     global_symbol_table.set(i, BuiltInFunction(i))
-
-
-def run(fn, text):
-    # Generate tokens
-    lexer = Lexer(fn, text)
-    tokens, error = lexer.make_tokens()
-    if error: return None, error
-
-    # Generate AST
-    parser = Parser(tokens)
-    ast = parser.parse()
-    if ast.error: return None, ast.error
-
-    # Run program
-    interpreter = Interpreter()
-    context = Context('<program>')
-    context.symbol_table = global_symbol_table
-    result = interpreter.visit(ast.node, context)
-
-    return result.value, result.error
 
 
 #######################################

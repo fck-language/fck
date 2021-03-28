@@ -233,10 +233,10 @@ class Number(Value):
     def dived_by(self, other):
         if isinstance(other, Number):
             if isinstance(other.value, Infinity):
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_ValueDivInfinity).print_method()
+                NonBreakError(self.pos_start, other.pos_end, self.context, WT_ValueDivInfinity).print_method()
                 return Int(0).set_context(self.context), None
             if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
+                NonBreakError(self.pos_start, other.pos_end, self.context, WT_DivideByZero).print_method()
                 return Infinity(self.value, Int).set_context(self.context), None
             return Float(self.value / other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
@@ -246,10 +246,10 @@ class Number(Value):
     def fdived_by(self, other):
         if isinstance(other, Number):
             if isinstance(other.value, Infinity):
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_ValueDivInfinity).print_method()
+                NonBreakError(self.pos_start, other.pos_end, self.context, WT_ValueDivInfinity).print_method()
                 return Int(0).set_context(self.context), None
             if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
+                NonBreakError(self.pos_start, other.pos_end, self.context, WT_DivideByZero).print_method()
                 return Infinity(self.value, Int).set_context(self.context), None
             return Int(self.value // other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
@@ -261,7 +261,7 @@ class Number(Value):
             if isinstance(other.value, Infinity):
                 return self.illegal_operation()
             if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, ET_ModByZero).print_method()
+                NonBreakError(self.pos_start, other.pos_end, self.context, WT_ModByZero).print_method()
                 return Int(0).set_context(self.context), None
             return self.ret_type(other)(self.value % other.value).set_context(self.context), None
         return self.illegal_operation()
