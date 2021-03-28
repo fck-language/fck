@@ -1,4 +1,5 @@
 from Errors import *
+from Bases import wrap_length, Token, TT_AT
 
 
 class NumberNode:
@@ -126,13 +127,13 @@ class MethodCallNode:
 
 
 class TrueFalseNode:
-    def __init__(self, condition, if_true, if_false):
+    def __init__(self, condition, if_true, if_false, pos_start, pos_end):
         self.condition = condition
         self.if_true = if_true
         self.if_false = if_false
 
-        self.pos_start = self.condition.pos_start
-        self.pos_end = self.if_false.pos_end
+        self.pos_start = pos_start
+        self.pos_end = pos_end
 
 
 class BinOpNode:
@@ -177,6 +178,14 @@ class IfNode:
         self.pos_end = (self.else_case or self.cases[len(self.cases) - 1])[0].pos_end
 
 
+class AtNameNode:
+    def __init__(self, token):
+        self.at = token.value
+
+        self.pos_start = token.pos_start
+        self.pos_end = token.pos_end
+
+
 class CaseNode:
     def __init__(self, condition, cases, pos_start, pos_end, default=None):
         self.condition = condition
@@ -186,30 +195,56 @@ class CaseNode:
         self.pos_start = pos_start
         self.pos_end = pos_end
 
-    def new_option(self, option_expr, option_method, option_name=None, context=None):
-        self.cases.append(OptionNode(option_expr, option_method, option_expr.pos_start, option_method.pos_end))
+    def new_option(self, option_expr, option_method, option_name: AtNameNode=None, context=None):
+        if option_name.at == 'default':
+            return IllegalAttributeValue(option_name.pos_start, option_name.pos_start,
+                                         'Cannot give a case statement option the identifier \'@default\'',
+                                         arg_explain(self.new_option.args_str, self.new_option.optional_args_str,
+                                                     'new_option')
+                                         )
+        self.cases.append(OptionNode(option_expr, option_method, option_expr.pos_start,
+                                     option_name.pos_end if option_name else option_method.pos_end, option_name))
         return self
+
     new_option.args = {'option_expr': None, 'option_method': None}
-    new_option.optional_args = {'option_name': None}
+    new_option.optional_args = {'option_name': AtNameNode}
+    new_option.args_str = {'option_expr<any>': 'Expression to evaluate and check against the expression '
+                                               'of the case statement',
+                           'option_method<any>': 'Method to run if the option_expr matches the case '
+                                                 'statement expression'}
+    new_option.optional_args_str = {'option_name<name>': 'Name of the option. Can be used to remove or '
+                                                         'reference this option'}
 
     def new_default(self, default_method, context=None):
         if self.default is not None:
             NonBreakError(default_method.pos_start, default_method.pos_end, context,
                           WT_SilentCaseResetDefault).print_method()
-        self.default = OptionNode(None, default_method, default_method.pos_start, default_method.pos_end)
+        self.default = OptionNode(None, default_method, default_method.pos_start, default_method.pos_end,
+                                  AtNameNode(Token(TT_AT, 'default')))
+
     new_default.args = {'default_method': None}
     new_default.optional_args = {}
+    new_default.args_str = {'default_method': 'Method to run if no other options are evaluated in the case statement'}
+    new_default.optional_args_str = {}
+
+    def remove(self, identifier, context=None):
+        for option in self.cases:
+            assert isinstance(option, OptionNode)
+            if option.name == identifier:
+                del option
 
     def execute(self):
         return
+
     execute.args = {}
     execute.optional_args = {}
 
 
 class OptionNode:
-    def __init__(self, option, expr, pos_start, pos_end):
+    def __init__(self, option, expr, pos_start, pos_end, name=None):
         self.option = option
         self.expr = expr
+        self.name = name
 
         self.pos_start = pos_start
         self.pos_end = pos_end
@@ -295,3 +330,24 @@ class BreakNode:
         self.break_to = break_to
         self.pos_start = pos_start
         self.pos_end = pos_end
+
+
+def arg_explain(required: dict, optional: dict, method_name):
+    arg_length = max(max([len(i) for i in required.keys()]) if len(required) != 0 else 0,
+                     max([len(i) for i in optional.keys()]) if len(optional) != 0 else 0)
+    name = f' Parameters for {method_name} method '
+    out = f'{"*" * ((wrap_length - len(name)) // 2)}{name}' \
+          f'{"*" * (wrap_length - len(name) - ((wrap_length - len(name)) // 2))}\n'
+    newline = '\n' + " " * (arg_length + 3)
+    if len(required) != 0:
+        out += '# Required parameters\n'
+        for key, value in required.items():
+            out += f'{str(key).ljust(arg_length)} : {newline.join(wrap(value, wrap_length - arg_length - 3))}\n'
+    if len(optional) != 0:
+        out += '# Optional parameters\n'
+        for key, value in optional.items():
+            out += f'{str(key).ljust(arg_length)} : {newline.join(wrap(value, wrap_length - arg_length - 3))}\n'
+    if len(optional) + len(required) == 0:
+        out += 'No arguments are required or optional'
+    out += '*' * wrap_length
+    return out

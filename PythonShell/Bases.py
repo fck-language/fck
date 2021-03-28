@@ -4,6 +4,8 @@ DIGITS = '0123456789'
 LETTERS = ascii_letters
 LETTERS_DIGITS = LETTERS + DIGITS
 
+wrap_length = 70
+
 TT_INT = "INT"
 TT_FLOAT = "FLOAT"
 TT_STRING = "STRING"

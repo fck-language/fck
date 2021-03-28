@@ -506,16 +506,31 @@ class Parser:
         if self.current_tok.type == TT_QUESTION_MARK:
             res.register_advancement()
             self.advance()
-            if_true = res.register(self.expr())
-            if res.error: return res
+            pos_start = self.current_tok.pos_start.copy()
+            given = False
+            if self.current_tok.type == TT_SEMICOLON:
+                if_true = None
+            else:
+                given = True
+                if_true = res.register(self.expr())
+                if res.error: return res
             if self.current_tok.type != TT_SEMICOLON:
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
                                                       'Expected \':\''))
+            pos_end = self.current_tok.pos_end.copy()
             res.register_advancement()
             self.advance()
-            if_false = res.register(self.expr())
+            if self.current_tok.type in [TT_EOF, TT_NEWLINE]:
+                if given:
+                    if_false = None
+                else:
+                    return res.failure(ExpectedExprError(pos_start, self.current_tok.pos_end,
+                                                         'Expected at least one expression for the \'?\' operator'))
+            else:
+                if_false = res.register(self.expr())
+                pos_end = if_false.pos_end
             if res.error: return res
-            return res.success(TrueFalseNode(node, if_true, if_false))
+            return res.success(TrueFalseNode(node, if_true, if_false, node.pos_start, pos_end))
 
         if res.error:
             return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
@@ -694,19 +709,18 @@ class Parser:
             pos_start = tok.pos_start
             res.register_advancement()
             self.advance()
-            if not self.current_tok.type == TT_IDENTIFIER:
+            if not self.current_tok.type in [TT_IDENTIFIER, TT_KEYWORD]:
                 return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
                                                       'Expected identifier after \'@\''))
-            loop_name = self.current_tok.value
+            loop_name = self.current_tok
             res.register_advancement()
             self.advance()
             if not self.current_tok.matches(TT_KEYWORD, 'iterate'):
-                return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
-                                                      'Expected \'iterate\' loop after \'@\' named identifier'))
+                return res.success(AtNameNode(loop_name))
             for_expr = res.register(self.iterate_expr())
             if res.error: return res
             for_expr.pos_start = pos_start
-            for_expr.reference_name = loop_name
+            for_expr.reference_name = loop_name.value
             return res.success(for_expr)
 
         elif tok.matches(TT_KEYWORD, 'iterate'):
@@ -1150,6 +1164,8 @@ class Interpreter:
                                TT_LT: 'get_comparison_lt', TT_GT: 'get_comparison_gt', TT_LTE: 'get_comparison_lte',
                                TT_GTE: 'get_comparison_gte', TT_MOD: 'modded_by', TT_FDIV: 'fdived_by'}
         self.KeywordFunctionNames = {'and': 'anded_by', 'or': 'ored_by'}
+        self.defaultVarValues = {'int': Int(0), 'float': Float(0), 'bool': Bool(False), 'list': List([])}
+        self.defaultVarReValues = {Int: Int(0), Float: Float(0), Bool: Bool(False), List: List([])}
 
     def visit(self, node, context):
         method_name = f'visit_{type(node).__name__}'
@@ -1198,9 +1214,9 @@ class Interpreter:
         condition = res.register(self.visit(node.condition, context)).is_true()
         if res.should_return(): return res
         if condition:
-            value = res.register(self.visit(node.if_true, context))
+            value = None if node.if_true is None else res.register(self.visit(node.if_true, context))
         else:
-            value = res.register(self.visit(node.if_false, context))
+            value = None if node.if_false is None else res.register(self.visit(node.if_false, context))
         if res.should_return(): return res
         return res.success(value)
 
@@ -1239,18 +1255,34 @@ class Interpreter:
                     return res.failure(UnknownAttributeError(node.pos_start, node.pos_end,
                                                              method.name_tok.value, traceback))
                 args = attr.args
-                if len(method.args) != len(args):
-                    return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end,
-                                                          f'{abs(len(method.args) - len(args))} too '
-                                                          f'{"few" if len(method.args) < len(args) else "many"}'
-                                                          f' were passed into \'{method.name_tok.value}\''))
+                args_opt = attr.optional_args
+                if not len(args) <= len(method.args) <= len(args) + len(args_opt):
+                    details = [len(args) - len(method.args), 'few'] if len(method.args) < len(args) else \
+                        [len(method.args) - (len(args) + len(args_opt)), 'many']
+                    details = f'{details[0]} too {details[1]} were passed into \'{method.name_tok.value}\''
+                    return res.failure(TooArgumentError(node.pos_start, node.pos_end, details,
+                                                        arg_explain(attr.args_str, attr.optional_args_str,
+                                                                    method.name_tok.value)))
                 if method.name_tok.value == 'execute' and isinstance(parent.silenced_node, CaseNode):
                     parent = res.register(self.visit_CaseNode(parent.silenced_node, context))
                 else:
-                    for arg in args:
+                    for arg, type_ in args.items():
+                        if type_ is not None:
+                            if not isinstance(method.args[0], type_):
+                                return res.failure(AttributeTypeError(method.args[0].pos_start, method.args[0].pos_end,
+                                                                      f'Argument {arg} must have a type {type_}',
+                                                                      arg_explain(attr.args_str, attr.optional_args_str,
+                                                                                  method.name_tok.value)
+                                                                      ))
                         args[arg] = method.args[0]
                         del method.args[0]
-                    parent = attr(*args.values(), context=context)
+                    if len(method.args) != 0:
+                        for arg in args_opt:
+                            args_opt[arg] = method.args[0]
+                            del method.args[0]
+                    parent = attr(*args.values(), *args_opt.values(), context=context)
+                    if isinstance(parent, Error):
+                        return res.failure(parent)
             traceback += f'.{method.name_tok.value}'
         return res.success(parent if isinstance(parent, Value) else None)
 
@@ -1359,10 +1391,11 @@ class Interpreter:
         else:
             class_type = {'int': Int, 'float': Float, 'bool': Bool, 'list': List}.get(node.var_type)
             var_name = node.var_name_tok.value
+            value = None
             if node.value_node:
                 value = res.register(self.visit(node.value_node, context))
-            else:
-                value = {'int': Int(0), 'float': Float(0), 'bool': Bool(False), 'list': List([])}.get(node.var_type)
+            if not node.value_node or value is None:
+                value = self.defaultVarValues.get(node.var_type)
             return self.assignChecks(var_name, value, class_type, node, context)
 
     def visit_VarReassignNode(self, node: VarReassignNode, context):
@@ -1375,6 +1408,9 @@ class Interpreter:
         if res.should_return(): return res
         token = node.token
         value = res.register(self.visit(node.value_node, context))
+
+        if value is None:
+            value = self.defaultVarReValues.get(type(previous))
 
         if token == TT_SET:
             previous = type(previous)
@@ -1430,6 +1466,9 @@ class Interpreter:
             return res.failure(error)
         else:
             return res.success(number.set_pos(node.pos_start, node.pos_end))
+
+    def visit_AtNameNode(self, node: AtNameNode, context):
+        return RTResult().success(node.at)
 
     def visit_IfNode(self, node: IfNode, context):
         res = RTResult()

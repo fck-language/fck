@@ -1,7 +1,9 @@
 from Arrows import string_with_arrows
-from random import randint
 from ErrorParser import *
+from Bases import wrap_length
+
 from textwrap import wrap
+from random import randint
 
 err_warn = get_err_warns()
 
@@ -21,17 +23,23 @@ class Error:
 
 class IllegalCharError(Error):
     def __init__(self, pos_start, pos_end, details):
-        super().__init__(pos_start, pos_end, 'Illegal Character', details)
+        super().__init__(pos_start, pos_end, 'Illegal character', details)
 
 
 class ExpectedCharError(Error):
     def __init__(self, pos_start, pos_end, details):
-        super().__init__(pos_start, pos_end, 'Expected Character', details)
+        super().__init__(pos_start, pos_end, 'Expected character', details)
+
+
+class ExpectedExprError(Error):
+    def __init__(self, pos_start, pos_end, details):
+        super().__init__(pos_start, pos_end, 'Expected expression', details)
+
 
 
 class InvalidSyntaxError(Error):
     def __init__(self, pos_start, pos_end, details=''):
-        super().__init__(pos_start, pos_end, 'Invalid Syntax', details)
+        super().__init__(pos_start, pos_end, 'Invalid syntax', details)
 
 
 class IllegalOperationError(Error):
@@ -44,6 +52,33 @@ class IllegalValueError(Error):
         super().__init__(pos_start, pos_end, 'Illegal value' + f':\n{details}' if details else 'Illegal value')
 
 
+class ArgumentError(Error):
+    def __init__(self, pos_start, pos_end, details, arg_explain):
+        super().__init__(pos_start, pos_end, details)
+        self.arg_explain = arg_explain
+
+    def as_string(self):
+        return '\n'.join(['\n'.join(wrap(f'{self.error_name}: {self.details}')),
+                          self.arg_explain,
+                          '\n'.join(wrap(f'File {self.pos_start.fn}, line {self.pos_start.ln + 1}')),
+                          f'{string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)}'])
+
+
+class TooArgumentError(ArgumentError):
+    def __init__(self, pos_start, pos_end, details, arg_explain):
+        super().__init__(pos_start, pos_end, f'Argument error: {details}', arg_explain)
+
+
+class AttributeTypeError(ArgumentError):
+    def __init__(self, pos_start, pos_end, details, arg_explain):
+        super().__init__(pos_start, pos_end, f'Argument type error: {details}', arg_explain)
+
+
+class IllegalAttributeValue(ArgumentError):
+    def __init__(self, pos_start, pos_end, details, arg_explain):
+        super().__init__(pos_start, pos_end, f'Illegal argument value: {details}', arg_explain)
+
+
 class UnknownAttributeError(Error):
     def __init__(self, pos_start, pos_end, attribute, trace):
         super().__init__(pos_start, pos_end, f'Attribute \'{attribute}\' does not exist for \'{trace}\'')
@@ -51,7 +86,7 @@ class UnknownAttributeError(Error):
 
 class RTError(Error):
     def __init__(self, pos_start, pos_end, details, context):
-        super().__init__(pos_start, pos_end, 'Runtime Error', details)
+        super().__init__(pos_start, pos_end, 'Runtime error', details)
         self.context = context
 
     def as_string(self):
@@ -98,4 +133,4 @@ class NonBreakError:
         value = self.value[randint(0, len(self.value) - 1)]
         out = "\n".join(wrap(f'{self.error_name}: {value}')) + f"\n{self.generate_traceback()}"
         longest = max([len(i) for i in out.split("\n")])
-        print("*" * longest + "\nWarning:\n" + out + "\n" + "*" * longest)
+        print("*" * longest + "\nWarning:\n" + out + "\n" + "*" * wrap_length)
