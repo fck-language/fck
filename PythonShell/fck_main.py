@@ -1,3 +1,5 @@
+from re import split
+
 from Values import *
 from Results import *
 from Nodes import *
@@ -1639,7 +1641,7 @@ class Interpreter:
 
 
 #######################################
-# RUN
+# GLOBAL VARIABLES
 #######################################
 
 global_symbol_table = SymbolTable()
@@ -1649,6 +1651,69 @@ global_symbol_table.set("null", Null())
 built_in_funcs = ['log', 'print', 'type', 'input', 'clear', 'run']
 for i in built_in_funcs:
     global_symbol_table.set(i, BuiltInFunction(i))
+
+
+#######################################
+# RUN
+#######################################
+
+class RunRes:
+    def __init__(self, result, error, previous: list, newLineNeeded: bool):
+        self.result = result
+        self.error = error
+        self.previous = previous
+        self.newLineNeeded = newLineNeeded
+
+
+def run(fn, text, previous=None) -> RunRes:
+    out = RunRes(None, None, [], False)
+
+    # Generate tokens
+    lexer = Lexer(fn, text)
+    tokens, error = lexer.make_tokens()
+    if error:
+        out.error = error
+        return out
+
+    if previous:
+        tokens = previous.previous + tokens
+
+    paren = sum([1 if i.type == TT_LPAREN else 0 for i in tokens]) - sum(
+        [1 if i.type == TT_RPAREN else 0 for i in tokens])
+    if paren != 0:
+        out.previous = tokens[:-1]  # [:-1] needed to remove the 'EOF' token at the end of the generated tokens
+        out.newLineNeeded = True
+        return out
+    paren = sum([1 if i.type == TT_LPAREN_SQUARE else 0 for i in tokens]) - sum(
+        [1 if i.type == TT_RPAREN_SQUARE else 0 for i in tokens])
+    if paren != 0:
+        out.previous = tokens[:-1]
+        out.newLineNeeded = True
+        return out
+    paren = sum([1 if i.type == TT_LPAREN_CURLY else 0 for i in tokens]) - sum(
+        [1 if i.type == TT_RPAREN_CURLY else 0 for i in tokens])
+    if paren != 0:
+        out.previous = tokens[:-1]
+        out.newLineNeeded = True
+        return out
+
+    del paren
+
+    # Generate AST
+    parser = Parser(tokens)
+    ast = parser.parse()
+    if ast.error:
+        out.error = ast.error
+        return out
+
+    # Run program
+    interpreter = Interpreter()
+    context = Context('<program>')
+    context.symbol_table = global_symbol_table
+    result = interpreter.visit(ast.node, context)
+    out.result, out.error = result.value, result.error
+
+    return out
 
 
 #######################################
@@ -1683,17 +1748,23 @@ def execute_run(self, exec_ctx):
 
     try:
         with open(fn, 'r') as f:
-            script = f.read()
+            script = split('[\n;]', f.read())
     except Exception as e:
         return RTResult().failure(RTError(self.pos_start, self.pos_end, f'Failed to load script \"{fn}\"\n'
                                           + str(e), exec_ctx))
 
-    _, error = run(fn, script)
+    res = None
+    for line in script:
+        res = run(fn, line, res)
 
-    if error:
-        return RTResult().failure(RTError(self.pos_start, self.pos_end, f"An error was returned while running"
-                                                                        f" \"{fn}\"\n{error.as_string()}",
-                                          exec_ctx))
+        if res.error:
+            return RTResult().failure(RTError(self.pos_start, self.pos_end, f"An error was returned while running"
+                                                                            f" \"{fn}\"\n{res.error.as_string()}",
+                                              exec_ctx))
+
+        if res.newLineNeeded:
+            continue
+        res = None
 
     return RTResult().success(None)
 
