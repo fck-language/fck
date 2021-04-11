@@ -14,6 +14,7 @@ WT_ListIndexFloat = "ListIndexFloat"
 WT_SilentCaseResetDefault = "SilentCaseReset"
 WT_IterateStepLoop = "IterateStepLoop"
 WT_IterateStepZero = "IterateStepZero"
+WT_ValueFromList = "ValueFromList"
 
 err_warn = {WT_DivideByZero: ['Divide by zero found'],
             WT_ModByZero: ['Modulo by zero found'],
@@ -27,7 +28,8 @@ err_warn = {WT_DivideByZero: ['Divide by zero found'],
             WT_ListIndexFloat: ['List index was a float'],
             WT_SilentCaseResetDefault: ['You reset the default option'],
             WT_IterateStepLoop: ['You would have made an infinite loop, just do a while true'],
-            WT_IterateStepZero: ['You would have made an infinite loop with that step value']}
+            WT_IterateStepZero: ['You would have made an infinite loop with that step value'],
+            WT_ValueFromList: ['You shouldn\'t really do this but we fixed it for you anyway']}
 
 err_warn_names = {WT_DivideByZero: "Divide by zero. Returned infinity",
                   WT_ModByZero: "Modulo by zero. Returned 0",
@@ -42,7 +44,9 @@ err_warn_names = {WT_DivideByZero: "Divide by zero. Returned infinity",
                   WT_SilentCaseResetDefault: "case type default option was redefined",
                   WT_IterateStepLoop: "Given step value would result in an infinite loop. Step value has been changed",
                   WT_IterateStepZero: "Given step value would result in an infinite loop. Step value has been ignored"
-                                      " and the default value of 1 or -1 used instead."}
+                                      " and the default value of 1 or -1 used instead.",
+                  WT_ValueFromList: "Numerical variable assigned assigned to a list with one element. Changed list "
+                                    "to single value"}
 
 
 def get_err_warns():

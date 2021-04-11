@@ -4,6 +4,11 @@ from Results import RTResult
 import os
 
 
+def assignment_error(value, parent, pos_start, pos_end):
+    return IllegalVariableAssignment(pos_start, pos_end, f'Cannot assign {value} of type {type(value)} to a '
+                                                         f'{type(parent)} type variable')
+
+
 class Value:
     def __init__(self):
         self.pos_start = None
@@ -18,6 +23,9 @@ class Value:
     def set_context(self, context=None):
         self.context = context
         return self
+
+    def assign_checks(self, value, pos_start, pos_end, context):
+        pass
 
     def added_to(self, other):
         return self.illegal_operation()
@@ -200,6 +208,27 @@ class Number(Value):
     def __init__(self, value):
         super().__init__()
         self.value = value
+
+    def assign_checks(self, value, pos_start, pos_end, context):
+        res = RTResult()
+        if isinstance(value, Number.allowed_types):
+            return res.success(value)
+        elif isinstance(value, String):
+            try:
+                return res.success(type(self)(float(value.value)))
+            except ValueError:
+                return res.failure(assignment_error(value, self, pos_start, pos_end))
+        elif isinstance(value, List):
+            if len(value.elements) == 1:
+                NonBreakError(pos_start, pos_end, context, WT_ValueFromList).print_method()
+                if isinstance(value.elements[0], Number.allowed_types):
+                    return res.success(value.elements[0])
+                elif isinstance(value.elements[0], String):
+                    try:
+                        return res.success(Float(value.elements[0].value))
+                    except ValueError:
+                        return res.failure(assignment_error(value.elements[0], self, pos_start, pos_end))
+        return res.failure(assignment_error(value, self, pos_start, pos_end))
 
     def ret_type(self, other):
         return_types = {0.5: Float, 0: Int}
@@ -683,3 +712,6 @@ def __value_to_bool__(value):
 
 
 class_identifier_values = {int: 0, float: 0.5, bool: 0}
+
+default_values = {'int': Int(0), 'float': Float(0), 'str': String(''), 'list': List([]), 'bool': Bool(False)}
+Number.allowed_types = (Int, Float, Bool)

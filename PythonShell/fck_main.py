@@ -377,7 +377,8 @@ class Parser:
         res = ParseResult()
 
         if self.current_tok.list_matches(TT_KEYWORD, VAR_TYPES):
-            var_type = self.current_tok.value
+            pos_start = self.current_tok.pos_start
+            default_value = default_values.get(self.current_tok.value)
             res.register_advancement()
             self.advance()
 
@@ -386,14 +387,15 @@ class Parser:
             self.advance()
 
             tok_type = self.current_tok.type
+            expr = None
 
             if tok_type in (TT_SET, TT_SET_RET):
                 res.register_advancement()
                 self.advance()
                 expr = res.register(self.expr())
                 if res.error: return res
-                return res.success(VarAssignNode(var_type, var_name, expr, True if tok_type == TT_SET_RET else False))
-            return res.success(VarAssignNode(var_type, var_name, None, True if tok_type == TT_SET_RET else False))
+            return res.success(VarAssignNode(default_value, var_name, expr, tok_type == TT_SET_RET,
+                                             pos_start, self.current_tok.pos_end))
 
         elif self.current_tok.matches(TT_KEYWORD, 'silent'):
             res.register_advancement()
@@ -1164,8 +1166,10 @@ class Interpreter:
                                TT_LT: 'get_comparison_lt', TT_GT: 'get_comparison_gt', TT_LTE: 'get_comparison_lte',
                                TT_GTE: 'get_comparison_gte', TT_MOD: 'modded_by', TT_FDIV: 'fdived_by'}
         self.KeywordFunctionNames = {'and': 'anded_by', 'or': 'ored_by'}
-        self.defaultVarValues = {'int': Int(0), 'float': Float(0), 'bool': Bool(False), 'list': List([])}
-        self.defaultVarReValues = {Int: Int(0), Float: Float(0), Bool: Bool(False), List: List([])}
+        self.defaultVarValues = {'int': Int(0), 'float': Float(0), 'bool': Bool(False), 'list': List([]),
+                                 'str': String("")}
+        self.defaultVarReValues = {Int: Int(0), Float: Float(0), Bool: Bool(False), List: List([]),
+                                   String: String("")}
 
     def visit(self, node, context):
         method_name = f'visit_{type(node).__name__}'
@@ -1385,18 +1389,23 @@ class Interpreter:
 
     def visit_VarAssignNode(self, node: VarAssignNode, context):
         res = RTResult()
-        if node.var_type == 'silent':
-            context.symbol_table.set(node.var_name_tok.value, node.value_node)
-            return res.success(None)
-        else:
-            class_type = {'int': Int, 'float': Float, 'bool': Bool, 'list': List}.get(node.var_type)
-            var_name = node.var_name_tok.value
-            value = None
-            if node.value_node:
-                value = res.register(self.visit(node.value_node, context))
-            if not node.value_node or value is None:
-                value = self.defaultVarValues.get(node.var_type)
-            return self.assignChecks(var_name, value, class_type, node, context)
+        # if node.var_type == 'silent':
+        #     context.symbol_table.set(node.var_name_tok.value, node.value_node)
+        #     return res.success(None)
+        # else:
+        #     class_type = {'int': Int, 'float': Float, 'bool': Bool, 'list': List, 'str': String}.get(node.var_type)
+        #     var_name = node.var_name_tok.value
+        #     value = None
+        #     if node.value_node:
+        #         value = res.register(self.visit(node.value_node, context))
+        #     if not node.value_node or value is None:
+        #         value = self.defaultVarValues.get(node.var_type)
+        #     return self.assignChecks(var_name, value, class_type, node, context)
+        value = res.register(self.visit(node.value_node, context)) if node.value_node else node.default_value
+        value = res.register(node.default_value.assign_checks(value, node.pos_start, node.pos_end, context))
+        if res.error: return res
+        context.symbol_table.set(node.var_name_tok.value, value)
+        return res.success(value if node.ret else None)
 
     def visit_VarReassignNode(self, node: VarReassignNode, context):
         res = RTResult()

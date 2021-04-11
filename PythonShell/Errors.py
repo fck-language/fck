@@ -16,7 +16,7 @@ class Error:
         self.details = details
 
     def as_string(self):
-        return '\n'.join(['\n'.join(wrap(f'{self.error_name}: {self.details}')),
+        return '\n'.join(['\n'.join(wrap(f'{self.error_name}: {self.details}' if self.details else self.error_name)),
                           '\n'.join(wrap(f'File {self.pos_start.fn}, line {self.pos_start.ln + 1}')),
                           f'{string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)}'])
 
@@ -49,7 +49,12 @@ class IllegalOperationError(Error):
 
 class IllegalValueError(Error):
     def __init__(self, pos_start, pos_end, details=None):
-        super().__init__(pos_start, pos_end, 'Illegal value' + f':\n{details}' if details else 'Illegal value')
+        super().__init__(pos_start, pos_end, 'Illegal value', details)
+
+
+class IllegalVariableAssignment(Error):
+    def __init__(self, pos_start, pos_end, details=None):
+        super().__init__(pos_start, pos_end, 'Illegal variable value', details)
 
 
 class ArgumentError(Error):
