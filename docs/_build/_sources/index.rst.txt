@@ -8,17 +8,12 @@ Welcome to fck's documentation!
 
 Here be is the documentation for fck. If you've somehow ended up here with no idea how, the website `website`_ might be more useful. Just a thought.
 
-*This documentation uses regex like syntax to show optional sections of code.*
-
 Contents thing
 ^^^^^^^^^^^^^^
 
 .. toctree::
-   :maxdepth: 1
-
    Built-in types
    Built-in methods
-   Operators
    Error messages
 
 

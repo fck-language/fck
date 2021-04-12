@@ -253,8 +253,12 @@ class Lexer:
     def skip_comment(self):
         self.advance()
 
-        while self.current_char != '\n':
-            self.advance()
+        if self.current_char == '#':
+            while self.current_char not in ('\n', None):
+                self.advance()
+        else:
+            while self.current_char != '#':
+                self.advance()
 
         self.advance()
 
@@ -302,6 +306,9 @@ class Parser:
         while self.current_tok.type == TT_NEWLINE:
             res.register_advancement()
             self.advance()
+
+        if self.current_tok.type == TT_EOF:
+            return res.success(None)
 
         statement = res.register(self.statement())
         if res.error: return res
@@ -441,9 +448,9 @@ class Parser:
             if res.error: return res
 
             if not isinstance(suite, SILENCABLE_TYPES[silenced_type]):
-                return res.failure(IllegalValueError(pos_start_suite, self.current_tok.pos_end,
-                                                     f'Cannot assign a {type(suite)} type to a'
-                                                     f' \'silent<{silenced_type}>\' variable'))
+                return res.failure(IllegalVariableAssignment(pos_start_suite, self.current_tok.pos_end,
+                                                             f'Cannot assign a {type(suite)} type to a'
+                                                             f' \'silent<{silenced_type}>\' variable'))
 
             return res.success(VarAssignNode(None, identifier, SilentNode(suite, pos_start_suite), ret,
                                              pos_start, self.current_tok.pos_end))
@@ -1418,7 +1425,8 @@ class Interpreter:
             value = res.register(node.default_value.assign_checks(value, node.pos_start, node.pos_end, context))
             if res.error: return res
         elif not node.value_node:
-            return res.failure(ExpectedExprError(node.pos_start, node.pos_end, 'Variable does not have a default value'))
+            return res.failure(
+                ExpectedExprError(node.pos_start, node.pos_end, 'Variable does not have a default value'))
         context.symbol_table.set(node.var_name_tok.value, value)
         return res.success(value if node.ret else None)
 
@@ -1767,6 +1775,9 @@ def run(fn, text, previous=None) -> RunRes:
     ast = parser.parse()
     if ast.error:
         out.error = ast.error
+        return out
+
+    if ast.node is None:
         return out
 
     # Run program

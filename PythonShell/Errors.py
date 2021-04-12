@@ -78,7 +78,7 @@ class AttributeTypeError(ArgumentError):
         super().__init__(pos_start, pos_end, f'Argument type error: {details}', arg_explain)
 
 
-class IllegalAttributeValue(ArgumentError):
+class IllegalAttributeValue(ArgumentError):  # Currently unused because I added it in for why?
     def __init__(self, pos_start, pos_end, details, arg_explain):
         super().__init__(pos_start, pos_end, f'Illegal argument value: {details}', arg_explain)
 

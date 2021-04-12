@@ -4,7 +4,6 @@ previous = None
 
 while True:
     text = ('\n' * (previous is None)) + input('>>> ' if previous is None else '... ')
-    if text.strip() == "": continue
 
     res = run('<shell>', text, previous)
 
@@ -15,7 +14,7 @@ while True:
 
     if res.error:
         print(res.error.as_string())
-    else:
+    elif res.result:
         if len(res.result.elements) == 1:
             if res.result.elements[0] is not None:
                 print(repr(res.result.elements[0]))
