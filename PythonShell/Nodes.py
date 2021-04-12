@@ -1,5 +1,5 @@
 from Errors import *
-from Bases import wrap_length, Token, TT_AT
+from Bases import wrap_length, Token, TT_AT, Position
 
 
 class NumberNode:
@@ -195,19 +195,21 @@ class CaseNode:
         self.pos_start = pos_start
         self.pos_end = pos_end
 
-    def new_option(self, option_expr, option_method, option_name: AtNameNode=None, context=None):
-        if option_name.at == 'default':
-            return IllegalAttributeValue(option_name.pos_start, option_name.pos_start,
-                                         'Cannot give a case statement option the identifier \'@default\'',
-                                         arg_explain(self.new_option.args_str, self.new_option.optional_args_str,
-                                                     'new_option')
-                                         )
+    def new_option(self, option_expr, option_method, option_name: AtNameNode = None, context=None):
+        # print(list(option_name.__dict__.items()))
+        if option_name:
+            if option_name.at == 'default':
+                return IllegalAttributeValue(option_name.pos_start, option_name.pos_start,
+                                             'Cannot give a case statement option the identifier \'@default\'',
+                                             arg_explain(self.new_option.args_str, self.new_option.optional_args_str,
+                                                         'new_option')
+                                             )
         self.cases.append(OptionNode(option_expr, option_method, option_expr.pos_start,
                                      option_name.pos_end if option_name else option_method.pos_end, option_name))
         return self
 
     new_option.args = {'option_expr': None, 'option_method': None}
-    new_option.optional_args = {'option_name': AtNameNode}
+    new_option.optional_args = {'option_name': None}
     new_option.args_str = {'option_expr<any>': 'Expression to evaluate and check against the expression '
                                                'of the case statement',
                            'option_method<any>': 'Method to run if the option_expr matches the case '
@@ -220,7 +222,8 @@ class CaseNode:
             NonBreakError(default_method.pos_start, default_method.pos_end, context,
                           WT_SilentCaseResetDefault).print_method()
         self.default = OptionNode(None, default_method, default_method.pos_start, default_method.pos_end,
-                                  AtNameNode(Token(TT_AT, 'default')))
+                                  AtNameNode(Token(TT_AT, 'default',
+                                                   Position(0, 0, 0, '', ''), Position(0, 0, 0, '', ''))))
 
     new_default.args = {'default_method': None}
     new_default.optional_args = {}
@@ -351,3 +354,6 @@ def arg_explain(required: dict, optional: dict, method_name):
         out += 'No arguments are required or optional'
     out += '*' * wrap_length
     return out
+
+
+SILENCABLE_TYPES = {'case': CaseNode}

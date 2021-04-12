@@ -25,6 +25,7 @@ class Value:
         return self
 
     def assign_checks(self, value, pos_start, pos_end, context):
+        raise Exception(f'Missing \'assign_checks()\' method for {type(self)}!')
         pass
 
     def added_to(self, other):
@@ -513,6 +514,15 @@ class String(Value):
         super().__init__()
         self.value = value
 
+    def assign_checks(self, value, pos_start, pos_end, context):
+        res = RTResult()
+        if isinstance(value, String):
+            return res.success(value)
+        elif isinstance(value, Number):
+            NonBreakError(pos_start, pos_end, context, WT_StringFromValue).print_method()
+            return res.success(String(str(value.value)))
+        return res.failure(assignment_error(value, self, pos_start, pos_end))
+
     def added_to(self, other):
         if isinstance(other, String):
             return String(self.value + other.value).set_context(self.context), None
@@ -549,6 +559,15 @@ class List(Value):
     def __init__(self, elements):
         super().__init__()
         self.elements = elements
+
+    def assign_checks(self, value, pos_start, pos_end, context):
+        res = RTResult()
+        if isinstance(value, List):
+            return res.success(value)
+        elif isinstance(value, Number) or isinstance(value, String):
+            NonBreakError(pos_start, pos_end, context, WT_ListFromValue).print_method()
+            return res.success(List([value]))
+        return res.failure(assignment_error(value, self, pos_start, pos_end))
 
     def added_to(self, other):
         if isinstance(other, List):

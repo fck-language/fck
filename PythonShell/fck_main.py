@@ -376,7 +376,7 @@ class Parser:
     def expr(self):
         res = ParseResult()
 
-        if self.current_tok.list_matches(TT_KEYWORD, VAR_TYPES):
+        if self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
             pos_start = self.current_tok.pos_start
             default_value = default_values.get(self.current_tok.value)
             res.register_advancement()
@@ -398,6 +398,7 @@ class Parser:
                                              pos_start, self.current_tok.pos_end))
 
         elif self.current_tok.matches(TT_KEYWORD, 'silent'):
+            pos_start = self.current_tok.pos_start
             res.register_advancement()
             self.advance()
             if self.current_tok.type != TT_LT:
@@ -405,8 +406,8 @@ class Parser:
                                                       'Expected \'<\' after \'silent\' keyword'))
             res.register_advancement()
             self.advance()
-            if not self.current_tok.list_matches(TT_KEYWORD, SILENCABLE_TYPES):
-                expanded_list = ", ".join([f'\'{silencable_type}\'' for silencable_type in SILENCABLE_TYPES])
+            if not self.current_tok.list_matches(TT_KEYWORD, SILENCABLE_TYPES.keys()):
+                expanded_list = ", ".join([f'\'{silencable_type}\'' for silencable_type in SILENCABLE_TYPES.keys()])
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
                                                       f'Expected one of {expanded_list}'))
             silenced_type = self.current_tok.value
@@ -426,18 +427,26 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            if self.current_tok.type != TT_SET:
+            if self.current_tok.type not in (TT_SET, TT_SET_RET):
                 return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      f'Expected \'::\' after '
+                                                      f'Expected \'::\' or \':>\' after '
                                                       f'\'silent<{silenced_type}> {identifier.value}\''))
+            ret = self.current_tok.type == TT_SET_RET
             res.register_advancement()
             self.advance()
 
-            pos_start = self.current_tok.pos_start
+            pos_start_suite = self.current_tok.pos_start
+
             suite = res.register(self.statement())
             if res.error: return res
 
-            return res.success(VarAssignNode('silent', identifier, SilentNode(suite, pos_start), False))
+            if not isinstance(suite, SILENCABLE_TYPES[silenced_type]):
+                return res.failure(IllegalValueError(pos_start_suite, self.current_tok.pos_end,
+                                                     f'Cannot assign a {type(suite)} type to a'
+                                                     f' \'silent<{silenced_type}>\' variable'))
+
+            return res.success(VarAssignNode(None, identifier, SilentNode(suite, pos_start_suite), ret,
+                                             pos_start, self.current_tok.pos_end))
 
         elif self.current_tok.type == TT_IDENTIFIER:
             var_name = self.current_tok
@@ -1224,6 +1233,9 @@ class Interpreter:
         if res.should_return(): return res
         return res.success(value)
 
+    def visit_SilentNode(self, node: SilentNode, context):
+        return RTResult().success(node)
+
     def visit_VarAccessNode(self, node: VarAccessNode, context):
         res = RTResult()
         var_name = node.name_tok.value
@@ -1402,8 +1414,11 @@ class Interpreter:
         #         value = self.defaultVarValues.get(node.var_type)
         #     return self.assignChecks(var_name, value, class_type, node, context)
         value = res.register(self.visit(node.value_node, context)) if node.value_node else node.default_value
-        value = res.register(node.default_value.assign_checks(value, node.pos_start, node.pos_end, context))
-        if res.error: return res
+        if node.default_value:
+            value = res.register(node.default_value.assign_checks(value, node.pos_start, node.pos_end, context))
+            if res.error: return res
+        elif not node.value_node:
+            return res.failure(ExpectedExprError(node.pos_start, node.pos_end, 'Variable does not have a default value'))
         context.symbol_table.set(node.var_name_tok.value, value)
         return res.success(value if node.ret else None)
 

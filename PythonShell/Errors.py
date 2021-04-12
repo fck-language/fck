@@ -36,7 +36,6 @@ class ExpectedExprError(Error):
         super().__init__(pos_start, pos_end, 'Expected expression', details)
 
 
-
 class InvalidSyntaxError(Error):
     def __init__(self, pos_start, pos_end, details=''):
         super().__init__(pos_start, pos_end, 'Invalid syntax', details)
