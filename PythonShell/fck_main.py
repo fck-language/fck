@@ -93,8 +93,6 @@ class Lexer:
         pos_start = self.pos.copy()
         escape_character = False
         self.advance()
-        string += self.current_char
-        self.advance()
 
         escape_characters = {'n': '\n', 't': '\t'}
 
