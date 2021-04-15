@@ -28,6 +28,10 @@ class Value:
         raise Exception(f'Missing \'assign_checks()\' method for {type(self)}!')
         pass
 
+    def as_type(self, node, context):
+        raise Exception(f'Missing \'as_type()\' method for {type(self)}!')
+        pass
+
     def added_to(self, other):
         return self.illegal_operation()
 
@@ -362,6 +366,20 @@ class Int(Number):
     def __init__(self, value):
         super().__init__(Infinity(round(value.mult_zero), Int) if isinstance(value, Infinity) else round(value))
 
+    def as_type(self, node, context):
+        res = RTResult()
+        if node.as_type == 'int':
+            return res.success(self)
+        if node.as_type == 'float':
+            return res.success(Float(self.value))
+        if node.as_type == 'str':
+            return res.success(String(str(self.value)))
+        if node.as_type == 'list':
+            return res.success(List([self]))
+        if node.as_type == 'bool':
+            return res.success(Bool(self.value))
+        return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end))
+
     def copy(self):
         copy = Int(self.value)
         copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
@@ -377,6 +395,20 @@ class Int(Number):
 class Float(Number):
     def __init__(self, value):
         super().__init__(float(value))
+
+    def as_type(self, node, context):
+        res = RTResult()
+        if node.as_type == 'int':
+            return res.success(Int(self.value))
+        if node.as_type == 'float':
+            return res.success(self)
+        if node.as_type == 'str':
+            return res.success(String(str(self.value)))
+        if node.as_type == 'list':
+            return res.success(List([self]))
+        if node.as_type == 'bool':
+            return res.success(Bool(self.value))
+        return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end))
 
     def copy(self):
         copy = Float(self.value)
@@ -494,6 +526,20 @@ class Bool(Number):
     def __init__(self, value):
         super().__init__(True if value > 0 else False)
 
+    def as_type(self, node, context):
+        res = RTResult()
+        if node.as_type == 'int':
+            return res.success(Int(int(self.value)))
+        if node.as_type == 'float':
+            return res.success(Float(float(self.value)))
+        if node.as_type == 'str':
+            return res.success(String('true' if self.value else 'false'))
+        if node.as_type == 'list':
+            return res.success(List([self]))
+        if node.as_type == 'bool':
+            return res.success(self)
+        return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end))
+
     def copy(self):
         copy = Bool(self.value)
         copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
@@ -522,6 +568,30 @@ class String(Value):
             NonBreakError(pos_start, pos_end, context, WT_StringFromValue).print_method()
             return res.success(String(str(value.value)))
         return res.failure(assignment_error(value, self, pos_start, pos_end))
+
+    def as_type(self, node, context):
+        res = RTResult()
+        if node.as_type == 'int':
+            try:
+                out = int(self.value)
+                return res.success(Int(out))
+            except ValueError:
+                return res.failure(IllegalValueError(node.pos_start, node.pos_end, f'\'{self.value}\' cannot '
+                                                                                   f'be cast to an \'int\' type'))
+        elif node.as_type == 'float':
+            try:
+                out = float(self.value)
+                return res.success(Float(out))
+            except ValueError:
+                return res.failure(IllegalValueError(node.pos_start, node.pos_end, f'\'{self.value}\' cannot '
+                                                                                   f'be cast to a \'float\' type'))
+        elif node.as_type == 'str':
+            return res.success(self)
+        elif node.as_type == 'list':
+            return res.success(List([self]))
+        elif node.as_type == 'bool':
+            return res.success(Bool(len(self.value)))
+        return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end))
 
     def added_to(self, other):
         if isinstance(other, String):
@@ -559,6 +629,38 @@ class List(Value):
     def __init__(self, elements):
         super().__init__()
         self.elements = elements
+
+    def as_type(self, node, context):
+        def recursive_single():
+            test_list = self.elements
+            while isinstance(test_list, list):
+                if len(test_list) == 1:
+                    test_list = test_list[0]
+                elif len(test_list) == 0:
+                    return True, False, repr(Null())
+                else:
+                    return False, False, repr(Null())
+            return False, True, test_list
+
+        res = RTResult()
+        if node.as_type == 'int':
+            _, recursive, value = recursive_single()
+            if recursive:
+                return value.as_type(node, context)
+            return res.failure(IllegalValueError(node.pos_start, node.pos_end,
+                                                 f'Cannot convert \'{value}\' into an \'int\''))
+        if node.as_type in ('float', 'str'):
+            _, recursive, value = recursive_single()
+            if recursive:
+                return value.as_type(node, context)
+            return res.failure(IllegalValueError(node.pos_start, node.pos_end,
+                                                 f'Cannot convert \'{value}\' into a \'{node.as_type}\''))
+        if node.as_type == 'bool':
+            recursive, _, _ = recursive_single()
+            return res.success(Bool(recursive))
+        if node.as_type == 'list':
+            return self
+        return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end))
 
     def assign_checks(self, value, pos_start, pos_end, context):
         res = RTResult()

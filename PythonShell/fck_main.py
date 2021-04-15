@@ -643,15 +643,18 @@ class Parser:
         res = ParseResult()
         tok = self.current_tok
 
+        out = False
+        pos_start = self.current_tok.pos_start
+
         if tok.type in (TT_INT, TT_FLOAT):
             res.register_advancement()
             self.advance()
-            return res.success(NumberNode(tok))
+            out = NumberNode(tok)
 
         elif tok.type == TT_STRING:
             res.register_advancement()
             self.advance()
-            return res.success(StringNode(tok))
+            out = StringNode(tok)
 
         elif tok.type == TT_IDENTIFIER:
             pos_start = self.current_tok.pos_start
@@ -696,7 +699,7 @@ class Parser:
                     else:
                         trace.append(VarAccessNode(tok))
                 return res.success(VarSubFuncNode(trace, pos_start, self.current_tok.pos_end))
-            return res.success(VarAccessNode(tok))
+            out = VarAccessNode(tok)
 
         elif tok.type == TT_LPAREN:
             res.register_advancement()
@@ -706,7 +709,7 @@ class Parser:
             if self.current_tok.type == TT_RPAREN:
                 res.register_advancement()
                 self.advance()
-                return res.success(expr)
+                out = expr
             else:
                 return res.failure(InvalidSyntaxError(
                     self.current_tok.pos_start, self.current_tok.pos_end,
@@ -716,7 +719,7 @@ class Parser:
         elif tok.type == TT_LPAREN_SQUARE:
             list_expr = res.register(self.list_expr())
             if res.error: return res
-            return res.success(list_expr)
+            out = list_expr
 
         elif tok.matches(TT_KEYWORD, 'if'):
             if_expr = res.register(self.if_expr())
@@ -765,6 +768,20 @@ class Parser:
             cases_expr = res.register(self.cases_expr())
             if res.error: return res
             return res.success(cases_expr)
+
+        if out:
+            if self.current_tok.matches(TT_KEYWORD, 'as'):
+                res.register_advancement()
+                self.advance()
+                if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
+                    return res.failure(InvalidSyntaxError(
+                        self.current_tok.pos_start, self.current_tok.pos_end,
+                        "Expected type after \'at\' keyword"))
+                as_type = self.current_tok
+                res.register_advancement()
+                self.advance()
+                return res.success(AsNode(out, as_type, pos_start))
+            return res.success(out)
 
         return res.failure(InvalidSyntaxError(
             tok.pos_start, tok.pos_end,
@@ -1242,6 +1259,15 @@ class Interpreter:
 
     def visit_SilentNode(self, node: SilentNode, context):
         return RTResult().success(node)
+
+    def visit_AsNode(self, node: AsNode, context):
+        res = RTResult()
+        expr = res.register(self.visit(node.expr, context))
+        if res.error: return res
+        assert isinstance(expr, Value)
+        reformatted_expr = res.register(expr.as_type(node, context))
+        if res.error: return res
+        return res.success(reformatted_expr)
 
     def visit_VarAccessNode(self, node: VarAccessNode, context):
         res = RTResult()

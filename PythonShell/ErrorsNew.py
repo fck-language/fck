@@ -11,6 +11,10 @@ ET_IllegalOperation = "IllegalOperation"
 ET_IllegalValue = "IllegalValue"
 ET_IllegalVariableAssignment = "IllegalVariableAssignment"
 
+AET_TooArgumentError = "TooArgumentError"
+AET_AttributeTypeError = "AttributeTypeError"
+AET_IllegalArgumentValue = "IllegalArgumentValue"
+
 errorFormatting = {ET_IllegalChar: "{name}: {details}",
                    ET_ExpectedChar: "{name}: {details}",
                    ET_ExpectedExpr: "{name}: {details}",

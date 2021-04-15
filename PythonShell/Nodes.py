@@ -169,6 +169,16 @@ class SilentNode:
         self.pos_end = self.silenced_node.pos_end
 
 
+class AsNode:
+    def __init__(self, expr, as_type, pos_start):
+        self.expr = expr
+        self.as_type = as_type
+
+        self.pos_start = pos_start
+        self.pos_end = self.as_type.pos_end
+        self.as_type = self.as_type.value
+
+
 class IfNode:
     def __init__(self, cases, else_case):
         self.cases = cases
