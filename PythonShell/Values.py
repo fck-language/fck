@@ -1,3 +1,5 @@
+import sys
+
 from Bases import *
 from Errors import *
 from Results import RTResult
@@ -815,6 +817,11 @@ class BuiltInFunction(BaseFunction):
 
     def execute_run(self, exec_ctx):
         pass
+
+    def execute_quit(self, exec_ctx):
+        sys.exit(0)
+
+    execute_quit.arg_names = []
 
     def copy(self):
         copy = BuiltInFunction(self.name)

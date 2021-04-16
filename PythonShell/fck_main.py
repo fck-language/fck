@@ -598,8 +598,24 @@ class Parser:
     def power(self):
         return self.bin_op(self.call, (TT_POW,), self.factor)
 
+    def as_convert(self, node, pos_start):
+        res = ParseResult()
+        if self.current_tok.matches(TT_KEYWORD, 'as'):
+            res.register_advancement()
+            self.advance()
+            if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end,
+                    "Expected type after \'at\' keyword"))
+            as_type = self.current_tok
+            res.register_advancement()
+            self.advance()
+            return res.success(AsNode(node, as_type, pos_start))
+        return res.success(node)
+
     def call(self):
         res = ParseResult()
+        pos_start = self.current_tok.pos_start
         atom = res.register(self.atom())
         if res.error: return res
 
@@ -634,7 +650,9 @@ class Parser:
 
                 res.register_advancement()
                 self.advance()
-            return res.success(CallNode(atom, arg_nodes))
+            out = res.register(self.as_convert(CallNode(atom, arg_nodes), pos_start))
+            if res.error: return res
+            return res.success(out)
         return res.success(atom)
 
     def atom(self):
@@ -728,7 +746,7 @@ class Parser:
             pos_start = tok.pos_start
             res.register_advancement()
             self.advance()
-            if not self.current_tok.type in [TT_IDENTIFIER, TT_KEYWORD]:
+            if self.current_tok.type not in [TT_IDENTIFIER, TT_KEYWORD]:
                 return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
                                                       'Expected identifier after \'@\''))
             loop_name = self.current_tok
@@ -768,17 +786,8 @@ class Parser:
             return res.success(cases_expr)
 
         if out:
-            if self.current_tok.matches(TT_KEYWORD, 'as'):
-                res.register_advancement()
-                self.advance()
-                if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
-                    return res.failure(InvalidSyntaxError(
-                        self.current_tok.pos_start, self.current_tok.pos_end,
-                        "Expected type after \'at\' keyword"))
-                as_type = self.current_tok
-                res.register_advancement()
-                self.advance()
-                return res.success(AsNode(out, as_type, pos_start))
+            out = res.register(self.as_convert(out, pos_start))
+            if res.error: return res
             return res.success(out)
 
         return res.failure(InvalidSyntaxError(
@@ -1743,7 +1752,7 @@ global_symbol_table = SymbolTable()
 global_symbol_table.set("true", Bool(1))
 global_symbol_table.set("false", Bool(0))
 global_symbol_table.set("null", Null())
-built_in_funcs = ['log', 'print', 'type', 'input', 'clear', 'run']
+built_in_funcs = ['log', 'print', 'type', 'input', 'clear', 'run', 'quit']
 for i in built_in_funcs:
     global_symbol_table.set(i, BuiltInFunction(i))
 
