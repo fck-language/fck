@@ -90,13 +90,14 @@ class Lexer:
 
     def make_string(self):
         string = ""
+        end_char = self.current_char
         pos_start = self.pos.copy()
         escape_character = False
         self.advance()
 
         escape_characters = {'n': '\n', 't': '\t'}
 
-        while self.current_char is not None and (self.current_char not in '"\'' or escape_character):
+        while self.current_char is not None and self.current_char not in (end_char, escape_character):
             if escape_character:
                 string += escape_characters.get(self.current_char, self.current_char)
                 escape_character = False
@@ -106,7 +107,9 @@ class Lexer:
                 else:
                     string += self.current_char
             self.advance()
-
+        if self.current_char is None:
+            NonBreakError(pos_start, self.pos, Context(self.fn), WT_NoStringEnd).print_method()
+            pass
         self.advance()
         return Token(TT_STRING, string, pos_start, self.pos), None
 

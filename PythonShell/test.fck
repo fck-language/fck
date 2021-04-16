@@ -1,5 +1,2 @@
-silent<case> a :: case(5){}
-a.new_option(3, log("no"))
-a.new_option(4, log('value of 4'), @option4)
-a.default_option(print('default option'))
-a.execute()
+str a :: 'hygtrfew
+log(a)

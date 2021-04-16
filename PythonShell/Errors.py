@@ -137,4 +137,4 @@ class NonBreakError:
         value = self.value[randint(0, len(self.value) - 1)]
         out = "\n".join(wrap(f'{self.error_name}: {value}')) + f"\n{self.generate_traceback()}"
         longest = max([len(i) for i in out.split("\n")])
-        print("*" * longest + "\nWarning:\n" + out + "\n" + "*" * wrap_length)
+        print("*" * longest + "\nWarning:\n" + out + "\n" + "*" * longest)
