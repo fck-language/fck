@@ -1755,6 +1755,7 @@ global_symbol_table = SymbolTable()
 global_symbol_table.set("true", Bool(1))
 global_symbol_table.set("false", Bool(0))
 global_symbol_table.set("null", Null())
+global_symbol_table.set("endl", String('\n'))
 built_in_funcs = ['log', 'print', 'type', 'input', 'clear', 'run', 'quit']
 for i in built_in_funcs:
     global_symbol_table.set(i, BuiltInFunction(i))
@@ -1818,7 +1819,7 @@ def run(fn, text, previous=None) -> RunRes:
 
     # Run program
     interpreter = Interpreter()
-    context = Context('<program>')
+    context = Context(fn)
     context.symbol_table = global_symbol_table
     result = interpreter.visit(ast.node, context)
     out.result, out.error = result.value, result.error

@@ -784,8 +784,13 @@ class BuiltInFunction(BaseFunction):
     def no_visit_method(self, context):
         raise Exception(f'No \'execute_{self.name}\' method defined silly x')
 
-    def execute_log(self, exec_ctx):
-        print(repr(exec_ctx.symbol_table.get("value")))
+    def execute_log(self, exec_ctx: Context):
+        added = ''
+        out = repr(exec_ctx.symbol_table.get("value"))
+        if exec_ctx.parent.display_name == '<shell>':
+            if str(exec_ctx.symbol_table.get("value"))[-1] != '\n':
+                added = '\033[1;7m%\033[0m\n'
+        print(out + added, end='')
         return RTResult().success(None)
 
     execute_log.arg_names = ['value']
