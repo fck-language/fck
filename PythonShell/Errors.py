@@ -117,8 +117,8 @@ class NonBreakError:
         self.pos_start = pos_start
         self.pos_end = pos_end
         self.context = context
-        self.error_name = err_warn_names[error_name]
-        self.value = err_warn[error_name]
+        self.error_name = wrn_names[error_name]
+        self.value = wrn_messages[error_name]
 
     def generate_traceback(self):
         result = ''
