@@ -4,9 +4,14 @@ from Bases import *
 from Errors import *
 from Results import RTResult
 import os
+from ErrorsNew import *
 
 
-def assignment_error(value, parent, pos_start, pos_end):
+def type_(value):
+    return type_values[type(value)]
+
+
+def assignment_error(value, parent, pos_start, pos_end, context):
     return IllegalVariableAssignment(pos_start, pos_end, f'Cannot assign {value} of type {type(value)} to a '
                                                          f'{type(parent)} type variable')
 
@@ -102,7 +107,7 @@ class Value:
         return "<" * log + 'value (base)' + ">" * log
 
     def __repr__(self):
-        return f'{self.type}: {self.value}'
+        return f'{type_(self)}: {self.value}'
 
 
 class Null(Value):
@@ -218,15 +223,19 @@ class Number(Value):
 
     def assign_checks(self, value, pos_start, pos_end, context):
         res = RTResult()
+        illegal_value_error = ErrorNew(ET_IllegalVariableAssignment, '', pos_start, pos_end, context)
         if isinstance(value, Number.allowed_types):
             return res.success(value)
         elif isinstance(value, String):
             try:
                 return res.success(type(self)(float(value.value)))
             except ValueError:
-                return res.failure(assignment_error(value, self, pos_start, pos_end))
+                illegal_value_error.details = f'Cannot assign \'{value}\' of type \'str\' to a \'{type_(self)}\' ' \
+                                              f'type variable'
+                return res.failure(illegal_value_error)
         elif isinstance(value, List):
-            if len(value.elements) == 1:
+            recursion_check = value.recursive_single()
+            if recursion_check[1]:
                 NonBreakError(pos_start, pos_end, context, WT_ValueFromList).print_method()
                 if isinstance(value.elements[0], Number.allowed_types):
                     return res.success(value.elements[0])
@@ -234,8 +243,28 @@ class Number(Value):
                     try:
                         return res.success(Float(value.elements[0].value))
                     except ValueError:
-                        return res.failure(assignment_error(value.elements[0], self, pos_start, pos_end))
-        return res.failure(assignment_error(value, self, pos_start, pos_end))
+                        illegal_value_error.details = f'Cannot assign \'{value.elements}\' of type \'list\' to a ' \
+                                                      f'\'{type_(self)}\' type variable'
+                        return res.failure(illegal_value_error)
+            elif recursion_check[0]:
+                return res.success(Float(0))
+        illegal_value_error.details = f'Cannot assign \'{value}\' of type \'{type_(value)}\' to a \'{type_(self)}\' ' \
+                                      f'type variable'
+        return res.failure(illegal_value_error)
+
+    def as_type(self, node, context):
+        res = RTResult()
+        if node.as_type == 'int':
+            return res.success(Int(self.value))
+        elif node.as_type == 'float':
+            return res.success(Float(self.value))
+        elif node.as_type == 'str':
+            return res.success(String(self.value))
+        elif node.as_type == 'list':
+            return res.success(List([self.value]))
+        elif node.as_type == 'bool':
+            return res.success(Bool(self.value.is_true()))
+        super().as_type(node, context)
 
     def ret_type(self, other):
         return_types = {0.5: Float, 0: Int}
@@ -612,6 +641,9 @@ class String(Value):
     def is_true(self):
         return len(self.value) > 0, None
 
+    def get_comparison_eq(self, other):
+        return Bool(self.value == str(other.value)), None
+
     def copy(self):
         copy = String(self.value)
         copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
@@ -632,33 +664,38 @@ class List(Value):
         super().__init__()
         self.elements = elements
 
-    def as_type(self, node, context):
-        def recursive_single():
-            test_list = self.elements
-            while isinstance(test_list, list):
-                if len(test_list) == 1:
-                    test_list = test_list[0]
-                elif len(test_list) == 0:
-                    return True, False, repr(Null())
-                else:
-                    return False, False, repr(Null())
-            return False, True, test_list
+    def recursive_single(self):
+        """
+        :return: [was recursively empty, recursively had 1 element in,
+        single element if had 1 element else original]
+        """
+        test_list = self.elements
+        while isinstance(test_list, list):
+            if len(test_list) == 1:
+                test_list = test_list[0]
+            elif len(test_list) == 0:
+                return True, False, self.elements
+            else:
+                return False, False, self.elements
+        return False, True, test_list
 
+    def as_type(self, node, context):
         res = RTResult()
         if node.as_type == 'int':
-            _, recursive, value = recursive_single()
+            _, recursive, value = self.recursive_single()
             if recursive:
                 return value.as_type(node, context)
-            return res.failure(IllegalValueError(node.pos_start, node.pos_end,
-                                                 f'Cannot convert \'{value}\' into an \'int\''))
+            return res.failure(ErrorNew(ET_IllegalValue, f'Cannot convert \'{value}\' of type \'{type_(self)}\' '
+                                                         f'into an \'int\'',
+                                        node.pos_start, node.pos_end, context))
         if node.as_type in ('float', 'str'):
-            _, recursive, value = recursive_single()
+            _, recursive, value = self.recursive_single()
             if recursive:
                 return value.as_type(node, context)
             return res.failure(IllegalValueError(node.pos_start, node.pos_end,
                                                  f'Cannot convert \'{value}\' into a \'{node.as_type}\''))
         if node.as_type == 'bool':
-            recursive, _, _ = recursive_single()
+            recursive, _, _ = self.recursive_single()
             return res.success(Bool(recursive))
         if node.as_type == 'list':
             return self
@@ -847,4 +884,7 @@ def __value_to_bool__(value):
 class_identifier_values = {int: 0, float: 0.5, bool: 0}
 
 default_values = {'int': Int(0), 'float': Float(0), 'str': String(''), 'list': List([]), 'bool': Bool(False)}
+type_values = {}
+for i, n in default_values.items():
+    type_values[type(n)] = i
 Number.allowed_types = (Int, Float, Bool)

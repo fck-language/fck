@@ -356,6 +356,16 @@ class Parser:
         if self.current_tok.matches(TT_KEYWORD, 'continue'):
             res.register_advancement()
             self.advance()
+            if self.current_tok.type == TT_AT:
+                res.register_advancement()
+                self.advance()
+                if not self.current_tok.type == TT_IDENTIFIER:
+                    return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
+                                                          'Expected loop identifier after \'@\''))
+                loop_name = self.current_tok.value
+                res.register_advancement()
+                self.advance()
+                return res.success(ContinueNode(pos_start, self.current_tok.pos_start.copy(), loop_name))
             return res.success(ContinueNode(pos_start, self.current_tok.pos_start.copy()))
 
         if self.current_tok.matches(TT_KEYWORD, 'break'):
@@ -404,6 +414,32 @@ class Parser:
                 if res.error: return res
             return res.success(VarAssignNode(default_value, var_name, expr, tok_type == TT_SET_RET,
                                              pos_start, self.current_tok.pos_end))
+
+        elif self.current_tok.matches(TT_KEYWORD, 'auto'):
+            pos_start = self.current_tok.pos_start
+            res.register_advancement()
+            self.advance()
+
+            var_name = self.current_tok
+            res.register_advancement()
+            self.advance()
+
+            ret = self.current_tok
+
+            if ret.type in (TT_SET, TT_SET_RET):
+                res.register_advancement()
+                self.advance()
+                if self.current_tok is None:
+                    return res.failure(ErrorNew(ET_ExpectedExpr, f'Expected an expression after \''
+                                                                 f'{"::" if ret.type == TT_SET else ":>"}\'',
+                                                ret.pos_start, ret.pos_end, None))
+                expr = res.register(self.expr())
+                if res.error: return res
+                return res.success(AutoVarAssignNode(None, var_name, expr, ret.type == TT_SET_RET,
+                                                     pos_start, self.current_tok.pos_end))
+            else:
+                return res.failure(ErrorNew(ET_ExpectedChar, 'Expected \'::\' or \':>\' for an \'auto\' type variable',
+                                            self.current_tok.pos_start, self.current_tok.pos_end, None))
 
         elif self.current_tok.matches(TT_KEYWORD, 'silent'):
             pos_start = self.current_tok.pos_start
@@ -1466,6 +1502,13 @@ class Interpreter:
         context.symbol_table.set(node.var_name_tok.value, value)
         return res.success(value if node.ret else None)
 
+    def visit_AutoVarAssignNode(self, node: AutoVarAssignNode, context):
+        res = RTResult()
+        value = res.register(self.visit(node.value_node, context))
+        if res.should_return(): return res
+        context.symbol_table.set(node.var_name_tok.value, value)
+        return res.success(value if node.ret else None)
+
     def visit_VarReassignNode(self, node: VarReassignNode, context):
         res = RTResult()
         var_name = node.var_name_tok
@@ -1640,7 +1683,7 @@ class Interpreter:
 
             value = res.register(self.visit(node.suite_node, context))
             if res.loop_should_break:
-                if res.loop_name != node.reference_name:
+                if res.break_loop_name != node.reference_name:
                     return res
             if res.should_return() and (not res.loop_should_continue) and (not res.loop_should_break): return res
 
@@ -1736,14 +1779,20 @@ class Interpreter:
         return res.success_return(value)
 
     def visit_ContinueNode(self, node: ContinueNode, context):
-        return RTResult().success_continue()
+        if node.continue_to:
+            if node.continue_to not in context.named_loops:
+                return RTResult().failure(
+                    ErrorNew(ET_InvalidSyntax, f'Loop \'@{node.continue_to}\' is undefined in the '
+                                               f'current scope',
+                             node.pos_start, node.pos_end, context))
+        return RTResult().success_continue(node.continue_to)
 
     def visit_BreakNode(self, node: BreakNode, context):
         if node.break_to:
             if node.break_to not in context.named_loops:
-                return RTResult().failure(InvalidSyntaxError(node.pos_start, node.pos_end,
-                                                             f'Loop \'@{node.break_to}\' is undefined in'
-                                                             f' the current scope'))
+                return RTResult().failure(ErrorNew(ET_InvalidSyntax, f'Loop \'@{node.break_to}\' is undefined in the '
+                                                                     f'current scope',
+                                                   node.pos_start, node.pos_end, context))
         return RTResult().success_break(node.break_to)
 
 

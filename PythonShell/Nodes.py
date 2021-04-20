@@ -13,6 +13,17 @@ class NumberNode:
         return f'{self.tok}'
 
 
+class autoNode:
+    def __init__(self, tok):
+        self.tok = tok
+
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
+
+    def __repr__(self):
+        return f'{self.tok}'
+
+
 class IntNode:
     def __init__(self, tok):
         self.tok = tok
@@ -100,6 +111,11 @@ class VarAssignNode:
         self.ret = ret
         self.pos_start = pos_start
         self.pos_end = pos_end
+
+
+class AutoVarAssignNode(VarAssignNode):
+    def __init__(self, default_value, var_name_tok, value_node, ret, pos_start, pos_end):
+        super().__init__(default_value, var_name_tok, value_node, ret, pos_start, pos_end)
 
 
 class VarReassignNode:
@@ -333,7 +349,8 @@ class ReturnNode:
 
 
 class ContinueNode:
-    def __init__(self, pos_start, pos_end):
+    def __init__(self, pos_start, pos_end, continue_to=None):
+        self.continue_to = continue_to
         self.pos_start = pos_start
         self.pos_end = pos_end
 

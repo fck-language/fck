@@ -81,6 +81,7 @@ VAR_EQUIV = {TT_SET_RET: TT_SET, TT_SET_RET_PLUS: TT_SET_PLUS, TT_SET_RET_MINUS:
              TT_SET_MULT, TT_SET_RET_DIV: TT_SET_DIV, TT_SET_RET_FDIV: TT_SET_FDIV, TT_SET_RET_MOD: TT_SET_MOD,
              TT_SET_RET_POW: TT_SET_POW}
 VAR_KEYWORDS = ['int', 'float', 'bool', 'list', 'str']
+NON_STATIC_VAR_KEYWORDS = ['auto']
 
 KEYWORDS = [
     "int",
@@ -88,6 +89,7 @@ KEYWORDS = [
     "bool",
     "list",
     "str",
+    "auto",
     "and",
     "or",
     "not",

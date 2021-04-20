@@ -5,7 +5,8 @@ class RTResult:
         self.func_return_value = None
         self.loop_should_continue = False
         self.loop_should_break = False
-        self.loop_name = None
+        self.break_loop_name = None
+        self.continue_loop_name = None
 
     def reset(self):
         self.value = None
@@ -13,14 +14,16 @@ class RTResult:
         self.func_return_value = None
         self.loop_should_continue = False
         self.loop_should_break = False
-        self.loop_name = None
+        self.break_loop_name = None
+        self.continue_loop_name = None
 
     def register(self, res):
         self.error = res.error
         self.func_return_value = res.func_return_value
         self.loop_should_continue = res.loop_should_continue
         self.loop_should_break = res.loop_should_break
-        self.loop_name = res.loop_name
+        self.break_loop_name = res.break_loop_name
+        self.continue_loop_name = res.continue_loop_name
         return res.value
 
     def success(self, value):
@@ -33,15 +36,16 @@ class RTResult:
         self.func_return_value = value
         return self
 
-    def success_continue(self):
+    def success_continue(self, continue_name=None):
         self.reset()
         self.loop_should_continue = True
+        self.continue_loop_name = continue_name
         return self
 
     def success_break(self, break_name=None):
         self.reset()
         self.loop_should_break = True
-        self.loop_name = break_name
+        self.break_loop_name = break_name
         return self
 
     def failure(self, error):
