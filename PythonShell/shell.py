@@ -4,12 +4,12 @@ from fck_main import *
 def res_processing(run_res):
     if run_res.error:
         print(run_res.error.as_string())
-    elif run_res.result:
+    elif len(run_res.result.elements) > 0:
         if len(run_res.result.elements) == 1:
             if run_res.result.elements[0] is not None:
                 print(repr(run_res.result.elements[0]))
         else:
-            print(repr(run_res))
+            print(repr(run_res.result))
 
 
 def shell():
