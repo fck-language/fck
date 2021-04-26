@@ -70,6 +70,7 @@ TT_SET_MOD = "SET_MOD"
 TT_SET_RET_MOD = "SET_RET_MOD"
 TT_SET_POW = "SET_POW"
 TT_SET_RET_POW = "SET_RET_POW"
+TT_GLOBAL_OPT = "GLOBAL_OPT"
 
 
 VAR_SET = [TT_SET, TT_SET_RET, TT_SET_PLUS, TT_SET_RET_PLUS, TT_SET_MINUS, TT_SET_RET_MINUS, TT_SET_MULT,
@@ -80,16 +81,10 @@ VAR_SET_RET = [TT_SET_RET, TT_SET_RET_PLUS, TT_SET_RET_MINUS, TT_SET_RET_MULT, T
 VAR_EQUIV = {TT_SET_RET: TT_SET, TT_SET_RET_PLUS: TT_SET_PLUS, TT_SET_RET_MINUS: TT_SET_MINUS, TT_SET_RET_MULT:
              TT_SET_MULT, TT_SET_RET_DIV: TT_SET_DIV, TT_SET_RET_FDIV: TT_SET_FDIV, TT_SET_RET_MOD: TT_SET_MOD,
              TT_SET_RET_POW: TT_SET_POW}
-VAR_KEYWORDS = ['int', 'float', 'bool', 'list', 'str']
+VAR_KEYWORDS = ['int', 'float', 'bool', 'list', 'str', 'imag']
 NON_STATIC_VAR_KEYWORDS = ['auto']
 
 KEYWORDS = [
-    "int",
-    "float",
-    "bool",
-    "list",
-    "str",
-    "auto",
     "and",
     "or",
     "not",
@@ -111,7 +106,7 @@ KEYWORDS = [
     "break",
     "silent",
     "as"
-]
+] + VAR_KEYWORDS + NON_STATIC_VAR_KEYWORDS
 
 
 class Token:
@@ -175,16 +170,24 @@ class Position:
 class SymbolTable:
     def __init__(self, parent=None):
         self.symbols = {}
+        self.constant_symbols = {}
+        self.options = {'math': False, 'log': True}
         self.parent = parent
 
     def get(self, name):
+        value = self.constant_symbols.get(name, None)
+        if value is not None:
+            return value, True
         value = self.symbols.get(name, None)
         if value is None and self.parent:
             return self.parent.get(name)
-        return value
+        return value, False
 
     def set(self, name, value):
         self.symbols[name] = value
 
     def remove(self, name):
         del self.symbols[name]
+
+    def set_const(self, name, value):
+        self.constant_symbols[name] = value

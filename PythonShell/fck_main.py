@@ -269,8 +269,9 @@ class Lexer:
 #######################################
 
 class Parser:
-    def __init__(self, tokens):
+    def __init__(self, tokens, context):
         self.tokens = tokens
+        self.context = context
         self.tok_idx = -1
         self.advance()
 
@@ -328,7 +329,7 @@ class Parser:
 
             if not more_statements: break
             statement = res.try_register(self.statement())
-            if not statement:
+            if statement is not None:
                 self.reverse(res.to_reverse_count)
                 more_statements = False
                 continue
@@ -432,14 +433,14 @@ class Parser:
                 if self.current_tok is None:
                     return res.failure(ErrorNew(ET_ExpectedExpr, f'Expected an expression after \''
                                                                  f'{"::" if ret.type == TT_SET else ":>"}\'',
-                                                ret.pos_start, ret.pos_end, None))
+                                                ret.pos_start, ret.pos_end, self.context))
                 expr = res.register(self.expr())
                 if res.error: return res
                 return res.success(AutoVarAssignNode(None, var_name, expr, ret.type == TT_SET_RET,
                                                      pos_start, self.current_tok.pos_end))
             else:
                 return res.failure(ErrorNew(ET_ExpectedChar, 'Expected \'::\' or \':>\' for an \'auto\' type variable',
-                                            self.current_tok.pos_start, self.current_tok.pos_end, None))
+                                            self.current_tok.pos_start, self.current_tok.pos_end, self.context))
 
         elif self.current_tok.matches(TT_KEYWORD, 'silent'):
             pos_start = self.current_tok.pos_start
@@ -1318,7 +1319,7 @@ class Interpreter:
     def visit_VarAccessNode(self, node: VarAccessNode, context):
         res = RTResult()
         var_name = node.name_tok.value
-        value = context.symbol_table.get(var_name)
+        value, _ = context.symbol_table.get(var_name)
 
         if not value:
             return res.failure(RTError(
@@ -1688,7 +1689,8 @@ class Interpreter:
             if res.should_return() and (not res.loop_should_continue) and (not res.loop_should_break): return res
 
             if node.var_name_tok:
-                i = context.symbol_table.get(node.var_name_tok.value).value
+                i, _ = context.symbol_table.get(node.var_name_tok.value)
+                i = i.value
             i += step_value
 
             if res.loop_should_continue:
@@ -1801,13 +1803,13 @@ class Interpreter:
 #######################################
 
 global_symbol_table = SymbolTable()
-global_symbol_table.set("true", Bool(1))
-global_symbol_table.set("false", Bool(0))
-global_symbol_table.set("null", Null())
-global_symbol_table.set("endl", String('\n'))
+global_symbol_table.set_const("true", Bool(1))
+global_symbol_table.set_const("false", Bool(0))
+global_symbol_table.set_const("null", Null())
+global_symbol_table.set_const("endl", String('\n'))
 built_in_funcs = ['log', 'print', 'type', 'input', 'clear', 'run', 'quit']
 for i in built_in_funcs:
-    global_symbol_table.set(i, BuiltInFunction(i))
+    global_symbol_table.set_const(i, BuiltInFunction(i))
 
 
 #######################################
@@ -1857,7 +1859,8 @@ def run(fn, text, previous=None) -> RunRes:
     del paren
 
     # Generate AST
-    parser = Parser(tokens)
+    parser = Parser(tokens, Context(fn))
+    parser.context.symbol_table = global_symbol_table
     ast = parser.parse()
     if ast.error:
         out.error = ast.error
@@ -1868,9 +1871,7 @@ def run(fn, text, previous=None) -> RunRes:
 
     # Run program
     interpreter = Interpreter()
-    context = Context(fn)
-    context.symbol_table = global_symbol_table
-    result = interpreter.visit(ast.node, context)
+    result = interpreter.visit(ast.node, parser.context)
     out.result, out.error = result.value, result.error
 
     return out

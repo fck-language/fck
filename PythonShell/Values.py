@@ -833,7 +833,7 @@ class BuiltInFunction(BaseFunction):
     execute_log.arg_names = ['value']
 
     def execute_print(self, exec_ctx):
-        value = exec_ctx.symbol_table.get("value")
+        value, _ = exec_ctx.symbol_table.get("value")
         print(str(value)) if not isinstance(value, Null) else None
         return RTResult().success(None)
 
