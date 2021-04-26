@@ -361,8 +361,8 @@ class Parser:
                 res.register_advancement()
                 self.advance()
                 if not self.current_tok.type == TT_IDENTIFIER:
-                    return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
-                                                          'Expected loop identifier after \'@\''))
+                    return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected loop identifier after \'@\'', pos_start,
+                                                self.current_tok.pos_end, self.context))
                 loop_name = self.current_tok.value
                 res.register_advancement()
                 self.advance()
@@ -376,8 +376,8 @@ class Parser:
                 res.register_advancement()
                 self.advance()
                 if not self.current_tok.type == TT_IDENTIFIER:
-                    return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
-                                                          'Expected loop identifier after \'@\''))
+                    return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected loop identifier after \'@\'', pos_start,
+                                                self.current_tok.pos_end, self.context))
                 loop_name = self.current_tok.value
                 res.register_advancement()
                 self.advance()
@@ -386,13 +386,11 @@ class Parser:
 
         expr = res.register(self.expr())
         if res.error:
-            return res.failure(InvalidSyntaxError(
-                self.current_tok.pos_start, self.current_tok.pos_end,
-                "Expected method, value, identifier, or operator"
-            ))
+            return res.failure(ErrorNew(ET_InvalidSyntax, "Expected method, value, identifier, or operator",
+                                        pos_start, self.current_tok.pos_end, self.context))
         return res.success(expr)
 
-    def expr(self):
+    def expr(self, can_set=True):
         res = ParseResult()
 
         if self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
@@ -408,11 +406,16 @@ class Parser:
             tok_type = self.current_tok.type
             expr = None
 
-            if tok_type in (TT_SET, TT_SET_RET):
+            if tok_type == TT_SET:
                 res.register_advancement()
                 self.advance()
                 expr = res.register(self.expr())
                 if res.error: return res
+            elif tok_type == TT_SET_RET:
+                res.register_advancement()
+                self.advance()
+                if self.current_tok.type not in (TT_NEWLINE, TT_EOF):
+                    expr = res.register(self.expr())
             return res.success(VarAssignNode(default_value, var_name, expr, tok_type == TT_SET_RET,
                                              pos_start, self.current_tok.pos_end))
 
@@ -447,27 +450,27 @@ class Parser:
             res.register_advancement()
             self.advance()
             if self.current_tok.type != TT_LT:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      'Expected \'<\' after \'silent\' keyword'))
+                return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected \'<\' after \'silent\' keyword',
+                                            pos_start, self.current_tok.pos_end, self.context))
             res.register_advancement()
             self.advance()
             if not self.current_tok.list_matches(TT_KEYWORD, SILENCABLE_TYPES.keys()):
                 expanded_list = ", ".join([f'\'{silencable_type}\'' for silencable_type in SILENCABLE_TYPES.keys()])
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      f'Expected one of {expanded_list}'))
+                return res.failure(ErrorNew(ET_InvalidSyntax, f'Expected one of {expanded_list}', pos_start,
+                                            self.current_tok.pos_end, self.context))
             silenced_type = self.current_tok.value
             res.register_advancement()
             self.advance()
 
             if self.current_tok.type != TT_GT:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      f'Expected \'>\' after \'silent<{silenced_type}\''))
+                return res.failure(ErrorNew(ET_InvalidSyntax, f'Expected \'>\' after \'silent<{silenced_type}\'',
+                                            pos_start, self.current_tok.pos_end, self.context))
             res.register_advancement()
             self.advance()
 
             if self.current_tok.type != TT_IDENTIFIER:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      f'Expected identifier after \'silent<{silenced_type}>\''))
+                return res.failure(ErrorNew(ET_InvalidSyntax, f'Expected identifier after \'silent<{silenced_type}>\'',
+                                            pos_start, self.current_tok.pos_end, self.context))
             identifier = self.current_tok
             res.register_advancement()
             self.advance()
@@ -500,13 +503,13 @@ class Parser:
 
             tok_type = self.current_tok.type
 
-            if tok_type in VAR_SET:
+            if tok_type in VAR_SET and (True if can_set else self.tokens[self.tok_idx + 2] == TT_LPAREN_CURLY):
                 tok = VAR_EQUIV.get(tok_type, tok_type)
                 res.register_advancement()
                 self.advance()
                 expr = res.register(self.expr())
                 if res.error: return res
-                return res.success(VarReassignNode(var_name, expr, True if tok_type in VAR_SET_RET else False, tok))
+                return res.success(VarReassignNode(var_name, expr, tok_type in VAR_SET_RET, tok))
             elif tok_type == TT_LPAREN_SQUARE:
                 res.register_advancement()
                 self.advance()
@@ -1067,7 +1070,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        ending_value = res.register(self.statement())
+        ending_value = res.register(self.expr(can_set=False))
         if res.error: return res
 
         if self.current_tok.matches(TT_KEYWORD, "to"):
@@ -1251,7 +1254,7 @@ class Interpreter:
         self.defaultVarReValues = {Int: Int(0), Float: Float(0), Bool: Bool(False), List: List([]),
                                    String: String("")}
 
-    def visit(self, node, context):
+    def visit(self, node, context) -> Value:
         method_name = f'visit_{type(node).__name__}'
         method = getattr(self, method_name, self.no_visit_method)
         return method(node, context)
@@ -1513,11 +1516,14 @@ class Interpreter:
     def visit_VarReassignNode(self, node: VarReassignNode, context):
         res = RTResult()
         var_name = node.var_name_tok
-        previous = context.symbol_table.get(var_name.value).set_pos(node.pos_start, node.pos_end)
+        previous, const = context.symbol_table.get(var_name.value)
+        if const:
+            return res.success(previous if node.ret else None)
         if previous is None:
             return res.failure(
                 RTError(node.pos_start, node.pos_end, f"Variable {var_name.value} is undefined", context))
         if res.should_return(): return res
+        previous = previous.set_pos(node.pos_start, node.pos_end)
         token = node.token
         value = res.register(self.visit(node.value_node, context))
 
@@ -1525,16 +1531,21 @@ class Interpreter:
             value = self.defaultVarReValues.get(type(previous))
 
         if token == TT_SET:
-            previous = type(previous)
-            return self.assignChecks(var_name.value, value, previous, node, context)
+            value = res.register(previous.assign_checks(value, node.pos_start, node.pos_end, context))
+            if res.should_return(): return res
+            context.symbol_table.set(node.var_name_tok.value, value)
+            return res.success(value if node.ret else None)
 
         methods = {TT_SET_PLUS: previous.added_to, TT_SET_MINUS: previous.subbed_by, TT_SET_MULT: previous.multed_by,
                    TT_SET_DIV: previous.dived_by, TT_SET_FDIV: previous.fdived_by, TT_SET_MOD: previous.modded_by,
                    TT_SET_POW: previous.powed_by}
 
         value, error = methods.get(token)(value)
-        if error: return None, error
-        return self.assignChecks(var_name.value, value, type(previous), node, context)
+        if error: return res.failure(error)
+        value = res.register(previous.assign_checks(value, node.pos_start, node.pos_end, context))
+        if res.should_return(): return res
+        context.symbol_table.set(node.var_name_tok.value, value)
+        return res.success(value if node.ret else None)
 
     def visit_BinOpNode(self, node: BinOpNode, context):
         res = RTResult()
@@ -1643,6 +1654,50 @@ class Interpreter:
         end_value = res.register(self.visit(node.end_value_node, context))
         if res.should_return(): return res
 
+        if end_value is None:
+            return res.failure(ErrorNew(ET_ExpectedExpr, 'Expected a numerical or list type to iterate over',
+                                        node.end_value_node.pos_start, node.end_value_node.pos_end, context))
+
+        if isinstance(end_value, List):
+            if node.start_value_node:
+                end_value_recursive = end_value.recursive_single()
+                print(end_value_recursive)
+                if end_value_recursive[1]:
+                    end_value = end_value_recursive[2]
+            else:
+                    for current_iteration in end_value.elements:
+                        if node.var_name_tok:
+                            context.symbol_table.set(node.var_name_tok.value, current_iteration)
+
+                        value = res.register(self.visit(node.suite_node, context))
+                        if res.loop_should_break:
+                            if res.break_loop_name != node.reference_name:
+                                return res
+                        if res.should_return() and (not res.loop_should_continue) and (not res.loop_should_break):
+                            return res
+
+                        if res.loop_should_continue:
+                            continue
+
+                        if res.loop_should_break:
+                            break
+
+                        elements.append(value)
+
+                    if node.var_name_tok:
+                        context.symbol_table.remove(node.var_name_tok.value)
+
+                    if node.reference_name:
+                        del context.named_loops[-1]
+
+                    return res.success(None if should_return_null else
+                               List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
+        if not (isinstance(end_value, Int) and isinstance(start_value, Int)):
+            end_value = res.register(end_value.as_type('float', end_value.pos_start, end_value.pos_end, context))
+            if res.error: return res
+            start_value = res.register(
+                start_value.as_type('float', start_value.pos_start, start_value.pos_end, context))
+            if res.error: return res
         end_value = end_value.value
         start_value = start_value.value
         i = start_value
