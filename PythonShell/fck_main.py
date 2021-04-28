@@ -1315,7 +1315,7 @@ class Interpreter:
         expr = res.register(self.visit(node.expr, context))
         if res.error: return res
         assert isinstance(expr, Value)
-        reformatted_expr = res.register(expr.as_type(node, context))
+        reformatted_expr = res.register(expr.as_type(node.as_type, node.pos_start, node.pos_end, context))
         if res.error: return res
         return res.success(reformatted_expr)
 
@@ -1880,7 +1880,7 @@ class RunRes:
 
 
 def run(fn, text, previous=None) -> RunRes:
-    out = RunRes(None, None, [], False)
+    out = RunRes(List([]), None, [], False)
 
     # Generate tokens
     lexer = Lexer(fn, text)
