@@ -1254,7 +1254,7 @@ class Interpreter:
         self.defaultVarReValues = {Int: Int(0), Float: Float(0), Bool: Bool(False), List: List([]),
                                    String: String("")}
 
-    def visit(self, node, context) -> Value:
+    def visit(self, node, context) -> RTResult:
         method_name = f'visit_{type(node).__name__}'
         method = getattr(self, method_name, self.no_visit_method)
         return method(node, context)
