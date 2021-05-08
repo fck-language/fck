@@ -705,27 +705,27 @@ class List(Value):
                 return False, False, self.elements
         return False, True, test_list
 
-    def as_type(self, node, context):
+    def as_type(self, to_type, pos_start, pos_end, context):
         res = RTResult()
-        if node.as_type == 'int':
+        if to_type == 'int':
             _, recursive, value = self.recursive_single()
             if recursive:
-                return value.as_type(node, context)
+                return value.as_type(to_type, pos_start, pos_end, context)
             return res.failure(ErrorNew(ET_IllegalValue, f'Cannot convert \'{value}\' of type \'{type_(self)}\' '
                                                          f'into an \'int\'',
-                                        node.pos_start, node.pos_end, context))
-        if node.as_type in ('float', 'str'):
+                                        pos_start, pos_end, context))
+        if to_type in ('float', 'str'):
             _, recursive, value = self.recursive_single()
             if recursive:
-                return value.as_type(node, context)
-            return res.failure(IllegalValueError(node.pos_start, node.pos_end,
-                                                 f'Cannot convert \'{value}\' into a \'{node.as_type}\''))
-        if node.as_type == 'bool':
+                return value.as_type(to_type, pos_start, pos_end, context)
+            return res.failure(IllegalValueError(pos_start, pos_end,
+                                                 f'Cannot convert \'{value}\' into a \'{to_type}\''))
+        if to_type == 'bool':
             recursive, _, _ = self.recursive_single()
             return res.success(Bool(recursive))
-        if node.as_type == 'list':
+        if to_type == 'list':
             return self
-        return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end))
+        return res.failure(InvalidSyntaxError(pos_start, pos_end))
 
     def assign_checks(self, value, pos_start, pos_end, context):
         res = RTResult()
@@ -775,38 +775,11 @@ class BaseFunction(Value):
         new_context.symbol_table = SymbolTable(new_context.parent.symbol_table)
         return new_context
 
-    def check_args(self, arg_names, args):
-        res = RTResult()
-
-        if len(args) > len(arg_names):
-            return res.failure(RTError(
-                self.pos_start, self.pos_end,
-                f"{len(args) - len(arg_names)} too many args passed into {self}",
-                self.context
-            ))
-
-        if len(args) < len(arg_names):
-            return res.failure(RTError(
-                self.pos_start, self.pos_end,
-                f"{len(arg_names) - len(args)} too few args passed into {self}",
-                self.context
-            ))
-
-        return res.success(None)
-
-    def populate_args(self, arg_names, args, exec_ctx):
-        for i in range(len(args)):
-            arg_name = arg_names[i]
-            arg_value = args[i]
+    def populate_args(self, args, exec_ctx):
+        for arg_name, arg_value in args.items():
             arg_value.set_context(exec_ctx)
             exec_ctx.symbol_table.set(arg_name, arg_value)
-
-    def check_and_populate_args(self, arg_names, args, exec_ctx):
-        res = RTResult()
-        res.register(self.check_args(arg_names, args))
-        if res.should_return(): return res
-        self.populate_args(arg_names, args, exec_ctx)
-        return res.success(None)
+        return RTResult().success(None)
 
 
 class Function(BaseFunction):
@@ -866,7 +839,7 @@ class BuiltInFunction(BaseFunction):
     execute_print.arg_names = ['value']
 
     def execute_type(self, exec_ctx):
-        print(exec_ctx.symbol_table.get("value").get_type(True))
+        print(exec_ctx.symbol_table.get("value")[0].get_type(True))
         return RTResult().success(None)
 
     execute_type.arg_names = ['value']
@@ -904,7 +877,7 @@ class BuiltInFunction(BaseFunction):
 
 
 def __value_to_bool__(value):
-    return True if value > 0 else False
+    return value > 0
 
 
 class_identifier_values = {int: 0, float: 0.5, bool: 0}

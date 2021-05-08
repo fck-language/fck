@@ -10,12 +10,13 @@ ET_InvalidSyntax = "InvalidSyntax"
 ET_IllegalOperation = "IllegalOperation"
 ET_IllegalValue = "IllegalValue"
 ET_IllegalVariableAssignment = "IllegalVariableAssignment"
+ET_ExpectedIdentifier = "ExpectedIdentifier"
+ET_ExpectedTypeIdentifier = "ExpectedTypeIdentifier"
 
 AET_TooArgumentError = "TooArgumentError"
 AET_AttributeTypeError = "AttributeTypeError"
 AET_IllegalArgumentValue = "IllegalArgumentValue"
 AET_UnknownAttributeError = "UnknownAttributeError"
-
 
 errorFormatting = {ET_IllegalChar: "",
                    ET_ExpectedChar: "",
@@ -24,6 +25,8 @@ errorFormatting = {ET_IllegalChar: "",
                    ET_IllegalOperation: "",
                    ET_IllegalValue: "",
                    ET_IllegalVariableAssignment: "",
+                   ET_ExpectedIdentifier: "",
+                   ET_ExpectedTypeIdentifier: "",
                    AET_IllegalArgumentValue: "\n{arg_explain}",
                    AET_AttributeTypeError: "\n{arg_explain}",
                    AET_TooArgumentError: "\n{arg_explain}",
@@ -36,6 +39,8 @@ errorNames = {ET_IllegalChar: "Illegal character",
               ET_IllegalOperation: "Illegal operation",
               ET_IllegalValue: "Illegal value",
               ET_IllegalVariableAssignment: "Illegal variable value",
+              ET_ExpectedIdentifier: "Expected Identifier",
+              ET_ExpectedTypeIdentifier: "Expected variable type",
               AET_UnknownAttributeError: "Unknown Attribute Error",
               AET_TooArgumentError: "Too Argument Error",
               AET_IllegalArgumentValue: "Illegal Argument Value",

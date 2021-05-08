@@ -327,6 +327,15 @@ class FuncDefNode:
         self.pos_end = self.body_node.pos_end
 
 
+class FuncArgNode:
+    def __init__(self, type_, pos_start):
+        self.type_ = type_
+        self.default_value_node = None
+
+        self.pos_start = pos_start
+        self.pos_end = None
+
+
 class CallNode:
     def __init__(self, node_to_call, arg_nodes):
         self.node_to_call = node_to_call

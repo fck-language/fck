@@ -20,6 +20,8 @@ WT_ValueFromList = "ValueFromList"
 WT_ValueFromString = "ValueFromString"
 WT_StringFromValue = "StringFromValue"
 WT_NoStringEnd = "NoStringEnd"
+WT_FuncArgRet = "FuncArgRet"
+WT_FuncAssignOperator = "FuncAssignOperator"
 
 wrn_messages = {WT_DivideByZero: ['Divide by zero found'],
                 WT_ModByZero: ['Modulo by zero found'],
@@ -37,7 +39,9 @@ wrn_messages = {WT_DivideByZero: ['Divide by zero found'],
                 WT_ValueFromList: ['You shouldn\'t really do this but we fixed it for you anyway'],
                 WT_ValueFromString : ['Try casting is using \'as\'...'],
                 WT_StringFromValue: ['Try using \'as str\'...'],
-                WT_NoStringEnd: ['Go back and check this line, then add in the end of the string']}
+                WT_NoStringEnd: ['Go back and check this line, then add in the end of the string'],
+                WT_FuncArgRet: ['I\'ll pretend like I didn\'t see that...'],
+                WT_FuncAssignOperator: ['You can\'t multiply something by nothing']}
 
 wrn_names = {WT_DivideByZero: "Divide by zero. Returned infinity",
              WT_ModByZero: "Modulo by zero. Returned 0",
@@ -56,7 +60,9 @@ wrn_names = {WT_DivideByZero: "Divide by zero. Returned infinity",
              WT_ValueFromList: "Numerical variable assigned to a list with one element. Changed list to single value",
              WT_ValueFromString: "Numerical variable assigned to a string. Changed string into a value",
              WT_StringFromValue: "Numerical value assigned to a str. Converted the value into a string",
-             WT_NoStringEnd: "First string delimiter had no ending delimiter on the same line"}
+             WT_NoStringEnd: "First string delimiter had no ending delimiter on the same line",
+             WT_FuncArgRet: "Cannot return passed in argument to function",
+             WT_FuncAssignOperator: "Cannot use an operator assignment for a function argument"}
 
 err_explain = []
 

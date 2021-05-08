@@ -1174,50 +1174,73 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        arg_name_toks = []
+        func_args = {}
 
-        if self.current_tok.type == TT_IDENTIFIER:
-            arg_name_toks.append(self.current_tok)
-            res.register_advancement()
-            self.advance()
-
-            while self.current_tok.type == TT_COMMA:
+        if self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
+            while True:
+                if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
+                    return res.failure(ErrorNew(ET_ExpectedIdentifier, 'Expected variable type identifier for function'
+                                                                       ' argument', self.current_tok.pos_start,
+                                                self.current_tok.pos_end, self.context))
+                arg = FuncArgNode(self.current_tok.value, self.current_tok.pos_start)
                 res.register_advancement()
                 self.advance()
-
                 if self.current_tok.type != TT_IDENTIFIER:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                          "Expected identifier"))
-
-                arg_name_toks.append(self.current_tok)
+                    return res.failure(ErrorNew(ET_ExpectedIdentifier, 'Expected variable identifier for function '
+                                                                       'argument', self.current_tok.pos_start,
+                                                self.current_tok.pos_end, self.context))
+                identifier = self.current_tok.value
                 res.register_advancement()
                 self.advance()
-
-            if self.current_tok.type != TT_RPAREN:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected ',' or ')'"))
-
+                if self.current_tok.type in VAR_SET_RET:
+                    NonBreakError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                  self.context, WT_FuncArgRet).print_method()
+                    self.current_tok.type = VAR_EQUIV[self.current_tok.type]
+                if self.current_tok.type in VAR_SET:
+                    if self.current_tok.type != TT_SET:
+                        NonBreakError(self.current_tok.pos_start, self.current_tok.pos_end,
+                                      self.context, WT_FuncAssignOperator).print_method()
+                    res.register_advancement()
+                    self.advance()
+                    arg.default_value_node = res.register(self.expr())
+                    if res.error: return res
+                elif self.current_tok.type == TT_RPAREN:
+                    func_args[identifier] = arg
+                    res.register_advancement()
+                    self.advance()
+                    break
+                elif self.current_tok.type != TT_COMMA:
+                    return res.failure(ErrorNew(ET_ExpectedChar, f'Expected \',\' or \')\' after function argument',
+                                                self.current_tok.pos_start, self.current_tok.pos_end, self.context))
+                func_args[identifier] = arg
+                res.register_advancement()
+                self.advance()
+            del arg
+        elif self.current_tok.type == TT_RPAREN:
             res.register_advancement()
             self.advance()
+        else:
+            return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected variable type identifier or \')\' after \'(\''
+                                                          ' for function definition.', self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
 
-            if self.current_tok.type != TT_LPAREN_CURLY:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected '{'"))
+        if self.current_tok.type != TT_LPAREN_CURLY:
+            return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected \'{\' after function arguments',
+                                        self.current_tok.pos_start, self.current_tok.pos_end, self.context))
+        res.register_advancement()
+        self.advance()
 
-            res.register_advancement()
-            self.advance()
+        suite = res.register(self.statements())
+        if res.error: return res
 
-            suite = res.register(self.statements())
-            if res.error: return res
+        if self.current_tok.type != TT_RPAREN_CURLY:
+            return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected \'}\' after function suite',
+                                        self.current_tok.pos_start, self.current_tok.pos_end, self.context))
 
-            if self.current_tok.type != TT_RPAREN_CURLY:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected '}'"))
+        res.register_advancement()
+        self.advance()
 
-            res.register_advancement()
-            self.advance()
-
-            return res.success(FuncDefNode(var_name_tok, arg_name_toks, suite))
+        return res.success(FuncDefNode(var_name_tok, func_args, suite))
 
     def bin_op(self, func_a, ops, func_b=None):
         if func_b is None:
@@ -1797,25 +1820,76 @@ class Interpreter:
 
         func_name = node.var_name_tok.value if node.var_name_tok else None
         body_node = node.body_node
-        arg_names = [arg_name.value for arg_name in node.arg_name_toks]
-        func_value = Function(func_name, body_node, arg_names).set_context(context).set_pos(
+        func_value = Function(func_name, body_node, node.arg_name_toks).set_context(context).set_pos(
             node.pos_start, node.pos_end)
 
         if node.var_name_tok:
             context.symbol_table.set(func_name, func_value)
 
-        return res.success(func_value)
+        return res.success(None)
 
     def visit_CallNode(self, node: CallNode, context):
         res = RTResult()
-        args = []
 
         value_to_call = res.register(self.visit(node.node_to_call, context))
         if res.should_return(): return res
         value_to_call = value_to_call.copy().set_pos(node.pos_start, node.pos_end)
+        keys = list(value_to_call.arg_names.keys())
+        # args has items with the general form {<key>: [<needs a value / no default>, <filled>]}
+        args = {key: [item.default_value_node, False] for key, item in list(value_to_call.arg_names.items())}
+        comp_args = [key for key, value in list(args.items()) if not value[0]]
+        # opt_given is the number of arguments given that were optional
+        opt_given = len(node.arg_nodes) - sum([i_[0] is None for i_ in args.values()])
+        if opt_given < 0:
+            return res.failure(ErrorNew(AET_TooArgumentError, f'{abs(opt_given)} too few arguments given.',
+                                        node.pos_start, node.pos_end, context))
 
-        for arg_node in node.arg_nodes:
-            args.append(res.register(self.visit(arg_node, context)))
+        # separation of values with an identifier like a :: 1 and those without
+        mask = [isinstance(arg, VarReassignNode) for arg in node.arg_nodes]
+        named = [arg for arg_index, arg in enumerate(node.arg_nodes) if mask[arg_index]]
+        # Going through the named values
+
+        arg_index = 0
+        for arg_index, arg in enumerate(named):
+            if arg.var_name_tok.value in keys:
+                args[arg.var_name_tok.value] = [arg.value_node, True]
+                if arg.var_name_tok.value in comp_args:
+                    opt_given -= 1
+            else:
+                # Warning about bad argument identifier so ignored identifier or something
+                mask[arg_index] = False
+                node.arg_nodes[arg_index] = arg.value_node
+
+        # memory cleanup I guess
+        del named, arg_index
+
+        # un_named is calculated here because the mask MAY have changed after going through the named args
+        un_named = [arg for arg_index, arg in enumerate(node.arg_nodes) if not mask[arg_index]]
+
+        min_unfilled = 0
+        arg_index = 0
+        while arg_index < len(un_named):
+            arg = un_named[arg_index]
+            if opt_given:
+                opt_given -= args[keys[min_unfilled]][0] is not None
+                args[keys[min_unfilled]] = [arg, True]
+                arg_index += 1
+            elif args[keys[min_unfilled]][0] is None:
+                args[keys[min_unfilled]] = [arg, True]
+                arg_index += 1
+            min_unfilled += 1
+
+        del min_unfilled, arg_index
+
+        args = {key: value[0] for key, value in args.items()}
+
+        if sum([value is None for value in args.values()]) != 0:
+            return res.failure(ErrorNew(AET_TooArgumentError, f'{sum([value is None for value in args.values()])} '
+                                                              f'too few arguments given.',
+                                        node.pos_start, node.pos_end, context))
+
+        for key, value in args.items():
+            args[key] = res.register(self.visit(value, context))
             if res.should_return(): return res
 
         return_value = res.register(value_to_call.execute(args))
@@ -1941,7 +2015,7 @@ def execute(self, args):
     interpreter = Interpreter()
     exec_ctx = self.generate_new_context()
 
-    res.register(self.check_and_populate_args(self.arg_names, args, exec_ctx))
+    res.register(self.populate_args(args, exec_ctx))
     if res.should_return(): return res
 
     value = res.register(interpreter.visit(self.body_node, exec_ctx))
@@ -1955,7 +2029,7 @@ Function.execute = execute
 
 
 def execute_run(self, exec_ctx):
-    fn = exec_ctx.symbol_table.get("fn")
+    fn, _ = exec_ctx.symbol_table.get("fn")
 
     if not isinstance(fn, String):
         return RTResult().failure(RTError(self.pos_start, self.pos_end, "Filename must be a string", exec_ctx))
