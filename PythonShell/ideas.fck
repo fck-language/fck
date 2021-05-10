@@ -6,12 +6,13 @@ def add(a,b){
   return a + b
 }
 
-## 'log' and 'print' aren't the same thing...
-## More functionality for 'print' will come soon...
 print(add(1,2)) #This is an in-line comment#
 log(add(1,2))
 print("add(2,1) returns " + add(2,1) + " in the print method")
 log("add(1,2) returns " + add(1,2) + " in the log method")
+
+`nomath
+`nolog
 
 @loop iterate 10 :: i {
   while (3 < 5){
@@ -29,7 +30,7 @@ log("add(1,2) returns " + add(1,2) + " in the log method")
         }
         option(9){
           print("this shouldn\'t happen")
-          ## This will never be run, since the iterate loop called @loop stops when i == 7
+          ## This will never be run, since the iterate loop called @loop stops when i is 7
         }
         default{ #This is like the 'else' of an if else statement#
           log(i)

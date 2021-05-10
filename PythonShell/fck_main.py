@@ -566,9 +566,16 @@ class Parser:
             res.register_advancement()
             self.advance()
             pos_start = self.current_tok.pos_start.copy()
+            error_case = False
+            if isinstance(node, AsNode):
+                if node.as_type != 'bool':
+                    error_case = res.register(self.expr())
+                    if res.error: return res
+                    if self.current_tok.type != TT_SEMICOLON:
+                        return res.success(AsErrorCatchNode(node, error_case, pos_start, self.current_tok.pos_end.copy()))
             given = False
             if self.current_tok.type == TT_SEMICOLON:
-                if_true = None
+                if_true = error_case if error_case else None
             else:
                 given = True
                 if_true = res.register(self.expr())
@@ -1329,6 +1336,14 @@ class Interpreter:
             value = None if node.if_false is None else res.register(self.visit(node.if_false, context))
         if res.should_return(): return res
         return res.success(value)
+
+    def visit_AsErrorCatchNode(self, node: AsErrorCatchNode, context: Context):
+        res = RTResult()
+        out = res.register(self.visit(node.as_node, context))
+        if res.error:
+            out = res.register(self.visit(node.error_catch_node, context))
+            if res.should_return(): return res
+        return res.success(out)
 
     def visit_SilentNode(self, node: SilentNode, context):
         return RTResult().success(node)

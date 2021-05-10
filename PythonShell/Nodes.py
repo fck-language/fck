@@ -152,6 +152,15 @@ class TrueFalseNode:
         self.pos_end = pos_end
 
 
+class AsErrorCatchNode:
+    def __init__(self, as_node, error_catch_node, pos_start, pos_end):
+        self.as_node = as_node
+        self.error_catch_node = error_catch_node
+
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+
 class BinOpNode:
     def __init__(self, left_node, op_tok, right_node):
         self.left_node = left_node
