@@ -349,9 +349,9 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            expr = res.try_register(self.expr())
-            if not expr:
-                self.reverse(res.to_reverse_count)
+            if self.current_tok.type == TT_NEWLINE:
+                return res.success(ReturnNode(None, pos_start, self.current_tok.pos_start.copy()))
+            expr = res.register(self.expr())
             return res.success(ReturnNode(expr, pos_start, self.current_tok.pos_start.copy()))
 
         if self.current_tok.matches(TT_KEYWORD, 'continue'):
