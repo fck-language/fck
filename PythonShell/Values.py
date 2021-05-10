@@ -1,10 +1,12 @@
 import sys
+from math import sqrt, sin, cos, floor, ceil, pi, atan
 
 from Bases import *
 from Errors import *
 from Results import RTResult
 import os
 from ErrorsNew import *
+from Nodes import FuncArgNode
 
 
 def type_(value):
@@ -36,7 +38,13 @@ class Value:
         pass
 
     def as_type(self, to_type, pos_start, pos_end, context):
-        raise Exception(f'Missing \'as_type()\' method for {type(self)}!')
+        if to_type == 'auto':
+            return RTResult().success(self)
+        return RTResult().failure(ErrorNew(ET_InvalidSyntax, f'Cannot cast \'{self.value}\' of type {type_(self.value)}'
+                                                             f' into a \'{to_type}\'', pos_start, pos_end, context))
+
+    def post_init(self, value):
+        raise Exception(f'Missing \'post_init()\' method for {type(self)}!')
         pass
 
     def added_to(self, other):
@@ -253,18 +261,7 @@ class Number(Value):
         return res.failure(illegal_value_error)
 
     def as_type(self, to_type, pos_start, pos_end, context):
-        res = RTResult()
-        if to_type == 'int':
-            return res.success(Int(self.value))
-        elif to_type == 'float':
-            return res.success(Float(self.value))
-        elif to_type == 'str':
-            return res.success(String(self.value))
-        elif to_type == 'list':
-            return res.success(List([self.value]))
-        elif to_type == 'bool':
-            return res.success(Bool(self.value.is_true()))
-        super().as_type(to_type, pos_start, pos_end, context)
+        return super().as_type(to_type, pos_start, pos_end, context)
 
     def ret_type(self, other):
         return_types = {0.5: Float, 0: Int}
@@ -420,7 +417,7 @@ class Int(Number):
             return res.success(List([self]))
         if to_type == 'bool':
             return res.success(Bool(self.value))
-        return res.failure(InvalidSyntaxError(pos_start, pos_end))
+        return super().as_type(to_type, pos_start, pos_end, context)
 
     def copy(self):
         copy = Int(self.value)
@@ -450,7 +447,7 @@ class Float(Number):
             return res.success(List([self]))
         if to_type == 'bool':
             return res.success(Bool(self.value))
-        return res.failure(InvalidSyntaxError(pos_start, pos_end))
+        return super().as_type(to_type, pos_start, pos_end, context)
 
     def copy(self):
         copy = Float(self.value)
@@ -593,7 +590,7 @@ class Bool(Number):
             return res.success(List([self]))
         if to_type == 'bool':
             return res.success(self)
-        return res.failure(InvalidSyntaxError(pos_start, pos_end))
+        return super().as_type(to_type, pos_start, pos_end, context)
 
     def copy(self):
         copy = Bool(self.value)
@@ -646,7 +643,7 @@ class String(Value):
             return res.success(List([self]))
         elif to_type == 'bool':
             return res.success(Bool(len(self.value)))
-        return res.failure(InvalidSyntaxError(pos_start, pos_end))
+        return super().as_type(to_type, pos_start, pos_end, context)
 
     def added_to(self, other):
         if isinstance(other, String):
@@ -725,7 +722,7 @@ class List(Value):
             return res.success(Bool(recursive))
         if to_type == 'list':
             return self
-        return res.failure(InvalidSyntaxError(pos_start, pos_end))
+        return super().as_type(to_type, pos_start, pos_end, context)
 
     def assign_checks(self, value, pos_start, pos_end, context):
         res = RTResult()
@@ -773,6 +770,7 @@ class BaseFunction(Value):
     def generate_new_context(self):
         new_context = Context(self.name, self.context, self.pos_start)
         new_context.symbol_table = SymbolTable(new_context.parent.symbol_table)
+        new_context.symbol_table.options = new_context.parent.symbol_table.options
         return new_context
 
     def populate_args(self, args, exec_ctx):
@@ -802,70 +800,33 @@ class Function(BaseFunction):
 
 
 class BuiltInFunction(BaseFunction):
-    def __init__(self, name):
+    def __init__(self, name, arg_names, executable):
         super().__init__(name)
+        self.arg_names = arg_names
+        self.executable = executable
+
+    def pre_execute(self, args):
+        exec_ctx = self.generate_new_context()
+        self.populate_args(args, exec_ctx)
+        return exec_ctx
 
     def execute(self, args):
-        res = RTResult()
-        exec_ctx = self.generate_new_context()
+        return self.executable(self, self.pre_execute(args))
 
-        method = getattr(self, f'execute_{self.name}', self.no_visit_method)
-        res.register(self.check_and_populate_args(method.arg_names, args, exec_ctx))
-        if res.should_return(): return res
-
-        return_value = res.register(method(exec_ctx))
-        if res.should_return(): return res
-        return res.success(return_value)
-
-    def no_visit_method(self, context):
-        raise Exception(f'No \'execute_{self.name}\' method defined silly x')
-
-    def execute_log(self, exec_ctx: Context):
-        added = ''
-        out = repr(exec_ctx.symbol_table.get("value"))
-        if exec_ctx.parent.display_name == '<shell>':
-            if str(exec_ctx.symbol_table.get("value"))[-1] != '\n':
-                added = '\033[1;7m%\033[0m\n'
-        print(out + added, end='')
-        return RTResult().success(None)
-
-    execute_log.arg_names = ['value']
-
-    def execute_print(self, exec_ctx):
-        value, _ = exec_ctx.symbol_table.get("value")
-        print(str(value)) if not isinstance(value, Null) else None
-        return RTResult().success(None)
-
-    execute_print.arg_names = ['value']
-
-    def execute_type(self, exec_ctx):
-        print(exec_ctx.symbol_table.get("value")[0].get_type(True))
-        return RTResult().success(None)
-
-    execute_type.arg_names = ['value']
-
-    def execute_input(self, exec_ctx):
-        text = input()
-        return RTResult().success((String(text)))
-
-    execute_input.arg_names = []
-
-    def execute_clear(self, exec_ctx):
-        os.system('cls' if os.name == 'nt' else 'clear')
-        return RTResult().success(None)
-
-    execute_clear.arg_names = []
-
-    def execute_run(self, exec_ctx):
-        pass
-
-    def execute_quit(self, exec_ctx):
-        sys.exit(0)
-
-    execute_quit.arg_names = []
+    # def execute_root(self, exec_ctx):
+    #     value = exec_ctx.symbol_table.get('value')[0]
+    #     root_ = exec_ctx.symbol_table.get('root_')[0]
+    #     mod = sqrt(value.re ** 2 + value.im ** 2)
+    #     arg = atan(value.im / value.re)
+    #     arg = arg - 2 * pi if arg > pi else arg
+    #     k = list(range(ceil((-root_ * pi - arg) / (2 * pi)), floor((root_ * pi - arg) / (2 * pi)) + 1))
+    #     k = [(arg + 2 * n_ * pi) / root_ for n_ in k]
+    #     return List([Imag(mod * cos(n_), mod * sin(n_)) for n_ in k])
+    #
+    # execute_root.arg_names = ['value', 'root_']
 
     def copy(self):
-        copy = BuiltInFunction(self.name)
+        copy = BuiltInFunction(self.name, self.arg_names, self.executable)
         copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
         return copy
 
@@ -880,9 +841,54 @@ def __value_to_bool__(value):
     return value > 0
 
 
+def execute_log(self, exec_ctx: Context):
+    added = ''
+    out = exec_ctx.symbol_table.get("value")[0]
+    if exec_ctx.parent.display_name == '<shell>':
+        if str(out)[-1] != '\n':
+            added = '\033[1;7m%\033[0m\n'
+    print(repr(out) + added, end='')
+    return RTResult().success(None)
+
+
+def execute_print(self, exec_ctx: Context):
+    value, _ = exec_ctx.symbol_table.get("value")
+    print(value) if not isinstance(value, Null) else None
+    del value, exec_ctx
+    return RTResult().success(None)
+
+
+def execute_type(self, exec_ctx: Context):
+    print(exec_ctx.symbol_table.get("value")[0].get_type(True))
+    return RTResult().success(None)
+
+
+def execute_input(self, exec_ctx: Context):
+    text = input(exec_ctx.symbol_table.get('prompt')[0])
+    return RTResult().success(String(text))
+
+
+def execute_clear(self, exec_ctx: Context):
+    os.system('cls' if os.name == 'nt' else 'clear')
+    return RTResult().success(None)
+
+
+def execute_quit(self, exec_ctx: Context):
+    sys.exit(0)
+
+
+func_log = BuiltInFunction('log', {'value': FuncArgNode('str', None, String(''))}, execute_log)
+func_print = BuiltInFunction('print', {'value': FuncArgNode('str', None, String(''))}, execute_print)
+func_type = BuiltInFunction('type', {'value': FuncArgNode('auto', None)}, execute_type)
+func_input = BuiltInFunction('input', {'prompt': FuncArgNode('str', None, String(''))}, execute_input)
+func_clear = BuiltInFunction('clear', {}, execute_clear)
+func_run = BuiltInFunction('run', {'fn': FuncArgNode('str', None)}, None)
+func_quit = BuiltInFunction('quit', {}, execute_quit)
+
 class_identifier_values = {int: 0, float: 0.5, bool: 0}
 
-default_values = {'int': Int(0), 'float': Float(0), 'str': String(''), 'list': List([]), 'bool': Bool(False)}
+default_values = {'int': Int(0), 'float': Float(0), 'str': String(''), 'list': List([]), 'bool': Bool(False),
+                  }  # 'imag': Imag(1, 0)}
 type_values = {}
 for i, n in default_values.items():
     type_values[type(n)] = i

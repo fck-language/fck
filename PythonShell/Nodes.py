@@ -328,9 +328,9 @@ class FuncDefNode:
 
 
 class FuncArgNode:
-    def __init__(self, type_, pos_start):
+    def __init__(self, type_, pos_start, default_value_node=None):
         self.type_ = type_
-        self.default_value_node = None
+        self.default_value_node = default_value_node
 
         self.pos_start = pos_start
         self.pos_end = None

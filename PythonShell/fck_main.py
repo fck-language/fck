@@ -314,7 +314,7 @@ class Parser:
 
         statement = res.register(self.statement())
         if res.error: return res
-        statements.append(statement)
+        if statement is not None: statements.append(statement)
 
         more_statements = True
 
@@ -1204,7 +1204,7 @@ class Parser:
                     self.advance()
                     arg.default_value_node = res.register(self.expr())
                     if res.error: return res
-                elif self.current_tok.type == TT_RPAREN:
+                if self.current_tok.type == TT_RPAREN:
                     func_args[identifier] = arg
                     res.register_advancement()
                     self.advance()
@@ -1688,33 +1688,33 @@ class Interpreter:
                 if end_value_recursive[1]:
                     end_value = end_value_recursive[2]
             else:
-                    for current_iteration in end_value.elements:
-                        if node.var_name_tok:
-                            context.symbol_table.set(node.var_name_tok.value, current_iteration)
-
-                        value = res.register(self.visit(node.suite_node, context))
-                        if res.loop_should_break:
-                            if res.break_loop_name != node.reference_name:
-                                return res
-                        if res.should_return() and (not res.loop_should_continue) and (not res.loop_should_break):
-                            return res
-
-                        if res.loop_should_continue:
-                            continue
-
-                        if res.loop_should_break:
-                            break
-
-                        elements.append(value)
-
+                for current_iteration in end_value.elements:
                     if node.var_name_tok:
-                        context.symbol_table.remove(node.var_name_tok.value)
+                        context.symbol_table.set(node.var_name_tok.value, current_iteration)
 
-                    if node.reference_name:
-                        del context.named_loops[-1]
+                    value = res.register(self.visit(node.suite_node, context))
+                    if res.loop_should_break:
+                        if res.break_loop_name != node.reference_name:
+                            return res
+                    if res.should_return() and (not res.loop_should_continue) and (not res.loop_should_break):
+                        return res
 
-                    return res.success(None if should_return_null else
-                               List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
+                    if res.loop_should_continue:
+                        continue
+
+                    if res.loop_should_break:
+                        break
+
+                    elements.append(value)
+
+                if node.var_name_tok:
+                    context.symbol_table.remove(node.var_name_tok.value)
+
+                if node.reference_name:
+                    del context.named_loops[-1]
+
+                return res.success(None if should_return_null else
+                                   List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
         if not (isinstance(end_value, Int) and isinstance(start_value, Int)):
             end_value = res.register(end_value.as_type('float', end_value.pos_start, end_value.pos_end, context))
             if res.error: return res
@@ -1849,7 +1849,6 @@ class Interpreter:
         named = [arg for arg_index, arg in enumerate(node.arg_nodes) if mask[arg_index]]
         # Going through the named values
 
-        arg_index = 0
         for arg_index, arg in enumerate(named):
             if arg.var_name_tok.value in keys:
                 args[arg.var_name_tok.value] = [arg.value_node, True]
@@ -1861,7 +1860,7 @@ class Interpreter:
                 node.arg_nodes[arg_index] = arg.value_node
 
         # memory cleanup I guess
-        del named, arg_index
+        del named
 
         # un_named is calculated here because the mask MAY have changed after going through the named args
         un_named = [arg for arg_index, arg in enumerate(node.arg_nodes) if not mask[arg_index]]
@@ -1891,6 +1890,15 @@ class Interpreter:
         for key, value in args.items():
             args[key] = res.register(self.visit(value, context))
             if res.should_return(): return res
+            args[key] = res.register(
+                args[key].as_type(value_to_call.arg_names[key].type_, args[key].pos_start, args[key].pos_end, context))
+            if res.should_return():
+                if value_to_call.arg_names[key].default_value_node:
+                    NonBreakError(value.pos_start, value.pos_end, context, WT_ArgCastError).print_method()
+                    args[key] = res.register(self.visit(value_to_call.arg_names[key].default_value_node, context))
+                    if res.should_return(): return res
+                else:
+                    return res
 
         return_value = res.register(value_to_call.execute(args))
         if res.should_return(): return res
@@ -1928,20 +1936,6 @@ class Interpreter:
 
 
 #######################################
-# GLOBAL VARIABLES
-#######################################
-
-global_symbol_table = SymbolTable()
-global_symbol_table.set_const("true", Bool(1))
-global_symbol_table.set_const("false", Bool(0))
-global_symbol_table.set_const("null", Null())
-global_symbol_table.set_const("endl", String('\n'))
-built_in_funcs = ['log', 'print', 'type', 'input', 'clear', 'run', 'quit']
-for i in built_in_funcs:
-    global_symbol_table.set_const(i, BuiltInFunction(i))
-
-
-#######################################
 # RUN
 #######################################
 
@@ -1951,6 +1945,7 @@ class RunRes:
         self.error = error
         self.previous = previous
         self.newLineNeeded = newLineNeeded
+        self.printNewLine = False
 
 
 def run(fn, text, previous=None) -> RunRes:
@@ -2028,7 +2023,7 @@ def execute(self, args):
 Function.execute = execute
 
 
-def execute_run(self, exec_ctx):
+def execute_run(self, exec_ctx: Context):
     fn, _ = exec_ctx.symbol_table.get("fn")
 
     if not isinstance(fn, String):
@@ -2059,6 +2054,17 @@ def execute_run(self, exec_ctx):
     return RTResult().success(None)
 
 
-execute_run.arg_names = ["fn"]
+func_run.executable = execute_run
 
-BuiltInFunction.execute_run = execute_run
+#######################################
+# GLOBAL VARIABLES
+#######################################
+
+global_symbol_table = SymbolTable()
+global_symbol_table.set_const("true", Bool(1))
+global_symbol_table.set_const("false", Bool(0))
+global_symbol_table.set_const("null", Null())
+global_symbol_table.set_const("endl", String('\n'))
+built_in_funcs = [func_log, func_print, func_type, func_input, func_clear, func_run, func_quit]
+for i in built_in_funcs:
+    global_symbol_table.set_const(i.name, i)

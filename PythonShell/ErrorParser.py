@@ -22,6 +22,7 @@ WT_StringFromValue = "StringFromValue"
 WT_NoStringEnd = "NoStringEnd"
 WT_FuncArgRet = "FuncArgRet"
 WT_FuncAssignOperator = "FuncAssignOperator"
+WT_ArgCastError = "ArgCastError"
 
 wrn_messages = {WT_DivideByZero: ['Divide by zero found'],
                 WT_ModByZero: ['Modulo by zero found'],
@@ -41,7 +42,8 @@ wrn_messages = {WT_DivideByZero: ['Divide by zero found'],
                 WT_StringFromValue: ['Try using \'as str\'...'],
                 WT_NoStringEnd: ['Go back and check this line, then add in the end of the string'],
                 WT_FuncArgRet: ['I\'ll pretend like I didn\'t see that...'],
-                WT_FuncAssignOperator: ['You can\'t multiply something by nothing']}
+                WT_FuncAssignOperator: ['You can\'t multiply something by nothing'],
+                WT_ArgCastError: ['I don\'t know what you wanted to happen really']}
 
 wrn_names = {WT_DivideByZero: "Divide by zero. Returned infinity",
              WT_ModByZero: "Modulo by zero. Returned 0",
@@ -53,7 +55,7 @@ wrn_names = {WT_DivideByZero: "Divide by zero. Returned infinity",
              WT_ListFromValue: "List assigned to a value. Value has been converted into a list",
              WT_ListIndexOutOfRange: "Index for list was out of range. Changed value to fit list range",
              WT_ListIndexFloat: "Given index for list was a float. Rounded value",
-             WT_SilentCaseResetDefault: "case type default option was redefined",
+             WT_SilentCaseResetDefault: "Case type default option was redefined",
              WT_IterateStepLoop: "Given step value would result in an infinite loop. Step value has been changed",
              WT_IterateStepZero: "Given step value would result in an infinite loop. Step value has been ignored"
                                  " and the default value of 1 or -1 used instead",
@@ -62,7 +64,9 @@ wrn_names = {WT_DivideByZero: "Divide by zero. Returned infinity",
              WT_StringFromValue: "Numerical value assigned to a str. Converted the value into a string",
              WT_NoStringEnd: "First string delimiter had no ending delimiter on the same line",
              WT_FuncArgRet: "Cannot return passed in argument to function",
-             WT_FuncAssignOperator: "Cannot use an operator assignment for a function argument"}
+             WT_FuncAssignOperator: "Cannot use an operator assignment for a function argument",
+             WT_ArgCastError: "Given argument value could not be cast as the required type, so the arguments default "
+                              "was used"}
 
 err_explain = []
 
@@ -72,7 +76,7 @@ wrn_explain = [[WT_DivideByZero, ['Raised when dividing by zero. Returns an infi
                 ['Raised when multiplying a value by a string. Included due to bad practice. Returns string multiplied '
                  'by the value', '\'hello! \' * 3 -> \'hello! hello! hello! \'']],
                [WT_StringMultFloat,
-                ['Raised when multiplying a string by a float value. Rounds the float value to an  int',
+                ['Raised when multiplying a string by a float value. Rounds the float value to an int',
                  '\'string_\' * 3.14 -> \'string_string_string\'']],
                [WT_InfinityDivValue,
                 ['Raised when an infinity is divided by a value. Returns an infinity where the saved value is divided '
@@ -116,7 +120,11 @@ wrn_explain = [[WT_DivideByZero, ['Raised when dividing by zero. Returns an infi
                [WT_NoStringEnd,
                 ['Raised when a string has no end matching end character, \' or \". Uses the end of the line as the '
                  'terminating point for the string', '>>> str example :> \'hello world! (warning line)\n'
-                                                     '\'hello world!\'']]]
+                                                     '\'hello world!\'']],
+               [WT_ArgCastError,
+                ['Raised when an argument with a default value is given a value that cannot be cast as the stated type'
+                 ', and so the previously defined default value is used.',
+                 '>>> def add(int a :: 1){\n...\treturn 1 + a\n...}\n>>> add([1,2]) (warning line)\n2\n']]]
 
 
 def get_explain(eow_code: str, error: bool = True):
