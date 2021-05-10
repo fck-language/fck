@@ -80,6 +80,7 @@ class ParseResult:
         if res.error:
             self.to_reverse_count = res.advance_count
             return None
+        self.register(res)
         return self.register(res)
 
     def success(self, node):
