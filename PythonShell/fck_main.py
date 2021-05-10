@@ -47,7 +47,7 @@ class Lexer:
                 found = False
                 for i, n in self.single_char_token_names.items():
                     if self.current_char == i:
-                        tokens.append(Token(n, pos_start=self.pos))
+                        tokens.append(Token(n, pos_start=self.pos.copy()))
                         self.advance()
                         found = True
                         break
@@ -63,9 +63,9 @@ class Lexer:
                     pos_start = self.pos.copy()
                     char = self.current_char
                     self.advance()
-                    return [], IllegalCharError(pos_start, self.pos, f'\'{char}\'')
+                    return [], IllegalCharError(pos_start, self.pos.copy(), f'\'{char}\'')
 
-        tokens.append(Token(TT_EOF, pos_start=self.pos))
+        tokens.append(Token(TT_EOF, pos_start=self.pos.copy()))
         return tokens, None
 
     def make_number(self) -> Token:
@@ -84,9 +84,9 @@ class Lexer:
             self.advance()
 
         if dot_count:
-            return Token(TT_FLOAT, float(num_str), pos_start=pos_start, pos_end=self.pos)
+            return Token(TT_FLOAT, float(num_str), pos_start=pos_start, pos_end=self.pos.copy())
         else:
-            return Token(TT_INT, int(num_str), pos_start=pos_start, pos_end=self.pos)
+            return Token(TT_INT, int(num_str), pos_start=pos_start, pos_end=self.pos.copy())
 
     def make_string(self):
         string = ""
@@ -108,10 +108,10 @@ class Lexer:
                     string += self.current_char
             self.advance()
         if self.current_char is None:
-            NonBreakError(pos_start, self.pos, Context(self.fn), WT_NoStringEnd).print_method()
+            NonBreakError(pos_start, self.pos.copy(), Context(self.fn), WT_NoStringEnd).print_method()
             pass
         self.advance()
-        return Token(TT_STRING, string, pos_start, self.pos), None
+        return Token(TT_STRING, string, pos_start, self.pos.copy()), None
 
     def make_identifier(self):
         id_str = ""
@@ -123,12 +123,12 @@ class Lexer:
             id_str += self.current_char
             self.advance()
 
-        out = [Token(TT_KEYWORD if id_str in KEYWORDS else TT_IDENTIFIER, id_str, pos_start, self.pos)]
+        out = [Token(TT_KEYWORD if id_str in KEYWORDS else TT_IDENTIFIER, id_str, pos_start, self.pos.copy())]
         pos_start = self.pos.copy()
 
         if self.current_char == '.':
             self.advance()
-            out.append(Token(TT_DOT, pos_start=pos_start, pos_end=self.pos))
+            out.append(Token(TT_DOT, pos_start=pos_start, pos_end=self.pos.copy()))
 
         return out
 
@@ -138,14 +138,14 @@ class Lexer:
 
         if self.current_char == '=':
             self.advance()
-            return Token(TT_NE, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT_NE, pos_start=pos_start, pos_end=self.pos.copy()), None
         elif self.current_char in LETTERS + "_":
-            return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos.copy()), None
         elif self.current_char == '!':
-            return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos.copy()), None
 
         self.advance()
-        return None, ExpectedCharError(pos_start, self.pos, "Expected '!='")
+        return None, ExpectedCharError(pos_start, self.pos.copy(), "Expected '!='")
 
     def make_equals(self):
         pos_start = self.pos.copy()
@@ -153,10 +153,10 @@ class Lexer:
 
         if self.current_char == '=':
             self.advance()
-            return Token(TT_EQ, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT_EQ, pos_start=pos_start, pos_end=self.pos.copy()), None
 
         self.advance()
-        return None, ExpectedCharError(pos_start, self.pos, "Expected '=='")
+        return None, ExpectedCharError(pos_start, self.pos.copy(), "Expected '=='")
 
     def make_less_than(self):
         tok_type = TT_LT
@@ -167,7 +167,7 @@ class Lexer:
             self.advance()
             tok_type = TT_LTE
 
-        return Token(tok_type, pos_start=pos_start, pos_end=self.pos), None
+        return Token(tok_type, pos_start=pos_start, pos_end=self.pos.copy()), None
 
     def make_greater_than(self):
         tok_type = TT_GT
@@ -178,7 +178,7 @@ class Lexer:
             self.advance()
             tok_type = TT_GTE
 
-        return Token(tok_type, pos_start=pos_start, pos_end=self.pos), None
+        return Token(tok_type, pos_start=pos_start, pos_end=self.pos.copy()), None
 
     def make_mult_pow(self):
         tok_type = TT_MULT
@@ -189,7 +189,7 @@ class Lexer:
             self.advance()
             tok_type = TT_POW
 
-        return Token(tok_type, pos_start=pos_start, pos_end=self.pos), None
+        return Token(tok_type, pos_start=pos_start, pos_end=self.pos.copy()), None
 
     def make_div(self):
         tok_type = TT_DIV
@@ -200,7 +200,7 @@ class Lexer:
             self.advance()
             tok_type = TT_FDIV
 
-        return Token(tok_type, pos_start=pos_start, pos_end=self.pos), None
+        return Token(tok_type, pos_start=pos_start, pos_end=self.pos.copy()), None
 
     def make_set(self):
         pos_start = self.pos.copy()
@@ -213,10 +213,10 @@ class Lexer:
 
         if self.current_char == ':':
             self.advance()
-            return Token(TT_SET, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT_SET, pos_start=pos_start, pos_end=self.pos.copy()), None
         elif self.current_char == '>':
             self.advance()
-            return Token(TT_SET_RET, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT_SET_RET, pos_start=pos_start, pos_end=self.pos.copy()), None
         else:
             found = False
             for i, n in set_op.items():
@@ -238,18 +238,18 @@ class Lexer:
                             operation_type = operation_type[0]
                         break
             if not found:
-                return Token(TT_SEMICOLON, pos_start=pos_start, pos_end=self.pos), None
+                return Token(TT_SEMICOLON, pos_start=pos_start, pos_end=self.pos.copy()), None
 
         if self.current_char not in (':', ">"):
             if operation_type not in ([TT_SET_PLUS, TT_SET_RET_PLUS], [TT_SET_MINUS, TT_SET_RET_MINUS]):
-                return None, ExpectedCharError(pos_start, self.pos, "Expected assignment operator")
+                return None, ExpectedCharError(pos_start, self.pos.copy(), "Expected assignment operator")
             self.devance()
-            return Token(TT_SEMICOLON, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT_SEMICOLON, pos_start=pos_start, pos_end=self.pos.copy()), None
 
         operation_type = operation_type[0 if self.current_char == ":" else 1]
 
         self.advance()
-        return Token(operation_type, pos_start=pos_start, pos_end=self.pos), None
+        return Token(operation_type, pos_start=pos_start, pos_end=self.pos.copy()), None
 
     def skip_comment(self):
         self.advance()
