@@ -572,7 +572,8 @@ class Parser:
                     error_case = res.register(self.expr())
                     if res.error: return res
                     if self.current_tok.type != TT_SEMICOLON:
-                        return res.success(AsErrorCatchNode(node, error_case, pos_start, self.current_tok.pos_end.copy()))
+                        return res.success(
+                            AsErrorCatchNode(node, error_case, pos_start, self.current_tok.pos_end.copy()))
             given = False
             if self.current_tok.type == TT_SEMICOLON:
                 if_true = error_case if error_case else None
@@ -1227,12 +1228,15 @@ class Parser:
             res.register_advancement()
             self.advance()
         else:
-            return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected variable type identifier or \')\' after \'(\''
-                                                          ' for function definition.', self.current_tok.pos_start,
+            return res.failure(ErrorNew(ET_ExpectedChar, 'Expected variable type identifier or \')\' after \'(\''
+                                                         ' for function definition.', self.current_tok.pos_start,
                                         self.current_tok.pos_end, self.context))
 
+        while self.current_tok.type == TT_NEWLINE:
+            res.register_advancement()
+            self.advance()
         if self.current_tok.type != TT_LPAREN_CURLY:
-            return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected \'{\' after function arguments',
+            return res.failure(ErrorNew(ET_ExpectedChar, 'Expected \'{\' after function arguments',
                                         self.current_tok.pos_start, self.current_tok.pos_end, self.context))
         res.register_advancement()
         self.advance()
@@ -1705,6 +1709,7 @@ class Interpreter:
 
             return res.success(None if should_return_null else
                                List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
+
         res = RTResult()
         elements = []
         should_return_null = node.should_return_null
@@ -2013,6 +2018,11 @@ def run(fn, text, previous=None) -> RunRes:
     parser.context.symbol_table = global_symbol_table
     ast = parser.parse()
     if ast.error:
+        assert isinstance(ast.error, ErrorNew)
+        if ast.error.error_name == ET_ExpectedChar and ast.error.pos_end == tokens[-1].pos_end:
+            out.previous = tokens[:-1]
+            out.newLineNeeded = True
+            return out
         out.error = ast.error
         return out
 
