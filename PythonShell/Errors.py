@@ -31,31 +31,6 @@ class ExpectedCharError(Error):
         super().__init__(pos_start, pos_end, 'Expected character', details)
 
 
-class ExpectedExprError(Error):
-    def __init__(self, pos_start, pos_end, details):
-        super().__init__(pos_start, pos_end, 'Expected expression', details)
-
-
-class InvalidSyntaxError(Error):
-    def __init__(self, pos_start, pos_end, details=''):
-        super().__init__(pos_start, pos_end, 'Invalid syntax', details)
-
-
-class IllegalOperationError(Error):
-    def __init__(self, pos_start, pos_end):
-        super().__init__(pos_start, pos_end, 'Illegal operation. Basically, no can use operation here')
-
-
-class IllegalValueError(Error):
-    def __init__(self, pos_start, pos_end, details=None):
-        super().__init__(pos_start, pos_end, 'Illegal value', details)
-
-
-class IllegalVariableAssignment(Error):
-    def __init__(self, pos_start, pos_end, details=None):
-        super().__init__(pos_start, pos_end, 'Illegal variable value', details)
-
-
 class ArgumentError(Error):
     def __init__(self, pos_start, pos_end, details, arg_explain):
         super().__init__(pos_start, pos_end, details)
@@ -68,24 +43,9 @@ class ArgumentError(Error):
                           f'{string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)}'])
 
 
-class TooArgumentError(ArgumentError):
-    def __init__(self, pos_start, pos_end, details, arg_explain):
-        super().__init__(pos_start, pos_end, f'Argument error: {details}', arg_explain)
-
-
-class AttributeTypeError(ArgumentError):
-    def __init__(self, pos_start, pos_end, details, arg_explain):
-        super().__init__(pos_start, pos_end, f'Argument type error: {details}', arg_explain)
-
-
 class IllegalAttributeValue(ArgumentError):  # Currently unused because I added it in for why?
     def __init__(self, pos_start, pos_end, details, arg_explain):
         super().__init__(pos_start, pos_end, f'Illegal argument value: {details}', arg_explain)
-
-
-class UnknownAttributeError(Error):
-    def __init__(self, pos_start, pos_end, attribute, trace):
-        super().__init__(pos_start, pos_end, f'Attribute \'{attribute}\' does not exist for \'{trace}\'')
 
 
 class RTError(Error):
@@ -117,6 +77,8 @@ class NonBreakError:
         self.pos_start = pos_start
         self.pos_end = pos_end
         self.context = context
+        self.error_name_full = error_name
+        self.error_index = [item[0] for item in wrn_explain].index(error_name) + 1
         self.error_name = wrn_names[error_name]
         self.value = wrn_messages[error_name]
 
@@ -134,7 +96,9 @@ class NonBreakError:
                f'{string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)}'
 
     def print_method(self):
-        value = self.value[randint(0, len(self.value) - 1)]
-        out = "\n".join(wrap(f'{self.error_name}: {value}')) + f"\n{self.generate_traceback()}"
-        longest = max([len(i) for i in out.split("\n")])
-        print("*" * longest + "\nWarning:\n" + out + "\n" + "*" * longest)
+        custom = self.value[randint(0, len(self.value) - 1)]
+        body = "\n".join(wrap(f'{self.error_name}. {custom}')) + f"\n{self.generate_traceback()}"
+        title = f"\nWarning:\033[35m {self.error_name_full} (W{str(self.error_index).rjust(3, '0')})\n\033[0m"
+        longest = max([len(i) for i in body.split("\n")])
+        print('\033[33m' + "*" * longest + title + body +
+              f"\n\nUse \'fck -w W{str(self.error_index).rjust(3, '0')}\' for more details\n\033[33m" + "*" * longest + '\033[0m')

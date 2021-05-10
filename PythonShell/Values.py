@@ -14,8 +14,8 @@ def type_(value):
 
 
 def assignment_error(value, parent, pos_start, pos_end, context):
-    return IllegalVariableAssignment(pos_start, pos_end, f'Cannot assign {value} of type {type(value)} to a '
-                                                         f'{type(parent)} type variable')
+    return ErrorNew(ET_IllegalVariableAssignment, f'Cannot assign {value} of type {type(value)} to a '
+                                                  f'{type(parent)} type variable', pos_start, pos_end, context)
 
 
 class Value:
@@ -619,7 +619,7 @@ class String(Value):
         elif isinstance(value, Number):
             NonBreakError(pos_start, pos_end, context, WT_StringFromValue).print_method()
             return res.success(String(str(value.value)))
-        return res.failure(assignment_error(value, self, pos_start, pos_end))
+        return res.failure(assignment_error(value, self, pos_start, pos_end, context))
 
     def as_type(self, to_type, pos_start, pos_end, context) -> RTResult:
         res = RTResult()
@@ -628,15 +628,15 @@ class String(Value):
                 out = int(self.value)
                 return res.success(Int(out))
             except ValueError:
-                return res.failure(IllegalValueError(pos_start, pos_end, f'\'{self.value}\' cannot '
-                                                                         f'be cast to an \'int\' type'))
+                return res.failure(ErrorNew(ET_IllegalValue, f'\'{self.value}\' cannot be cast to an \'int\' type',
+                                            pos_start, pos_end, context))
         elif to_type == 'float':
             try:
                 out = float(self.value)
                 return res.success(Float(out))
             except ValueError:
-                return res.failure(IllegalValueError(pos_start, pos_end, f'\'{self.value}\' cannot '
-                                                                         f'be cast to a \'float\' type'))
+                return res.failure(ErrorNew(ET_IllegalValue, f'\'{self.value}\' cannot be cast to an \'float\' type',
+                                            pos_start, pos_end, context))
         elif to_type == 'str':
             return res.success(self)
         elif to_type == 'list':
@@ -715,8 +715,8 @@ class List(Value):
             _, recursive, value = self.recursive_single()
             if recursive:
                 return value.as_type(to_type, pos_start, pos_end, context)
-            return res.failure(IllegalValueError(pos_start, pos_end,
-                                                 f'Cannot convert \'{value}\' into a \'{to_type}\''))
+            return res.failure(ErrorNew(ET_IllegalValue, f'Cannot convert \'{value}\' into a \'{to_type}\'', pos_start,
+                                        pos_end, context))
         if to_type == 'bool':
             recursive, _, _ = self.recursive_single()
             return res.success(Bool(recursive))
@@ -731,7 +731,7 @@ class List(Value):
         elif isinstance(value, Number) or isinstance(value, String):
             NonBreakError(pos_start, pos_end, context, WT_ListFromValue).print_method()
             return res.success(List([value]))
-        return res.failure(assignment_error(value, self, pos_start, pos_end))
+        return res.failure(assignment_error(value, self, pos_start, pos_end, context))
 
     def added_to(self, other):
         if isinstance(other, List):

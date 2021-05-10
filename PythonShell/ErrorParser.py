@@ -110,7 +110,9 @@ wrn_explain = [[WT_DivideByZero, ['Raised when dividing by zero. Returns an infi
                [WT_ValueFromList,
                 ['Raised when a list is assigned to either an int, float, sfloat, or str. Value in the list is used '
                  'instead of the list. Only raised if the list recursively has 1 element and the type of the single '
-                 'element can be used with the variable type.', '>> int example :> [[[\'1.3\']]] (warning line)\n1']],
+                 'element can be used with the variable type. Can be avoided by casting the value using the \'as\' '
+                 'keyword', '>>> int example :> [[[\'1.3\']]] (warning line)\n1\n'
+                            '>>> int example :> [[[\'1.3\']]] as int (corrected line)\n1']],
                [WT_ValueFromString,
                 ['Raised when a string is assigned to either an int, float, or sfloat. String is converted into a '
                  'value', '>>> float example :> \'-13.9\' (warning line)\n-13.9']],

@@ -12,6 +12,8 @@ ET_IllegalValue = "IllegalValue"
 ET_IllegalVariableAssignment = "IllegalVariableAssignment"
 ET_ExpectedIdentifier = "ExpectedIdentifier"
 ET_ExpectedTypeIdentifier = "ExpectedTypeIdentifier"
+ET_ExpectedKeyword = "ExpectedKeyword"
+ET_UnknownIdentifier = "UnknownIdentifier"
 
 AET_TooArgumentError = "TooArgumentError"
 AET_AttributeTypeError = "AttributeTypeError"
@@ -27,6 +29,8 @@ errorFormatting = {ET_IllegalChar: "",
                    ET_IllegalVariableAssignment: "",
                    ET_ExpectedIdentifier: "",
                    ET_ExpectedTypeIdentifier: "",
+                   ET_ExpectedKeyword: "",
+                   ET_UnknownIdentifier: "",
                    AET_IllegalArgumentValue: "\n{arg_explain}",
                    AET_AttributeTypeError: "\n{arg_explain}",
                    AET_TooArgumentError: "\n{arg_explain}",
@@ -41,6 +45,8 @@ errorNames = {ET_IllegalChar: "Illegal character",
               ET_IllegalVariableAssignment: "Illegal variable value",
               ET_ExpectedIdentifier: "Expected Identifier",
               ET_ExpectedTypeIdentifier: "Expected variable type",
+              ET_ExpectedKeyword: "Expected keyword",
+              ET_UnknownIdentifier: "Unknown identifier",
               AET_UnknownAttributeError: "Unknown Attribute Error",
               AET_TooArgumentError: "Too Argument Error",
               AET_IllegalArgumentValue: "Illegal Argument Value",

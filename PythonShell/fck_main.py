@@ -292,10 +292,8 @@ class Parser:
     def parse(self):
         res = self.statements()
         if not res.error and self.current_tok.type != TT_EOF:
-            return res.failure(InvalidSyntaxError(
-                self.current_tok.pos_start, self.current_tok.pos_end,
-                "Token cannot appear after previous tokens"
-            ))
+            return res.failure(ErrorNew(ET_InvalidSyntax, "Token cannot appear after previous tokens",
+                                        self.current_tok.pos_start, self.current_tok.pos_end, self.context))
         return res
 
     ###################################
@@ -361,8 +359,9 @@ class Parser:
                 res.register_advancement()
                 self.advance()
                 if not self.current_tok.type == TT_IDENTIFIER:
-                    return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected loop identifier after \'@\'', pos_start,
-                                                self.current_tok.pos_end, self.context))
+                    return res.failure(
+                        ErrorNew(ET_ExpectedIdentifier, 'Expected loop identifier after \'@\'', pos_start,
+                                 self.current_tok.pos_end, self.context))
                 loop_name = self.current_tok.value
                 res.register_advancement()
                 self.advance()
@@ -376,8 +375,9 @@ class Parser:
                 res.register_advancement()
                 self.advance()
                 if not self.current_tok.type == TT_IDENTIFIER:
-                    return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected loop identifier after \'@\'', pos_start,
-                                                self.current_tok.pos_end, self.context))
+                    return res.failure(
+                        ErrorNew(ET_ExpectedIdentifier, 'Expected loop identifier after \'@\'', pos_start,
+                                 self.current_tok.pos_end, self.context))
                 loop_name = self.current_tok.value
                 res.register_advancement()
                 self.advance()
@@ -386,7 +386,7 @@ class Parser:
 
         expr = res.register(self.expr())
         if res.error:
-            return res.failure(ErrorNew(ET_InvalidSyntax, "Expected method, value, identifier, or operator",
+            return res.failure(ErrorNew(ET_ExpectedExpr, "Expected method, value, identifier, or operator",
                                         pos_start, self.current_tok.pos_end, self.context))
         return res.success(expr)
 
@@ -450,35 +450,36 @@ class Parser:
             res.register_advancement()
             self.advance()
             if self.current_tok.type != TT_LT:
-                return res.failure(ErrorNew(ET_InvalidSyntax, 'Expected \'<\' after \'silent\' keyword',
+                return res.failure(ErrorNew(ET_ExpectedTypeIdentifier, 'Expected \'<\' after \'silent\' keyword',
                                             pos_start, self.current_tok.pos_end, self.context))
             res.register_advancement()
             self.advance()
             if not self.current_tok.list_matches(TT_KEYWORD, SILENCABLE_TYPES.keys()):
                 expanded_list = ", ".join([f'\'{silencable_type}\'' for silencable_type in SILENCABLE_TYPES.keys()])
-                return res.failure(ErrorNew(ET_InvalidSyntax, f'Expected one of {expanded_list}', pos_start,
+                return res.failure(ErrorNew(ET_ExpectedTypeIdentifier, f'Expected one of {expanded_list}', pos_start,
                                             self.current_tok.pos_end, self.context))
             silenced_type = self.current_tok.value
             res.register_advancement()
             self.advance()
 
             if self.current_tok.type != TT_GT:
-                return res.failure(ErrorNew(ET_InvalidSyntax, f'Expected \'>\' after \'silent<{silenced_type}\'',
+                return res.failure(ErrorNew(ET_ExpectedChar, f'Expected \'>\' after \'silent<{silenced_type}\'',
                                             pos_start, self.current_tok.pos_end, self.context))
             res.register_advancement()
             self.advance()
 
             if self.current_tok.type != TT_IDENTIFIER:
-                return res.failure(ErrorNew(ET_InvalidSyntax, f'Expected identifier after \'silent<{silenced_type}>\'',
+                return res.failure(ErrorNew(ET_ExpectedIdentifier, f'Expected identifier after '
+                                                                   f'\'silent<{silenced_type}>\'',
                                             pos_start, self.current_tok.pos_end, self.context))
             identifier = self.current_tok
             res.register_advancement()
             self.advance()
 
             if self.current_tok.type not in (TT_SET, TT_SET_RET):
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      f'Expected \'::\' or \':>\' after '
-                                                      f'\'silent<{silenced_type}> {identifier.value}\''))
+                return res.failure(ErrorNew(ET_ExpectedChar, f'Expected \'::\' or \':>\' after '
+                                                             f'\'silent<{silenced_type}> {identifier.value}\'',
+                                            self.current_tok.pos_start, self.current_tok.pos_end, self.context))
             ret = self.current_tok.type == TT_SET_RET
             res.register_advancement()
             self.advance()
@@ -489,10 +490,9 @@ class Parser:
             if res.error: return res
 
             if not isinstance(suite, SILENCABLE_TYPES[silenced_type]):
-                return res.failure(IllegalVariableAssignment(pos_start_suite, self.current_tok.pos_end,
-                                                             f'Cannot assign a {type(suite)} type to a'
-                                                             f' \'silent<{silenced_type}>\' variable'))
-
+                return res.failure(ErrorNew(ET_IllegalVariableAssignment, f'Cannot assign a {type(suite)} type to a'
+                                                                          f' \'silent<{silenced_type}>\' variable',
+                                            pos_start_suite, self.current_tok.pos_end, self.current_tok))
             return res.success(VarAssignNode(None, identifier, SilentNode(suite, pos_start_suite), ret,
                                              pos_start, self.current_tok.pos_end))
 
@@ -551,8 +551,8 @@ class Parser:
                     self.advance()
                     ref_items.append(get_list_range())
                 if self.current_tok.type != TT_RPAREN_SQUARE:
-                    return res.failure(InvalidSyntaxError(var_name.pos_start,
-                                                          self.current_tok.pos_end, 'Expected \']\''))
+                    return res.failure(ErrorNew(ET_ExpectedChar, 'Expected \']\'', var_name.pos_start,
+                                                self.current_tok.pos_end, self.context))
                 res.register_advancement()
                 self.advance()
 
@@ -582,8 +582,8 @@ class Parser:
                 if_true = res.register(self.expr())
                 if res.error: return res
             if self.current_tok.type != TT_SEMICOLON:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      'Expected \':\''))
+                return res.failure(ErrorNew(ET_ExpectedChar, 'Expected \':\'', self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
             pos_end = self.current_tok.pos_end.copy()
             res.register_advancement()
             self.advance()
@@ -591,8 +591,9 @@ class Parser:
                 if given:
                     if_false = None
                 else:
-                    return res.failure(ExpectedExprError(pos_start, self.current_tok.pos_end,
-                                                         'Expected at least one expression for the \'?\' operator'))
+                    return res.failure(ErrorNew(ET_ExpectedExpr, 'Expected at least one expression for the \'?\' '
+                                                                 'operator', pos_start, self.current_tok.pos_end,
+                                                self.context))
             else:
                 if_false = res.register(self.expr())
                 pos_end = if_false.pos_end
@@ -600,9 +601,9 @@ class Parser:
             return res.success(TrueFalseNode(node, if_true, if_false, node.pos_start, pos_end))
 
         if res.error:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected variable assignment keyword, int, float, identifier, '+',"
-                                                  "'-', or '('"))
+            return res.failure(ErrorNew(ET_ExpectedExpr, "Expected variable assignment keyword, int, float, identifier,"
+                                                         " '+','-', or '('", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
 
         return res.success(node)
 
@@ -621,10 +622,8 @@ class Parser:
         node = res.register(self.bin_op(self.arith_expr, (TT_EQ, TT_NE, TT_LT, TT_GT, TT_LTE, TT_GTE)))
 
         if res.error:
-            return res.failure(InvalidSyntaxError(
-                self.current_tok.pos_start, self.current_tok.pos_end,
-                "Expected int, float, identifier, '+', '-', '(', '[', 'IF', 'FOR', 'WHILE', 'FUN' or 'NOT'"
-            ))
+            return res.failure(ErrorNew(ET_ExpectedExpr, 'Expected a comparative expression',
+                                        self.current_tok.pos_start, self.current_tok.pos_end, self.context))
 
         return res.success(node)
 
@@ -655,9 +654,8 @@ class Parser:
             res.register_advancement()
             self.advance()
             if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
-                return res.failure(InvalidSyntaxError(
-                    self.current_tok.pos_start, self.current_tok.pos_end,
-                    "Expected type after \'at\' keyword"))
+                return res.failure(ErrorNew(ET_ExpectedTypeIdentifier, "Expected type after \'at\' keyword",
+                                            self.current_tok.pos_start, self.current_tok.pos_end, self.context))
             as_type = self.current_tok
             res.register_advancement()
             self.advance()
@@ -680,11 +678,7 @@ class Parser:
                 self.advance()
             else:
                 arg_nodes.append(res.register(self.expr()))
-                if res.error:
-                    return res.failure(InvalidSyntaxError(
-                        self.current_tok.pos_start, self.current_tok.pos_end,
-                        "Expected ')', 'VAR', 'IF', 'FOR', 'WHILE', 'FUN', int, float, identifier, '+', '-', '(', '[' or 'NOT'"
-                    ))
+                if res.error: return res
 
                 while self.current_tok.type == TT_COMMA:
                     res.register_advancement()
@@ -694,10 +688,8 @@ class Parser:
                     if res.error: return res
 
                 if self.current_tok.type != TT_RPAREN:
-                    return res.failure(InvalidSyntaxError(
-                        self.current_tok.pos_start, self.current_tok.pos_end,
-                        f"Expected ',' or ')'"
-                    ))
+                    return res.failure(ErrorNew(ET_ExpectedChar, "Expected ',' or ')'", self.current_tok.pos_start,
+                                                self.current_tok.pos_end, self.context))
 
                 res.register_advancement()
                 self.advance()
@@ -733,8 +725,9 @@ class Parser:
                     res.register_advancement()
                     self.advance()
                     if not self.current_tok.type == TT_IDENTIFIER:
-                        return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                              'Expected a method identifier'))
+                        return res.failure(ErrorNew(ET_ExpectedIdentifier, 'Expected a method identifier',
+                                                    self.current_tok.pos_start, self.current_tok.pos_end,
+                                                    self.context))
                     tok = self.current_tok
                     res.register_advancement()
                     self.advance()
@@ -759,9 +752,10 @@ class Parser:
                                     self.advance()
                                     break
                                 else:
-                                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start,
-                                                                          self.current_tok.pos_end,
-                                                                          'Expected \',\' or \')\''))
+                                    return res.failure(ErrorNew(ET_ExpectedChar, 'Expected \',\' or \')\'',
+                                                                self.current_tok.pos_start,
+                                                                self.current_tok.pos_end,
+                                                                self.context))
                             trace.append(MethodCallNode(tok, args))
                     else:
                         trace.append(VarAccessNode(tok))
@@ -778,10 +772,8 @@ class Parser:
                 self.advance()
                 out = expr
             else:
-                return res.failure(InvalidSyntaxError(
-                    self.current_tok.pos_start, self.current_tok.pos_end,
-                    "Expected ')'"
-                ))
+                return res.failure(ErrorNew(ET_ExpectedChar, "Expected ')'", self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
 
         elif tok.type == TT_LPAREN_SQUARE:
             list_expr = res.register(self.list_expr())
@@ -798,8 +790,8 @@ class Parser:
             res.register_advancement()
             self.advance()
             if self.current_tok.type not in [TT_IDENTIFIER, TT_KEYWORD]:
-                return res.failure(InvalidSyntaxError(pos_start, self.current_tok.pos_end,
-                                                      'Expected identifier after \'@\''))
+                return res.failure(ErrorNew(ET_ExpectedIdentifier, 'Expected identifier after \'@\'', pos_start,
+                                            self.current_tok.pos_end, self.context))
             loop_name = self.current_tok
             res.register_advancement()
             self.advance()
@@ -841,10 +833,8 @@ class Parser:
             if res.error: return res
             return res.success(out)
 
-        return res.failure(InvalidSyntaxError(
-            tok.pos_start, tok.pos_end,
-            "Expected int, float, identifier, '+', '-', '(', '[', IF', 'FOR', 'WHILE', 'FUN'"
-        ))
+        return res.failure(ErrorNew(ET_ExpectedExpr, 'Expected an expression',
+                                    tok.pos_start, tok.pos_end, self.context))
 
     def list_expr(self):
         res = ParseResult()
@@ -852,10 +842,8 @@ class Parser:
         pos_start = self.current_tok.pos_start.copy()
 
         if self.current_tok.type != TT_LPAREN_SQUARE:
-            return res.failure(InvalidSyntaxError(
-                self.current_tok.pos_start, self.current_tok.pos_end,
-                f"Expected '['"
-            ))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected '['", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
 
         res.register_advancement()
         self.advance()
@@ -865,11 +853,7 @@ class Parser:
             self.advance()
         else:
             element_nodes.append(res.register(self.expr()))
-            if res.error:
-                return res.failure(InvalidSyntaxError(
-                    self.current_tok.pos_start, self.current_tok.pos_end,
-                    "Expected ']', 'VAR', 'IF', 'FOR', 'WHILE', 'FUN', int, float, identifier, '+', '-', '(', '[' or 'NOT'"
-                ))
+            if res.error: return res
 
             while self.current_tok.type == TT_COMMA:
                 res.register_advancement()
@@ -879,10 +863,8 @@ class Parser:
                 if res.error: return res
 
             if self.current_tok.type != TT_RPAREN_SQUARE:
-                return res.failure(InvalidSyntaxError(
-                    self.current_tok.pos_start, self.current_tok.pos_end,
-                    f"Expected ',' or ']'"
-                ))
+                return res.failure(ErrorNew(ET_ExpectedChar, "Expected ',' or ']'", self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
 
             res.register_advancement()
             self.advance()
@@ -898,15 +880,15 @@ class Parser:
         res.register_advancement()
         self.advance()
         if self.current_tok.type != TT_LPAREN:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected '('"))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected '('", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
         res.register_advancement()
         self.advance()
         name = res.register(self.expr())
         if res.error: return res
         if self.current_tok.type != TT_RPAREN:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected ')'"))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected ')'", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
         res.register_advancement()
         self.advance()
         return res.success(ImportNode(name))
@@ -918,8 +900,8 @@ class Parser:
         self.advance()
         condition = res.register(self.expr())
         if self.current_tok.type != TT_LPAREN_CURLY:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  'Expected \'{\''))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected '{'", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
         res.register_advancement()
         self.advance()
         cases = []
@@ -933,27 +915,27 @@ class Parser:
                 res.register_advancement()
                 self.advance()
                 if self.current_tok.type != TT_LPAREN:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                          'Expected \'(\''))
+                    return res.failure(ErrorNew(ET_ExpectedChar, "Expected '('", self.current_tok.pos_start,
+                                                self.current_tok.pos_end, self.context))
                 res.register_advancement()
                 self.advance()
                 option = res.register(self.expr())
                 if res.error: return res
                 if self.current_tok.type != TT_RPAREN:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                          'Expected \')\''))
+                    return res.failure(ErrorNew(ET_ExpectedChar, "Expected ')'", self.current_tok.pos_start,
+                                                self.current_tok.pos_end, self.context))
                 res.register_advancement()
                 self.advance()
                 if self.current_tok.type != TT_LPAREN_CURLY:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                          'Expected \'{\''))
+                    return res.failure(ErrorNew(ET_ExpectedChar, "Expected '{'", self.current_tok.pos_start,
+                                                self.current_tok.pos_end, self.context))
                 res.register_advancement()
                 self.advance()
                 expr = res.register(self.statements())
                 if res.error: return res
                 if self.current_tok.type != TT_RPAREN_CURLY:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                          'Expected \'}\''))
+                    return res.failure(ErrorNew(ET_ExpectedChar, "Expected '}'", self.current_tok.pos_start,
+                                                self.current_tok.pos_end, self.context))
                 cases.append(OptionNode(option, expr, pos_start, self.current_tok.pos_end))
                 res.register_advancement()
                 self.advance()
@@ -962,15 +944,15 @@ class Parser:
                 res.register_advancement()
                 self.advance()
                 if self.current_tok.type != TT_LPAREN_CURLY:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                          'Expected \'{\''))
+                    return res.failure(ErrorNew(ET_ExpectedChar, "Expected '{'", self.current_tok.pos_start,
+                                                self.current_tok.pos_end, self.context))
                 res.register_advancement()
                 self.advance()
                 expr = res.register(self.statements())
                 if res.error: return res
                 if self.current_tok.type != TT_RPAREN_CURLY:
-                    return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                          'Expected \'}\''))
+                    return res.failure(ErrorNew(ET_ExpectedChar, "Expected '}'", self.current_tok.pos_start,
+                                                self.current_tok.pos_end, self.context))
                 default = OptionNode(None, expr, pos_start, self.current_tok.pos_end)
                 res.register_advancement()
                 self.advance()
@@ -981,8 +963,9 @@ class Parser:
                 self.advance()
                 break
             else:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      'Expected \'option\', \'default\', \'}\', or option identifier'))
+                return res.failure(ErrorNew(ET_ExpectedKeyword, 'Expected \'option\', \'default\', \'}\', or '
+                                                                'option identifier', self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
 
         return res.success(CaseNode(condition, cases, start_pos, end_pos, default))
 
@@ -1005,8 +988,8 @@ class Parser:
             self.advance()
 
             if self.current_tok.type != TT_LPAREN_CURLY:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected '{'"))
+                return res.failure(ErrorNew(ET_ExpectedChar, "Expected '{'", self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
 
             res.register_advancement()
             self.advance()
@@ -1016,8 +999,8 @@ class Parser:
             else_case = (statements, True)
 
             if self.current_tok.type != TT_RPAREN_CURLY:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected '}'"))
+                return res.failure(ErrorNew(ET_ExpectedChar, "Expected '}'", self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
 
             res.register_advancement()
             self.advance()
@@ -1049,8 +1032,8 @@ class Parser:
         if res.error: return res
 
         if self.current_tok.type != TT_LPAREN_CURLY:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected '{'"))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected '{'", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
 
         res.register_advancement()
         self.advance()
@@ -1060,8 +1043,8 @@ class Parser:
         cases.append((condition, statements, True))
 
         if self.current_tok.type != TT_RPAREN_CURLY:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected '}'"))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected '}'", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
         res.register_advancement()
         self.advance()
         all_cases = res.register(self.if_expr_elif_or_else())
@@ -1103,8 +1086,8 @@ class Parser:
             res.register_advancement()
             self.advance()
             if not self.current_tok.type == TT_IDENTIFIER:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected identifier"))
+                return res.failure(ErrorNew(ET_ExpectedIdentifier, "Expected identifier after '::' for iterate loop",
+                                            self.current_tok.pos_start, self.current_tok.pos_end, self.context))
 
             iterable_var = self.current_tok
 
@@ -1114,8 +1097,8 @@ class Parser:
             iterable_var = None
 
         if not self.current_tok.type == TT_LPAREN_CURLY:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected '{'"))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected '{'", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
 
         res.register_advancement()
         self.advance()
@@ -1124,9 +1107,8 @@ class Parser:
         if res.error: return res
 
         if self.current_tok.type != TT_RPAREN_CURLY:
-            print(self.current_tok)
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected '}'"))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected '}'", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
 
         res.register_advancement()
         self.advance()
@@ -1143,8 +1125,8 @@ class Parser:
         if res.error: return res
 
         if not self.current_tok.type == TT_LPAREN_CURLY:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected '{'"))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected '{'", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
 
         res.register_advancement()
         self.advance()
@@ -1153,8 +1135,8 @@ class Parser:
         if res.error: return res
 
         if self.current_tok.type != TT_RPAREN_CURLY:
-            return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                  "Expected '}'"))
+            return res.failure(ErrorNew(ET_ExpectedChar, "Expected '}'", self.current_tok.pos_start,
+                                        self.current_tok.pos_end, self.context))
 
         res.register_advancement()
         self.advance()
@@ -1171,13 +1153,13 @@ class Parser:
             res.register_advancement()
             self.advance()
             if self.current_tok.type != TT_LPAREN:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected '('"))
+                return res.failure(ErrorNew(ET_ExpectedChar, "Expected '('", self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
         else:
             var_name_tok = None
             if self.current_tok.type != TT_LPAREN:
-                return res.failure(InvalidSyntaxError(self.current_tok.pos_start, self.current_tok.pos_end,
-                                                      "Expected identifier or '('"))
+                return res.failure(ErrorNew(ET_ExpectedChar, "Expected identifier or ')'", self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
 
         res.register_advancement()
         self.advance()
@@ -1187,9 +1169,9 @@ class Parser:
         if self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
             while True:
                 if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
-                    return res.failure(ErrorNew(ET_ExpectedIdentifier, 'Expected variable type identifier for function'
-                                                                       ' argument', self.current_tok.pos_start,
-                                                self.current_tok.pos_end, self.context))
+                    return res.failure(ErrorNew(ET_ExpectedTypeIdentifier, 'Expected variable type identifier for '
+                                                                           'function argument',
+                                                self.current_tok.pos_start, self.current_tok.pos_end, self.context))
                 arg = FuncArgNode(self.current_tok.value, self.current_tok.pos_start)
                 res.register_advancement()
                 self.advance()
@@ -1310,11 +1292,13 @@ class Interpreter:
         )
 
     def visit_ImportNode(self, node: ImportNode, context):
+        # TODO: fix
         res = RTResult()
         name = res.register(self.visit(node.file_name, context))
         if res.should_return(): return res
         if not isinstance(name, String):
-            return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end, 'Expected string'))
+            return res.failure(ErrorNew(ET_ExpectedExpr, 'Expected string after import keyword',
+                                        node.pos_start, node.pos_end, context))
         result = res.register(self.visit(CallNode(BuiltInFunction('run'), name), context))
         print(result)
 
@@ -1367,12 +1351,8 @@ class Interpreter:
         value, _ = context.symbol_table.get(var_name)
 
         if not value:
-            return res.failure(RTError(
-                node.pos_start, node.pos_end,
-                f"'{var_name}' is not defined",
-                context
-            ))
-
+            return res.failure(ErrorNew(ET_UnknownIdentifier, f"'{var_name}' is not defined", node.pos_start,
+                                        node.pos_end, context))
         value = value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
 
@@ -1387,34 +1367,32 @@ class Interpreter:
         if isinstance(node.trace[0], VarAccessNode):
             parent = context.symbol_table.get(node.trace[0].name_tok.value)
         else:
-            return res.failure(InvalidSyntaxError(node.trace[0].pos_start, node.trace[0].pos_end, 'Not yet implimentd'))
+            return res.failure(ErrorNew(ET_IllegalOperation, 'Not yet implimentd', node.trace[0].pos_start,
+                                        node.trace[0].pos_end, context))
         traceback = node.trace[0].name_tok.value
         for method in node.trace[1:]:
             if isinstance(method, MethodCallNode):
                 err, attr = attribute_check(parent.silenced_node, method.name_tok.value)
                 if err:
-                    return res.failure(UnknownAttributeError(node.pos_start, node.pos_end,
-                                                             method.name_tok.value, traceback))
+                    return res.failure(ErrorNew(AET_UnknownAttributeError,
+                                                f"Attribute '{method.name_tok.value}' does not exist for type"
+                                                f"'{parent.silenced_node}'", node.pos_start, node.pos_end, context))
                 args = attr.args
                 args_opt = attr.optional_args
                 if not len(args) <= len(method.args) <= len(args) + len(args_opt):
                     details = [len(args) - len(method.args), 'few'] if len(method.args) < len(args) else \
                         [len(method.args) - (len(args) + len(args_opt)), 'many']
                     details = f'{details[0]} too {details[1]} were passed into \'{method.name_tok.value}\''
-                    return res.failure(TooArgumentError(node.pos_start, node.pos_end, details,
-                                                        arg_explain(attr.args_str, attr.optional_args_str,
-                                                                    method.name_tok.value)))
+                    return res.failure(ErrorNew(AET_TooArgumentError, details, node.pos_start, node.pos_end, context))
                 if method.name_tok.value == 'execute' and isinstance(parent.silenced_node, CaseNode):
                     parent = res.register(self.visit_CaseNode(parent.silenced_node, context))
                 else:
                     for arg, type_ in args.items():
                         if type_ is not None:
                             if not isinstance(method.args[0], type_):
-                                return res.failure(AttributeTypeError(method.args[0].pos_start, method.args[0].pos_end,
-                                                                      f'Argument {arg} must have a type {type_}',
-                                                                      arg_explain(attr.args_str, attr.optional_args_str,
-                                                                                  method.name_tok.value)
-                                                                      ))
+                                return res.failure(ErrorNew(AET_AttributeTypeError, f'Argument {arg} must have a type '
+                                                                                    f'{type_}',
+                                                            method.args[0].pos_start, method.args[0].pos_end, context))
                         args[arg] = method.args[0]
                         del method.args[0]
                     if len(method.args) != 0:
@@ -1422,7 +1400,7 @@ class Interpreter:
                             args_opt[arg] = method.args[0]
                             del method.args[0]
                     parent = attr(*args.values(), *args_opt.values(), context=context)
-                    if isinstance(parent, Error):
+                    if isinstance(parent, ErrorNew):
                         return res.failure(parent)
             traceback += f'.{method.name_tok.value}'
         return res.success(parent if isinstance(parent, Value) else None)
@@ -1432,19 +1410,14 @@ class Interpreter:
         var_name = node.var_name_tok.value
         value = context.symbol_table.get(var_name)
         if not value:
-            return res.failure(RTError(
-                node.pos_start, node.pos_end,
-                f"'{var_name}' is not defined",
-                context
-            ))
+            return res.failure(ErrorNew(ET_UnknownIdentifier, f"'{var_name}' is not defined",
+                                        node.pos_start, node.pos_end, context))
 
         for range_get_node in node.rangeList:
             if not isinstance(value, List):
-                return res.failure(RTError(
-                    range_get_node.pos_start, range_get_node.pos_end,
-                    f"'{value}' is not a list and so cannot use the [] operators to access members of itself",
-                    context
-                ))
+                return res.failure(ErrorNew(ET_IllegalOperation, f"'{value}' is not a list and so cannot use the [] "
+                                                                 f"operators to access members of itself",
+                                            range_get_node.pos_start, range_get_node.pos_end, context))
             value_len = len(value.elements)
             value = res.register(self.visit_VarGetItemNode(range_get_node, context, value, value_len))
             if res.should_return(): return res
@@ -1465,8 +1438,8 @@ class Interpreter:
                     NonBreakError(lower.pos_start, lower.pos_end, context, WT_ListIndexFloat).print_method()
                 lower = int(lower.value)
             else:
-                return res.failure(IllegalValueError(lower.pos_start,
-                                                     lower.pos_end, "List index must be a single value"))
+                return res.failure(ErrorNew(ET_IllegalValue, "List index must be a single value", lower.pos_start,
+                                            lower.pos_end, context))
         if node.higher == 0:
             higher = list_len - 1
         else:
@@ -1477,8 +1450,8 @@ class Interpreter:
                     NonBreakError(higher.pos_start, higher.pos_end, context, WT_ListIndexFloat).print_method()
                 higher = int(higher.value)
             else:
-                return res.failure(
-                    IllegalValueError(higher.pos_start, higher.pos_end, "List index must be a single value"))
+                return res.failure(ErrorNew(ET_IllegalValue, "List index must be a single value", higher.pos_start,
+                                            higher.pos_end, context))
 
         lower = list_len + lower if lower < 0 else lower
         higher = list_len + higher if higher < 0 else higher
@@ -1505,25 +1478,6 @@ class Interpreter:
             value = value.elements[lower].set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
 
-    def assignChecks(self, var_name, value, previous, node, context):
-        res = RTResult()
-        if isinstance(previous, Infinity):
-            previous = previous.previous_type
-        if previous != List:
-            if isinstance(value, List):
-                return res.failure(RTError(node.pos_start, node.pos_end, f'Cannot assign a {node.var_type} variable to '
-                                                                         f'a list', context))
-            if not isinstance(value, Infinity):
-                value = previous(value.value)
-        elif isinstance(value, Number):
-            NonBreakError(node.pos_start, node.pos_end, context, WT_ListFromValue).print_method()
-            value = List([value.value])
-
-        if res.should_return(): return res
-
-        context.symbol_table.set(var_name, value)
-        return res.success(value if node.ret else None)
-
     def visit_VarAssignNode(self, node: VarAssignNode, context):
         res = RTResult()
         # if node.var_type == 'silent':
@@ -1543,8 +1497,8 @@ class Interpreter:
             value = res.register(node.default_value.assign_checks(value, node.pos_start, node.pos_end, context))
             if res.error: return res
         elif not node.value_node:
-            return res.failure(
-                ExpectedExprError(node.pos_start, node.pos_end, 'Variable does not have a default value'))
+            return res.failure(ErrorNew(ET_ExpectedExpr, 'Variable does not have a default value', node.pos_start,
+                                        node.pos_end, context))
         context.symbol_table.set(node.var_name_tok.value, value)
         return res.success(value if node.ret else None)
 
@@ -1562,8 +1516,8 @@ class Interpreter:
         if const:
             return res.success(previous if node.ret else None)
         if previous is None:
-            return res.failure(
-                RTError(node.pos_start, node.pos_end, f"Variable {var_name.value} is undefined", context))
+            return res.failure(ErrorNew(ET_UnknownIdentifier, f"Variable '{var_name.value}' is undefined",
+                                        node.pos_start, node.pos_end, context))
         if res.should_return(): return res
         previous = previous.set_pos(node.pos_start, node.pos_end)
         token = node.token
@@ -1609,8 +1563,8 @@ class Interpreter:
                     found = True
                     break
         if not found:
-            return res.failure(InvalidSyntaxError(node.pos_start, node.pos_end, f'No method defined for {node.op_tok}'))
-
+            return res.failure(ErrorNew(ET_InvalidSyntax, f"No method defined for '{node.op_tok}'", node.pos_start,
+                                        node.pos_end, context))
         if error:
             return res.failure(error)
         return res.success(result.set_pos(node.pos_start, node.pos_end))
@@ -1971,16 +1925,16 @@ class Interpreter:
 #######################################
 
 class RunRes:
-    def __init__(self, result, error, previous: list, newLineNeeded: bool):
-        self.result = result
-        self.error = error
-        self.previous = previous
-        self.newLineNeeded = newLineNeeded
+    def __init__(self):
+        self.result = List([])
+        self.error = None
+        self.previous = []
+        self.newLineNeeded = False
         self.printNewLine = False
 
 
 def run(fn, text, previous=None) -> RunRes:
-    out = RunRes(List([]), None, [], False)
+    out = RunRes()
 
     # Generate tokens
     lexer = Lexer(fn, text)
@@ -1992,20 +1946,18 @@ def run(fn, text, previous=None) -> RunRes:
     if previous:
         tokens = previous.previous + tokens
 
-    paren = sum([1 if i.type == TT_LPAREN else 0 for i in tokens]) - sum(
-        [1 if i.type == TT_RPAREN else 0 for i in tokens])
-    if paren != 0:
-        out.previous = tokens[:-1]  # [:-1] needed to remove the 'EOF' token at the end of the generated tokens
-        out.newLineNeeded = True
-        return out
-    paren = sum([1 if i.type == TT_LPAREN_SQUARE else 0 for i in tokens]) - sum(
-        [1 if i.type == TT_RPAREN_SQUARE else 0 for i in tokens])
+    paren = sum([tok.type == TT_LPAREN for tok in tokens]) - sum([tok.type == TT_RPAREN for tok in tokens])
     if paren != 0:
         out.previous = tokens[:-1]
         out.newLineNeeded = True
         return out
-    paren = sum([1 if i.type == TT_LPAREN_CURLY else 0 for i in tokens]) - sum(
-        [1 if i.type == TT_RPAREN_CURLY else 0 for i in tokens])
+    paren = sum([tok.type == TT_LPAREN_SQUARE for tok in tokens]) - sum(
+        [tok.type == TT_RPAREN_SQUARE for tok in tokens])
+    if paren != 0:
+        out.previous = tokens[:-1]
+        out.newLineNeeded = True
+        return out
+    paren = sum([tok.type == TT_LPAREN_CURLY for tok in tokens]) - sum([tok.type == TT_RPAREN_CURLY for tok in tokens])
     if paren != 0:
         out.previous = tokens[:-1]
         out.newLineNeeded = True
@@ -2018,11 +1970,11 @@ def run(fn, text, previous=None) -> RunRes:
     parser.context.symbol_table = global_symbol_table
     ast = parser.parse()
     if ast.error:
-        assert isinstance(ast.error, ErrorNew)
-        if ast.error.error_name == ET_ExpectedChar and ast.error.pos_end == tokens[-1].pos_end:
-            out.previous = tokens[:-1]
-            out.newLineNeeded = True
-            return out
+        if isinstance(ast.error, ErrorNew):
+            if ast.error.error_name == ET_ExpectedChar and ast.error.pos_end == tokens[-1].pos_end:
+                out.previous = tokens[:-1]
+                out.newLineNeeded = True
+                return out
         out.error = ast.error
         return out
 
