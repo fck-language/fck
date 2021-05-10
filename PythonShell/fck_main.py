@@ -1662,6 +1662,34 @@ class Interpreter:
         return res.success(None)
 
     def visit_IterateNode(self, node: IterateNode, context):
+        def list_iteration(iterable_: list):
+            for current_iteration in iterable_:
+                if node.var_name_tok:
+                    context.symbol_table.set(node.var_name_tok.value, current_iteration)
+
+                value = res.register(self.visit(node.suite_node, context))
+                if res.loop_should_break:
+                    if res.break_loop_name != node.reference_name:
+                        return res
+                if res.should_return() and (not res.loop_should_continue) and (not res.loop_should_break):
+                    return res
+
+                if res.loop_should_continue:
+                    continue
+
+                if res.loop_should_break:
+                    break
+
+                elements.append(value)
+
+            if node.var_name_tok:
+                context.symbol_table.remove(node.var_name_tok.value)
+
+            if node.reference_name:
+                del context.named_loops[-1]
+
+            return res.success(None if should_return_null else
+                               List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
         res = RTResult()
         elements = []
         should_return_null = node.should_return_null
@@ -1678,7 +1706,8 @@ class Interpreter:
         if res.should_return(): return res
 
         if end_value is None:
-            return res.failure(ErrorNew(ET_ExpectedExpr, 'Expected a numerical or list type to iterate over',
+            return res.failure(ErrorNew(ET_ExpectedExpr, 'Expected a numerical, list, array, or string type to '
+                                                         'iterate over',
                                         node.end_value_node.pos_start, node.end_value_node.pos_end, context))
 
         if isinstance(end_value, List):
@@ -1688,33 +1717,15 @@ class Interpreter:
                 if end_value_recursive[1]:
                     end_value = end_value_recursive[2]
             else:
-                for current_iteration in end_value.elements:
-                    if node.var_name_tok:
-                        context.symbol_table.set(node.var_name_tok.value, current_iteration)
-
-                    value = res.register(self.visit(node.suite_node, context))
-                    if res.loop_should_break:
-                        if res.break_loop_name != node.reference_name:
-                            return res
-                    if res.should_return() and (not res.loop_should_continue) and (not res.loop_should_break):
-                        return res
-
-                    if res.loop_should_continue:
-                        continue
-
-                    if res.loop_should_break:
-                        break
-
-                    elements.append(value)
-
-                if node.var_name_tok:
-                    context.symbol_table.remove(node.var_name_tok.value)
-
-                if node.reference_name:
-                    del context.named_loops[-1]
-
-                return res.success(None if should_return_null else
-                                   List(elements).set_context(context).set_pos(node.pos_start, node.pos_end))
+                return list_iteration(end_value.elements)
+        if isinstance(end_value, String):
+            if node.start_value_node:
+                end_value = res.register(end_value.as_type('float' if '.' in end_value.value else 'int',
+                                                           end_value.pos_start, end_value.pos_end, context))
+                if res.should_return(): return res
+            else:
+                iterable = [String(char) for char in end_value.value]
+                return list_iteration(iterable)
         if not (isinstance(end_value, Int) and isinstance(start_value, Int)):
             end_value = res.register(end_value.as_type('float', end_value.pos_start, end_value.pos_end, context))
             if res.error: return res
