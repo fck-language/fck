@@ -60,7 +60,7 @@ class ErrorNew:
         self.context = context
         self.error_name = error_name
         self.details = details
-        self.__dict__.update(**kwargs)
+        self.__dict__.update(kwargs)
 
     def generate_traceback(self):
         result = ''
@@ -76,11 +76,12 @@ class ErrorNew:
                f'{string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)}'
 
     def as_string(self):
-        if self.details:
-            name = f'{errorNames[self.error_name]}: {self.details}'
-        else:
-            name = errorNames[self.error_name]
-        name += errorFormatting[self.error_name].format(self.__dict__.items())
-        out = '\n'.join(['\n'.join(wrap(name, wrap_length)), self.generate_traceback()])
-        longest = max([len(i) for i in out.split('\n')])
-        return "*" * longest + '\n' + out + '\n' + "*" * longest
+        def wrap_(text: str):
+            return '\n'.join(wrap(text, wrap_length))
+        title = f'\nError:\033[35m {errorNames[self.error_name]}\033[0m\n'
+        body = '\n'.join([wrap_(self.details),
+                          errorFormatting[self.error_name].format(**dict(self.__dict__.items())),
+                          self.generate_traceback()])
+        longest = max([len(i) for i in body.split('\n')])
+        bounding = '\033[31m' + "*" * longest
+        return bounding + title + (f'{body}\n' if body else '') + bounding + '\033[0m'

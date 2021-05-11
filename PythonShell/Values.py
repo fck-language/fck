@@ -877,12 +877,18 @@ def execute_quit(self, exec_ctx: Context):
     sys.exit(0)
 
 
-func_log = BuiltInFunction('log', {'value': FuncArgNode('str', None, String(''))}, execute_log)
-func_print = BuiltInFunction('print', {'value': FuncArgNode('str', None, String(''))}, execute_print)
-func_type = BuiltInFunction('type', {'value': FuncArgNode('auto', None)}, execute_type)
-func_input = BuiltInFunction('input', {'prompt': FuncArgNode('str', None, String(''))}, execute_input)
+func_log = BuiltInFunction('log', {'value': FuncArgNode('str', String(''), 'Value to be printed to the console')},
+                           execute_log)
+func_print = BuiltInFunction('print', {'value': FuncArgNode('str', String(''), 'Value to be printed to the console')},
+                             execute_print)
+func_type = BuiltInFunction('type', {'value': FuncArgNode('auto', explain='Value to have its type calculated and '
+                                                                          'returned')}, execute_type)
+func_input = BuiltInFunction('input', {'prompt': FuncArgNode('str', String(''), 'Prompt to be printed to the console '
+                                                                                'before the user can input anything')},
+                             execute_input)
 func_clear = BuiltInFunction('clear', {}, execute_clear)
-func_run = BuiltInFunction('run', {'fn': FuncArgNode('str', None)}, None)
+func_run = BuiltInFunction('run', {'fn': FuncArgNode('str', explain='Path to an executable .fck script. Relative to the'
+                                                                    ' current working directory')}, None)
 func_quit = BuiltInFunction('quit', {}, execute_quit)
 
 class_identifier_values = {int: 0, float: 0.5, bool: 0}

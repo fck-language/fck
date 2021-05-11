@@ -1172,7 +1172,7 @@ class Parser:
                     return res.failure(ErrorNew(ET_ExpectedTypeIdentifier, 'Expected variable type identifier for '
                                                                            'function argument',
                                                 self.current_tok.pos_start, self.current_tok.pos_end, self.context))
-                arg = FuncArgNode(self.current_tok.value, self.current_tok.pos_start)
+                arg = FuncArgNode(self.current_tok.value)
                 res.register_advancement()
                 self.advance()
                 if self.current_tok.type != TT_IDENTIFIER:
@@ -1375,7 +1375,7 @@ class Interpreter:
                 err, attr = attribute_check(parent.silenced_node, method.name_tok.value)
                 if err:
                     return res.failure(ErrorNew(AET_UnknownAttributeError,
-                                                f"Attribute '{method.name_tok.value}' does not exist for type"
+                                                f"Attribute '{method.name_tok.value}' does not exist for type "
                                                 f"'{parent.silenced_node}'", node.pos_start, node.pos_end, context))
                 args = attr.args
                 args_opt = attr.optional_args
@@ -1383,7 +1383,8 @@ class Interpreter:
                     details = [len(args) - len(method.args), 'few'] if len(method.args) < len(args) else \
                         [len(method.args) - (len(args) + len(args_opt)), 'many']
                     details = f'{details[0]} too {details[1]} were passed into \'{method.name_tok.value}\''
-                    return res.failure(ErrorNew(AET_TooArgumentError, details, node.pos_start, node.pos_end, context))
+                    return res.failure(ErrorNew(AET_TooArgumentError, details, node.pos_start, node.pos_end, context,
+                                                arg_explain=arg_explain(args, method.name_tok.value)))
                 if method.name_tok.value == 'execute' and isinstance(parent.silenced_node, CaseNode):
                     parent = res.register(self.visit_CaseNode(parent.silenced_node, context))
                 else:
@@ -1392,7 +1393,8 @@ class Interpreter:
                             if not isinstance(method.args[0], type_):
                                 return res.failure(ErrorNew(AET_AttributeTypeError, f'Argument {arg} must have a type '
                                                                                     f'{type_}',
-                                                            method.args[0].pos_start, method.args[0].pos_end, context))
+                                                            method.args[0].pos_start, method.args[0].pos_end, context,
+                                                            arg_explain=arg_explain(args, method.name_tok.value)))
                         args[arg] = method.args[0]
                         del method.args[0]
                     if len(method.args) != 0:
@@ -1827,7 +1829,12 @@ class Interpreter:
         opt_given = len(node.arg_nodes) - sum([i_[0] is None for i_ in args.values()])
         if opt_given < 0:
             return res.failure(ErrorNew(AET_TooArgumentError, f'{abs(opt_given)} too few arguments given.',
-                                        node.pos_start, node.pos_end, context))
+                                        node.pos_start, node.pos_end, context,
+                                        arg_explain=arg_explain(value_to_call.arg_names, value_to_call.name)))
+        if len(node.arg_nodes) > len(args):
+            return res.failure(ErrorNew(AET_TooArgumentError, f'{len(node.arg_nodes) - len(args)} too many arguments '
+                                                              f'given.', node.pos_start, node.pos_end, context,
+                                        arg_explain=arg_explain(value_to_call.arg_names, value_to_call.name)))
 
         # separation of values with an identifier like a :: 1 and those without
         mask = [isinstance(arg, VarReassignNode) for arg in node.arg_nodes]
@@ -1870,7 +1877,8 @@ class Interpreter:
         if sum([value is None for value in args.values()]) != 0:
             return res.failure(ErrorNew(AET_TooArgumentError, f'{sum([value is None for value in args.values()])} '
                                                               f'too few arguments given.',
-                                        node.pos_start, node.pos_end, context))
+                                        node.pos_start, node.pos_end, context,
+                                        arg_explain=arg_explain(value_to_call.arg_names, value_to_call.name)))
 
         for key, value in args.items():
             args[key] = res.register(self.visit(value, context))

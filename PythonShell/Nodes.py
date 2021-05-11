@@ -1,4 +1,5 @@
 from Errors import *
+from ErrorsNew import *
 from Bases import wrap_length, Token, TT_AT, Position
 
 
@@ -231,14 +232,10 @@ class CaseNode:
         self.pos_end = pos_end
 
     def new_option(self, option_expr, option_method, option_name: AtNameNode = None, context=None):
-        # print(list(option_name.__dict__.items()))
         if option_name:
             if option_name.at == 'default':
-                return IllegalAttributeValue(option_name.pos_start, option_name.pos_start,
-                                             'Cannot give a case statement option the identifier \'@default\'',
-                                             arg_explain(self.new_option.args_str, self.new_option.optional_args_str,
-                                                         'new_option')
-                                             )
+                ErrorNew(AET_IllegalArgumentValue, 'Cannot give a case statement option the identifier \'@default\'',
+                         option_name.pos_start, option_name.pos_start, context)
         self.cases.append(OptionNode(option_expr, option_method, option_expr.pos_start,
                                      option_name.pos_end if option_name else option_method.pos_end, option_name))
         return self
@@ -337,12 +334,11 @@ class FuncDefNode:
 
 
 class FuncArgNode:
-    def __init__(self, type_, pos_start, default_value_node=None):
+    def __init__(self, type_, default_value_node=None, explain=None):
         self.type_ = type_
         self.default_value_node = default_value_node
 
-        self.pos_start = pos_start
-        self.pos_end = None
+        self.explain = explain
 
 
 class CallNode:
@@ -380,25 +376,38 @@ class BreakNode:
         self.pos_end = pos_end
 
 
-def arg_explain(required: dict, optional: dict, method_name):
-    arg_length = max(max([len(i) for i in required.keys()]) if len(required) != 0 else 0,
-                     max([len(i) for i in optional.keys()]) if len(optional) != 0 else 0)
-    name = f' Parameters for {method_name} method '
-    out = f'{"*" * ((wrap_length - len(name)) // 2)}{name}' \
-          f'{"*" * (wrap_length - len(name) - ((wrap_length - len(name)) // 2))}\n'
-    newline = '\n' + " " * (arg_length + 3)
-    if len(required) != 0:
-        out += '# Required parameters\n'
-        for key, value in required.items():
-            out += f'{str(key).ljust(arg_length)} : {newline.join(wrap(value, wrap_length - arg_length - 3))}\n'
-    if len(optional) != 0:
-        out += '# Optional parameters\n'
-        for key, value in optional.items():
-            out += f'{str(key).ljust(arg_length)} : {newline.join(wrap(value, wrap_length - arg_length - 3))}\n'
-    if len(optional) + len(required) == 0:
-        out += 'No arguments are required or optional'
-    out += '*' * wrap_length
-    return out
+def arg_explain(args: dict, method_name: str):
+    optional = {key: item for key, item in args.items() if not item.default_value_node}
+    required = {key: item for key, item in args.items() if item.default_value_node}
+
+    max_arg_length = max([len(key) + len(item.type_) for key, item in args.items()])
+    newline = '\n' + " " * (max_arg_length + 6)
+
+    title = f'Parameters for {method_name} method'
+    title = title.rjust((wrap_length - len(title)) // 2 + len(title), '~').ljust(wrap_length, '~')
+    title = f'\033[34m{title}\033[0m'
+    if len(args) == 0:
+        title += '\nMethod does not take any arguments'
+        return title
+    if len(required) > 0:
+        req = '# Required parameters\n'
+        for key, item in required.items():
+            req += f'{key} ({item.type_})'.ljust(max_arg_length)
+            if item.explain:
+                req += ' : ' + newline.join(wrap(item.explain, wrap_length - max_arg_length - 6))
+            req += '\n'
+        title += f'\n{req}'
+        del req
+    if len(optional) > 0:
+        opt = '# Optional parameters\n'
+        for key, item in optional.items():
+            opt += f'{key} ({item.type_})'.ljust(max_arg_length)
+            if item.explain:
+                opt += ' : ' + newline.join(wrap(item.explain, wrap_length - max_arg_length - 6))
+            opt += '\n'
+        title += f'\n{opt}'
+        del opt
+    return title
 
 
 SILENCABLE_TYPES = {'case': CaseNode}
