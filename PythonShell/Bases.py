@@ -6,7 +6,7 @@ LETTERS = ascii_letters
 LETTERS_DIGITS = LETTERS + DIGITS
 
 options = {'wrapLength': 70}
-with open(dirname(__file__) + '/../.fck') as f:
+with open('$HOME/.fck') as f:
     for lineNum, line in enumerate(f):
         line_split = line.split('=')
         if line_split[0] in options.keys():
