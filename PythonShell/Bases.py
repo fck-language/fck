@@ -72,61 +72,39 @@ TT_SET_POW = "SET_POW"
 TT_SET_RET_POW = "SET_RET_POW"
 TT_GLOBAL_OPT = "GLOBAL_OPT"
 
-
 VAR_SET = [TT_SET, TT_SET_RET, TT_SET_PLUS, TT_SET_RET_PLUS, TT_SET_MINUS, TT_SET_RET_MINUS, TT_SET_MULT,
            TT_SET_RET_MULT, TT_SET_DIV, TT_SET_RET_DIV, TT_SET_FDIV, TT_SET_RET_FDIV, TT_SET_MOD, TT_SET_RET_MOD,
            TT_SET_POW, TT_SET_RET_POW]
 VAR_SET_RET = [TT_SET_RET, TT_SET_RET_PLUS, TT_SET_RET_MINUS, TT_SET_RET_MULT, TT_SET_RET_DIV, TT_SET_RET_FDIV,
                TT_SET_RET_MOD, TT_SET_RET_POW]
-VAR_EQUIV = {TT_SET_RET: TT_SET, TT_SET_RET_PLUS: TT_SET_PLUS, TT_SET_RET_MINUS: TT_SET_MINUS, TT_SET_RET_MULT:
-             TT_SET_MULT, TT_SET_RET_DIV: TT_SET_DIV, TT_SET_RET_FDIV: TT_SET_FDIV, TT_SET_RET_MOD: TT_SET_MOD,
-             TT_SET_RET_POW: TT_SET_POW}
+VAR_EQUIV = {TT_SET_RET: TT_SET, TT_SET_RET_PLUS: TT_SET_PLUS, TT_SET_RET_MINUS: TT_SET_MINUS,
+             TT_SET_RET_MULT: TT_SET_MULT, TT_SET_RET_DIV: TT_SET_DIV, TT_SET_RET_FDIV: TT_SET_FDIV,
+             TT_SET_RET_MOD: TT_SET_MOD, TT_SET_RET_POW: TT_SET_POW}
 VAR_KEYWORDS = ['int', 'float', 'bool', 'list', 'str', 'imag']
 NON_STATIC_VAR_KEYWORDS = ['auto']
 
-KEYWORDS = [
-    "and",
-    "or",
-    "not",
-    "not_char",
-    "if",
-    "else",
-    "elif",
-    "case",
-    "option",
-    "default",
-    "iterate",
-    "to",
-    "import",
-    "step",
-    "while",
-    "def",
-    "return",
-    "continue",
-    "break",
-    "silent",
-    "as"
-] + VAR_KEYWORDS + NON_STATIC_VAR_KEYWORDS
-
-
-class Token:
-    def __init__(self, type_, value=None, pos_start=None, pos_end=None):
-        self.type = type_
-        self.value = value
-        if pos_start:
-            self.pos_start = pos_start.copy()
-            self.pos_end = pos_start.copy().advance()
-        if pos_end:
-            self.pos_end = pos_end
-
-    def matches(self, type_, value):
-        return self.type == type_ and self.value == value
-
-    def list_matches(self, type_, value_list):
-        return self.type == type_ and self.value in value_list
-
-    def __repr__(self):
-        return f'{self.type}:{self.value}' if self.value else f'{self.type}'
+KEYWORDS = ["and",
+            "or",
+            "not",
+            "not_char",
+            "if",
+            "else",
+            "elif",
+            "case",
+            "option",
+            "default",
+            "iterate",
+            "to",
+            "import",
+            "step",
+            "while",
+            "def",
+            "return",
+            "continue",
+            "break",
+            "silent",
+            "as"
+            ] + VAR_KEYWORDS + NON_STATIC_VAR_KEYWORDS
 
 
 class Context:
@@ -145,6 +123,9 @@ class Position:
         self.col = col
         self.fn = fn
         self.ftxt = ftxt
+
+    def generate_tok_pos(self):
+        return TokenPosition(self.ln, self.col)
 
     def advance(self, current_char=None):
         self.idx += 1
@@ -165,6 +146,19 @@ class Position:
 
     def copy(self):
         return Position(self.idx, self.ln, self.col, self.fn, self.ftxt)
+
+
+class TokenPosition:
+    def __init__(self, ln, col):
+        self.ln = ln
+        self.col = col
+
+    def advance(self):
+        self.ln += 1
+        return self
+
+    def copy(self):
+        return TokenPosition(self.ln, self.col)
 
 
 class SymbolTable:
@@ -191,3 +185,23 @@ class SymbolTable:
 
     def set_const(self, name, value):
         self.constant_symbols[name] = value
+
+
+class Token:
+    def __init__(self, type_, value=None, pos_start: TokenPosition = None, pos_end: TokenPosition = None):
+        self.type = type_
+        self.value = value
+        if pos_start:
+            self.pos_start = pos_start.copy()
+            self.pos_end = pos_start.copy().advance()
+        if pos_end:
+            self.pos_end = pos_end
+
+    def matches(self, type_, value):
+        return self.type == type_ and self.value == value
+
+    def list_matches(self, type_, value_list):
+        return self.type == type_ and self.value in value_list
+
+    def __repr__(self):
+        return f'{self.type}:{self.value}' if self.value else f'{self.type}'

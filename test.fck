@@ -1,6 +1,0 @@
-void main() {
-    int example_variable :: 7
-    example_variable :: self < 3 ? 3 : 500
-    log example_variable
-    log example_variable.bit_length()
-}
