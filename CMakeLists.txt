@@ -5,4 +5,4 @@ project(fck VERSION 0.1.0)
 
 include_directories(${PROJECT_SOURCE_DIR})
 
-add_executable(fck main.cpp bases.cpp results.cpp errors.cpp)
+add_executable(fck src/main.cpp src/bases.cpp src/results.cpp src/errors.cpp src/err_warn.cpp)

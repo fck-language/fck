@@ -31,3 +31,12 @@ Position MasterPosition::make_position() {
   out.col = col;
   return out;
 }
+
+bool Token::matches(int other_type, std::string other_value) {
+  return type == other_type and value == other_value;
+}
+
+// TODO work out how to check if value is in a list
+// bool Token::list_matches(int other_type, std::vector<std::string> other_value_list) {
+//   return type == other_type and value in other_value_list;
+// }
