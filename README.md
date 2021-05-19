@@ -1,4 +1,6 @@
-![fck header image](https://github.com/RosiePuddles/fck/blob/main/img/README_header.png?raw=true)
+<p align="center">
+    <img src="/img/README_header.png" alt="fck readme header image">
+</p>
 
 # fck  
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md)  
