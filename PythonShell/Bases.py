@@ -1,24 +1,28 @@
 from string import ascii_letters
-from os.path import dirname
+from os.path import exists, expanduser
 
 DIGITS = '0123456789'
 LETTERS = ascii_letters
 LETTERS_DIGITS = LETTERS + DIGITS
 
+config_file_path = expanduser('~') + '/.fck'
 options = {'wrapLength': 70}
-with open('$HOME/.fck') as f:
-    for lineNum, line in enumerate(f):
-        line_split = line.split('=')
-        if line_split[0] in options.keys():
-            if line_split[0] == 'wrapLength':
-                try:
-                    options['wrapLength'] = round(float(line_split[1]))
-                    if options['wrapLength'] < 25:
-                        print(f'\'wrapLength\' must be larger than 25 as a minimum!\n'
+if exists(config_file_path):
+    with open(config_file_path) as f:
+        for lineNum, line in enumerate(f):
+            line_split = line.split('=')
+            if line_split[0] in options.keys():
+                if line_split[0] == 'wrapLength':
+                    try:
+                        options['wrapLength'] = round(float(line_split[1]))
+                        if options['wrapLength'] < 25:
+                            print(f'\'wrapLength\' must be larger than 25 as a minimum!\n'
+                                  f'File \'.fck\', line {lineNum + 1}:\n{line}')
+                    except ValueError:
+                        print(f'\'{line_split[1]}\' cannot be cast as an int and has been ignored!\n'
                               f'File \'.fck\', line {lineNum + 1}:\n{line}')
-                except ValueError:
-                    print(f'\'{line_split[1]}\' cannot be cast as an int and has been ignored!\n'
-                          f'File \'.fck\', line {lineNum + 1}:\n{line}')
+
+del config_file_path
 
 wrap_length = options['wrapLength']
 
@@ -80,7 +84,7 @@ VAR_SET_RET = [TT_SET_RET, TT_SET_RET_PLUS, TT_SET_RET_MINUS, TT_SET_RET_MULT, T
 VAR_EQUIV = {TT_SET_RET: TT_SET, TT_SET_RET_PLUS: TT_SET_PLUS, TT_SET_RET_MINUS: TT_SET_MINUS,
              TT_SET_RET_MULT: TT_SET_MULT, TT_SET_RET_DIV: TT_SET_DIV, TT_SET_RET_FDIV: TT_SET_FDIV,
              TT_SET_RET_MOD: TT_SET_MOD, TT_SET_RET_POW: TT_SET_POW}
-VAR_KEYWORDS = ['int', 'float', 'bool', 'list', 'str', 'imag']
+VAR_KEYWORDS = ["int", "float", "bool", "list", "str", "imag"]
 NON_STATIC_VAR_KEYWORDS = ['auto']
 
 KEYWORDS = ["and",
