@@ -88,12 +88,12 @@ class NonBreakError:
         ctx = self.context
 
         while ctx:
-            result = f'  File {pos.fn}, line {str(pos.ln + 1)}, in {ctx.display_name}\n' + result
+            result = f'  Line {str(pos.ln + 1)}, in {ctx.display_name}\n' + result
             pos = ctx.parent_entry_pos
             ctx = ctx.parent
 
         return f'Traceback (most recent call):\n{result[:-1]}\n' \
-               f'{string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)}'
+               f'{string_with_arrows(self.context.ftxt, self.pos_start, self.pos_end)}'
 
     def print_method(self):
         custom = self.value[randint(0, len(self.value) - 1)]

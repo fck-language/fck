@@ -10,10 +10,11 @@ from Nodes import *
 #######################################
 
 class Lexer:
-    def __init__(self, fn, text):
-        self.fn = fn
-        self.text = text
-        self.pos = Position(-1, 0, -1, fn, text)
+    def __init__(self, context_: Context):
+        self.context = context_
+        self.fn = self.context.display_name
+        self.text = self.context.ftxt
+        self.pos = Position(-1, 0, -1, self.fn, self.text)
         self.current_char = None
         self.advance()
         self.single_char_token_names = {'+': TT_PLUS, '%': TT_MOD, '(': TT_LPAREN, ')': TT_RPAREN, '{': TT_LPAREN_CURLY,
@@ -23,7 +24,7 @@ class Lexer:
         self.multi_char_token_methods = {'!': self.make_not_equals, '=': self.make_equals, '<': self.make_less_than,
                                          '>': self.make_greater_than, '*': self.make_mult_pow, ':': self.make_set,
                                          '/': self.make_div, '"': self.make_string, "'": self.make_string,
-                                         '#': self.skip_comment}
+                                         '#': self.skip_comment, '`': self.make_global_opt}
 
     def advance(self) -> None:
         self.pos.advance(self.current_char)
@@ -63,7 +64,8 @@ class Lexer:
                     pos_start = self.pos.generate_tok_pos()
                     char = self.current_char
                     self.advance()
-                    return [], IllegalCharError(pos_start, self.pos.generate_tok_pos(), f'\'{char}\'')
+                    return [], ErrorNew(ET_IllegalChar, f'Illegal character \'{char}\'.', pos_start,
+                                        self.pos.generate_tok_pos(), self.context)
 
         tokens.append(Token(TT_EOF, pos_start=self.pos.generate_tok_pos()))
         return tokens, None
@@ -108,7 +110,7 @@ class Lexer:
                     string += self.current_char
             self.advance()
         if self.current_char is None:
-            NonBreakError(pos_start, self.pos.generate_tok_pos(), Context(self.fn), WT_NoStringEnd).print_method()
+            NonBreakError(pos_start, self.pos.generate_tok_pos(), self.context, WT_NoStringEnd).print_method()
             pass
         self.advance()
         return Token(TT_STRING, string, pos_start, self.pos.generate_tok_pos()), None
@@ -263,13 +265,25 @@ class Lexer:
 
         self.advance()
 
+    def make_global_opt(self):
+        pos_start = self.pos.generate_tok_pos()
+        self.advance()
+
+        identifier = ''
+
+        while self.current_char is not None:
+            identifier += self.current_char
+            self.advance()
+
+        return Token(TT_GLOBAL_OPT, identifier, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()), None
+
 
 #######################################
 # PARSER
 #######################################
 
 class Parser:
-    def __init__(self, tokens, context):
+    def __init__(self, tokens, context: Context):
         self.tokens = tokens
         self.context = context
         self.tok_idx = -1
@@ -342,6 +356,17 @@ class Parser:
     def statement(self):
         res = ParseResult()
         pos_start = self.current_tok.pos_start.copy()
+
+        if self.current_tok.type == TT_GLOBAL_OPT:
+            on = self.current_tok.value[:2] != 'no'
+            checking = self.current_tok.value if on else self.current_tok.value[2:]
+            if checking not in self.context.symbol_table.options.keys():
+                return res.failure(ErrorNew(ET_InvalidSyntax, f'Invalid global option \'{checking}\'', pos_start,
+                                            self.current_tok.pos_end, self.context))
+            self.context.symbol_table.options[checking] = on
+            res.register_advancement()
+            self.advance()
+            return res.success(None)
 
         if self.current_tok.matches(TT_KEYWORD, 'return'):
             res.register_advancement()
@@ -1943,38 +1968,31 @@ class RunRes:
 
 def run(fn, text, previous=None) -> RunRes:
     out = RunRes()
+    context = Context(fn, text)
 
     # Generate tokens
-    lexer = Lexer(fn, text)
+    lexer = Lexer(context)
     tokens, error = lexer.make_tokens()
     if error:
         out.error = error
         return out
 
+    del lexer
+
     if previous:
         tokens = previous.previous + tokens
 
-    paren = sum([tok.type == TT_LPAREN for tok in tokens]) - sum([tok.type == TT_RPAREN for tok in tokens])
-    if paren != 0:
-        out.previous = tokens[:-1]
-        out.newLineNeeded = True
-        return out
-    paren = sum([tok.type == TT_LPAREN_SQUARE for tok in tokens]) - sum(
-        [tok.type == TT_RPAREN_SQUARE for tok in tokens])
-    if paren != 0:
-        out.previous = tokens[:-1]
-        out.newLineNeeded = True
-        return out
-    paren = sum([tok.type == TT_LPAREN_CURLY for tok in tokens]) - sum([tok.type == TT_RPAREN_CURLY for tok in tokens])
-    if paren != 0:
-        out.previous = tokens[:-1]
-        out.newLineNeeded = True
-        return out
+    for tok_l, tok_r in [[TT_LPAREN, TT_RPAREN], [TT_LPAREN_CURLY, TT_RPAREN_CURLY], [TT_LPAREN_SQUARE, TT_RPAREN_SQUARE]]:
+        paren = sum([tok.type == tok_l for tok in tokens]) - sum([tok.type == tok_r for tok in tokens])
+        if paren != 0:
+            out.previous = tokens[:-1]
+            out.newLineNeeded = True
+            return out
 
     del paren
 
     # Generate AST
-    parser = Parser(tokens, Context(fn))
+    parser = Parser(tokens, Context(fn, text))
     parser.context.symbol_table = global_symbol_table
     ast = parser.parse()
     if ast.error:

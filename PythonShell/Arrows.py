@@ -1,5 +1,11 @@
 def string_with_arrows(text, pos_start, pos_end):
     result = ''
+def string_with_arrows(text: str, pos_start, pos_end):
+    result = text.split('\n')
+    if pos_start.ln == pos_end.ln:
+        result = result[pos_end.ln] + '\n'
+        result += ' ' * pos_start.col + '^' * (pos_end.col - pos_start.col)
+        return result
 
     # Calculate indices
     idx_start = max(text.rfind('\n', 0, pos_start.idx), 0)

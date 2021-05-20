@@ -112,8 +112,15 @@ KEYWORDS = ["and",
 
 
 class Context:
-    def __init__(self, display_name, parent=None, parent_entry_pos=None):
+    def __init__(self, display_name, ftxt, parent=None, parent_entry_pos=None):
+        """
+        :param display_name:     Display name
+        :param ftxt:             Can't remember
+        :param parent:           Parent context class instance
+        :param parent_entry_pos: Honestly not sure
+        """
         self.display_name = display_name
+        self.ftxt = ftxt
         self.parent = parent
         self.parent_entry_pos = parent_entry_pos
         self.symbol_table = None
@@ -167,12 +174,19 @@ class TokenPosition:
 
 class SymbolTable:
     def __init__(self, parent=None):
+        """
+        :param parent: Parent symbol table instance
+        """
         self.symbols = {}
         self.constant_symbols = {}
         self.options = {'math': False, 'log': True}
         self.parent = parent
 
     def get(self, name):
+        """
+        :param name: name of the requested value
+        :return: [Value, bool] Return the value of the requested value and a bool. This bool is True if the requested value was a built-in and non-alterable value, otherwise False
+        """
         value = self.constant_symbols.get(name, None)
         if value is not None:
             return value, True

@@ -768,7 +768,7 @@ class BaseFunction(Value):
         self.name = name or "<anonymous>"
 
     def generate_new_context(self):
-        new_context = Context(self.name, self.context, self.pos_start)
+        new_context = Context(self.name, '', self.context, self.pos_start)
         new_context.symbol_table = SymbolTable(new_context.parent.symbol_table)
         new_context.symbol_table.options = new_context.parent.symbol_table.options
         return new_context
