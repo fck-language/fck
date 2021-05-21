@@ -6,12 +6,11 @@ def res_processing(run_res):
         print(run_res.error.as_string())
     else:
         assert isinstance(run_res.result, List)
-        recursive = run_res.result.recursive_single()
-        if recursive[1]:
-            if recursive[2] is not None:
+        if len(run_res.result.elements) == 1:
+            if run_res.result.elements[0] is not None:
                 print(repr(run_res.result.elements[0]))
-        elif not recursive[0]:
-            print(repr(run_res.result))
+        elif len(run_res.result.elements) > 1:
+            print(repr(run_res.result.elements))
 
 
 def shell():
