@@ -342,7 +342,7 @@ class Parser:
 
             if not more_statements: break
             statement = res.try_register(self.statement())
-            if statement is not None:
+            if statement is None:
                 self.reverse(res.to_reverse_count)
                 more_statements = False
                 continue
