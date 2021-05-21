@@ -48,8 +48,9 @@ class Lexer:
                 found = False
                 for i, n in self.single_char_token_names.items():
                     if self.current_char == i:
-                        tokens.append(Token(n, pos_start=self.pos.generate_tok_pos()))
+                        pos_start = self.pos.generate_tok_pos()
                         self.advance()
+                        tokens.append(Token(n, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()))
                         found = True
                         break
                 for i, n in self.multi_char_token_methods.items():
@@ -441,6 +442,7 @@ class Parser:
                 self.advance()
                 if self.current_tok.type not in (TT_NEWLINE, TT_EOF):
                     expr = res.register(self.expr())
+                    if res.error: return res
             return res.success(VarAssignNode(default_value, var_name, expr, tok_type == TT_SET_RET,
                                              pos_start, self.current_tok.pos_end))
 
@@ -679,7 +681,7 @@ class Parser:
             res.register_advancement()
             self.advance()
             if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
-                return res.failure(ErrorNew(ET_ExpectedTypeIdentifier, "Expected type after \'at\' keyword",
+                return res.failure(ErrorNew(ET_ExpectedTypeIdentifier, "Expected type after \'as\' keyword",
                                             self.current_tok.pos_start, self.current_tok.pos_end, self.context))
             as_type = self.current_tok
             res.register_advancement()
@@ -1980,6 +1982,7 @@ def run(fn, text, previous=None) -> RunRes:
     del lexer
 
     if previous:
+        previous.previous.append(Token(TT_NEWLINE, None, TokenPosition(0, 0), TokenPosition(0, 0)))
         tokens = previous.previous + tokens
 
     for tok_l, tok_r in [[TT_LPAREN, TT_RPAREN], [TT_LPAREN_CURLY, TT_RPAREN_CURLY], [TT_LPAREN_SQUARE, TT_RPAREN_SQUARE]]:
