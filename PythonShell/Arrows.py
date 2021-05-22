@@ -1,32 +1,16 @@
 def string_with_arrows(text: str, pos_start, pos_end):
-    result = text.split('\n')
+    result = text.splitlines()
     if pos_start.ln == pos_end.ln:
         result = result[pos_end.ln] + '\n'
         result += ' ' * pos_start.col + '^' * (pos_end.col - pos_start.col)
         return result
 
-    return '<<Traceback display error>>'
+    out = result[pos_start.ln] + '\n'
+    out += ' ' * pos_start.col + '^' * (len(out) - pos_start.col) + '\n'
 
-    # # Calculate indices
-    # idx_start = max(text.rfind('\n', 0, pos_start.idx), 0)
-    # idx_end = text.find('\n', idx_start + 1)
-    # if idx_end < 0: idx_end = len(text)
-    #
-    # # Generate each line
-    # line_count = pos_end.ln - pos_start.ln + 1
-    # for i in range(line_count):
-    #     # Calculate line columns
-    #     line = text[idx_start:idx_end]
-    #     col_start = pos_start.col if i == 0 else 0
-    #     col_end = pos_end.col if i == line_count - 1 else len(line) - 1
-    #
-    #     # Append to result
-    #     result += line + '\n'
-    #     result += ' ' * col_start + '^' * (col_end - col_start)
-    #
-    #     # Re-calculate indices
-    #     idx_start = idx_end
-    #     idx_end = text.find('\n', idx_start + 1)
-    #     if idx_end < 0: idx_end = len(text)
-    #
-    # return result.replace('\t', '')
+    for i in range(pos_start.ln + 1, pos_end.ln):
+        out += result[i] + '\n' + '^' * len(result[i]) + '\n'
+
+    out += result[pos_end.ln] + '\n' + '^' * pos_end.col
+
+    return out
