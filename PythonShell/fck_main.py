@@ -46,21 +46,22 @@ class Lexer:
                 tokens.extend(self.make_identifier())
             else:
                 found = False
-                for i, n in self.single_char_token_names.items():
-                    if self.current_char == i:
+                for char, n_ in self.single_char_token_names.items():
+                    if self.current_char == char:
                         pos_start = self.pos.generate_tok_pos()
                         self.advance()
-                        tokens.append(Token(n, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()))
+                        tokens.append(Token(n_, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()))
                         found = True
                         break
-                for i, n in self.multi_char_token_methods.items():
-                    if self.current_char == i:
-                        res = n()
-                        if res:
-                            tok, error = res
+                if not found:
+                    for char, n_ in self.multi_char_token_methods.items():
+                        if self.current_char == char:
+                            tok, error = n_()
                             if error: return [], error
-                            tokens.append(tok)
+                            if tok:
+                                tokens.append(tok)
                             found = True
+                            break
                 if not found:
                     pos_start = self.pos.generate_tok_pos()
                     char = self.current_char
@@ -257,14 +258,17 @@ class Lexer:
     def skip_comment(self):
         self.advance()
 
+        out = None
+
         if self.current_char == '#':
             while self.current_char not in ('\n', None):
                 self.advance()
+            out = Token(TT_NEWLINE, None, self.pos.generate_tok_pos(), self.pos.generate_tok_pos().advance())
         else:
             while self.current_char != '#':
                 self.advance()
-
         self.advance()
+        return out, None
 
     def make_global_opt(self):
         pos_start = self.pos.generate_tok_pos()
@@ -346,7 +350,8 @@ class Parser:
                 self.reverse(res.to_reverse_count)
                 more_statements = False
                 continue
-            statements.append(statement)
+            if statement is not False:
+                statements.append(statement)
 
         return res.success(ListNode(
             statements,
@@ -367,7 +372,7 @@ class Parser:
             self.context.symbol_table.options[checking] = on
             res.register_advancement()
             self.advance()
-            return res.success(None)
+            return res.success(False)
 
         if self.current_tok.matches(TT_KEYWORD, 'return'):
             res.register_advancement()
