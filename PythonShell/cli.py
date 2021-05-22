@@ -26,14 +26,14 @@ version = '\n'.join([f'\033[35m{i[:70]}\033[0m{i[70:]}\033[0m' for i in version.
 args = {'v': '0.1.0-alpha', 'cv': 'N/A', 'rd': '2021/05/21'}
 
 
-def run_script(script_path):
+def run_script(script_path, short):
     try:
         with open(script_path, 'r') as f:
             script = f.read()
     except Exception as e:
         print(f'Failed to load script \"{script_path}\"\n{str(e)}')
         sys.exit(1)
-    res_processing(run(script_path, script))
+    res_processing(run(short, script))
 
 
 i = 1
@@ -53,7 +53,7 @@ else:
                 sys.exit(1)
             path = getcwd() + f'/{sys.argv[i]}'
             i += 1
-            run_script(path)
+            run_script(path, sys.argv[i])
         elif current_arg in ('-e', '-w'):
             full_name = {'-e': 'Error', '-w': 'Warning'}.get(current_arg)
             i += 1
@@ -83,4 +83,4 @@ else:
         else:
             path = getcwd() + f'/{sys.argv[i]}'
             i += 1
-            run_script(path)
+            run_script(path, sys.argv[i - 1])
