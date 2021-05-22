@@ -6,6 +6,25 @@ from fck_main import run
 from shell import res_processing, shell
 from ErrorParser import get_explain, err_explain, wrn_explain
 
+version = """
+                             .*######*.                  .*#####*.**
+                          .#####*   *#               .######*   *##    \033[4mfck version info
+                       .*####.   .##.              .######*   .##*. 
+                     *####*   .**.               *#####*   .##*.       Current version     : {v}
+                  .####*   .**.               .*####*.  *##*           Current compiler    : {cv}
+                *####...**                  .#####. .*#*.              Last updated        : {lu} 
+              *###****.                   .####**.**.                  Most recent version : {mrv}
+           .######*      ....           .#####                         Up to date          : {utd}
+         *#####*     .*######*.        ####*   *#*.        .           Last checked        : {lc} 
+       *####*.  ..*######*  *.     .*####*.*##*     .****.          
+     *#########*.  .####*      ###**####.  .*#####**.               
+   *#####              .*#####*.                                     
+ *#####.                                                            
+  **#*                                                              
+"""
+version = '\n'.join([f'\033[35m{i[:70]}\033[0m{i[70:]}\033[0m' for i in version.splitlines()])
+args = {'v': '0.1.0-alpha', 'cv': 'N/A', 'lu': '2021/05/21', 'mrv': '0.1.0-alpha', 'lc': '2021/05/21'}
+
 
 def run_script(script_path):
     try:
@@ -24,7 +43,10 @@ if num == 1:
 else:
     while i < num:
         current_arg = sys.argv[i]
-        if current_arg == '-f':
+        if current_arg == '-v':
+            print(version.format(utd=['\033[31mNo', '\033[32mYes'][args.get('v') == args['mrv']], **args))
+            sys.exit(0)
+        elif current_arg == '-f':
             i += 1
             if i == num:
                 print('Expected file or module path after \'-f\' flag')
