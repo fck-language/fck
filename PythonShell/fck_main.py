@@ -276,7 +276,7 @@ class Lexer:
 
         identifier = ''
 
-        while self.current_char is not None:
+        while self.current_char not in (None, ' ', '\n'):
             identifier += self.current_char
             self.advance()
 
