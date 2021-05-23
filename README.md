@@ -48,3 +48,10 @@ To install a version of fck, download one of the .tar.gz files from the [release
         </tr>
     </tbody>
 </table>
+
+# Syntax highlighting
+
+fck has seperate packages available for [Atom](https://atom.io) and [Vim](https://www.vim.org) for syntax highlighting. Please be aware that these are not maintained at the same rate as fck, and often lag behind development to make sure that any changes or additions made to fck are final before being added into the syntax highlighting. That being said, before any release these are updated to be in line with the upcoming release.
+
+- [Atom highlighting](https://github.com/RosiePuddles/language-fck)
+- [Vim highlighting]
