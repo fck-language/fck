@@ -21,5 +21,18 @@ This initial release doesn't include mayn configuration options as it was purely
 
 The config file should be placed in your ``$HOME`` directory. If you're not sure where that is, open a terminal and type ``echo $HOME`` which should tell you where it is.
 
-## 
+## Configurable options
+
+- ``wrapLength``
+- ``something else``
+
+## Errors and warnings
+
+As with all of fck, the errors and warnings have custom error messages. This is explained in greater depth in the [docs](https://RosiePuddles.github.com/fck/docs). The file for the error messages should be placed in the same directory as the source code and called ``errors.txt``
+
+# Final words
+
+I hope you enjoy fck and thank you for giving it a try. As ever if you want to help develop it, you are more than welcome to. Unfortunately because the Python shell is no longer maintained after its' release, any issues or bugs you find won't be able to be worked on as part of the project oficially, but you have the source code, so feel free to play around and see what you can do.
+
+I with you the bestest of fun with this language darling xx
 
