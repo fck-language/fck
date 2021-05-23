@@ -33,7 +33,15 @@ def run_script(script_path, short):
     except Exception as e:
         print(f'Failed to load script \"{script_path}\"\n{str(e)}')
         sys.exit(1)
-    res_processing(run(short, script))
+    script = script.splitlines()
+    previous = None
+    for line in script:
+        res = run(short, line, previous)
+        if res.newLineNeeded:
+            previous = res
+            continue
+        previous = None
+        res_processing(res)
 
 
 i = 1
