@@ -8,9 +8,9 @@ def res_processing(run_res):
         assert isinstance(run_res.result, List)
         if len(run_res.result.elements) == 1:
             if run_res.result.elements[0] is not None:
-                print(repr(run_res.result.elements[0]))
+                print(str(run_res.result.elements[0]))
         elif len(run_res.result.elements) > 1:
-            print(repr(run_res.result.elements))
+            print(str(run_res.result.elements))
 
 
 def shell():

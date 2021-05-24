@@ -38,7 +38,7 @@ class Value:
         pass
 
     def as_type(self, to_type, pos_start, pos_end, context):
-        if to_type == 'auto':
+        if to_type == 'auto' or isinstance(self, Null):
             return RTResult().success(self)
         return RTResult().failure(ErrorNew(ET_InvalidSyntax, f'Cannot cast \'{self.value}\' of type {type_(self.value)}'
                                                              f' into a \'{to_type}\'', pos_start, pos_end, context))
@@ -859,8 +859,7 @@ def execute_print(self, exec_ctx: Context):
 
 
 def execute_type(self, exec_ctx: Context):
-    print(exec_ctx.symbol_table.get("value")[0].get_type(True))
-    return RTResult().success(None)
+    return RTResult().success(String(exec_ctx.symbol_table.get("value")[0].get_type(True)))
 
 
 def execute_input(self, exec_ctx: Context):
