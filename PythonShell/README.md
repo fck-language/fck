@@ -28,7 +28,7 @@ The config file should be placed in your ``$HOME`` directory. If you're not sure
 
 ## Errors and warnings
 
-As with all of fck, the errors and warnings have custom error messages. This is explained in greater depth in the [docs](https://RosiePuddles.github.com/fck/docs). The file for the error messages should be placed in the same directory as the source code and called ``errors.txt``
+As with all of fck, the errors and warnings have custom error messages. This is explained in greater depth in the [docs](https://rosiepuddles.github.io/fck/docs/_build/html/Error%20messages.html). The file for the error messages should be placed in the same directory as the source code and called ``errors.txt``
 
 # Final words
 
