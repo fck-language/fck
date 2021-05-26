@@ -873,7 +873,7 @@ def execute_clear(self, exec_ctx: Context):
 
 
 def execute_quit(self, exec_ctx: Context):
-    sys.exit(0)
+    sys.exit(exec_ctx.symbol_table.get('exit_code')[0])
 
 
 func_log = BuiltInFunction('log', {'value': FuncArgNode('str', String(''), 'Value to be printed to the console')},
