@@ -888,7 +888,8 @@ func_input = BuiltInFunction('input', {'prompt': FuncArgNode('str', String(''), 
 func_clear = BuiltInFunction('clear', {}, execute_clear)
 func_run = BuiltInFunction('run', {'fn': FuncArgNode('str', explain='Path to an executable .fck script. Relative to the'
                                                                     ' current working directory')}, None)
-func_quit = BuiltInFunction('quit', {}, execute_quit)
+func_quit = BuiltInFunction('quit', {'exit_code': FuncArgNode('int', Int(0), 'Exit code to exit the program with')},
+                            execute_quit)
 
 class_identifier_values = {int: 0, float: 0.5, bool: 0}
 
