@@ -1308,6 +1308,8 @@ class Interpreter:
         return method(node, context)
 
     def no_visit_method(self, node, context):
+        if isinstance(node, Value):
+            return RTResult().success(node)
         raise Exception(f'No visit_{type(node).__name__} method defined')
 
     ###################################
