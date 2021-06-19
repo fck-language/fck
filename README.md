@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="/img/logo/logo_2.png" alt="fck readme header image">
+    <img src="/img/logo/icon.jpeg" alt="fck readme header image">
 </p>
 
 # fck  
@@ -54,4 +54,71 @@ To install a version of fck, download one of the .tar.gz files from the [release
 fck has seperate packages available for [Atom](https://atom.io) and [Vim](https://www.vim.org) for syntax highlighting. Please be aware that these are not maintained at the same rate as fck, and often lag behind development to make sure that any changes or additions made to fck are final before being added into the syntax highlighting. That being said, before any release these are updated to be in line with the upcoming release.
 
 - [Atom highlighting](https://github.com/RosiePuddles/language-fck)
-- [Vim highlighting]
+- [Vim highlighting]()
+
+# Benchmarking
+
+fck has been (in a bit) benchmarked using [The Computer Language Benchmarks Game](https://benchmarksgame-team.pages.debian.net/benchmarksgame/). At current, only times are given for execution, all of which are given relative to fck-interpreted:
+
+<table>
+    <thead>
+        <tr>
+            <td rowspan="2">Language</td>
+            <td colspan="10" align="center">Benchmark</td>
+        </tr>
+        <tr>
+            <td>fannkuch-redux</td>
+            <td>n-body</td>
+            <td>spectral-norm</td>
+            <td>mandlebrot</td>
+            <td>pidigits</td>
+            <td>regex-redux</td>
+            <td>fasta</td>
+            <td>k-nucleotide</td>
+            <td>reverse-complement</td>
+            <td>binary-trees</td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>fck-0.1.0-alpha</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1</td>
+        </tr>
+        <tr>
+            <td>CPython-3.2</td>
+            <td>352.29</td>
+            <td>567.56</td>
+            <td>120.99</td>
+            <td>13.8</td>
+            <td>5.1</td>
+        </tr>
+        <tr>
+            <td>GCC-4.3.2(C)</td>
+            <td>1.0</td>
+            <td>2.3</td>
+            <td>1.7</td>
+            <td>4.5</td>
+            <td>3.0</td>
+        </tr>
+        <tr>
+            <td>Java@JRE-1.6.0_25</td>
+            <td>1.7</td>
+            <td>2.6</td>
+            <td>6.8</td>
+            <td>13.4</td>
+            <td>6.7</td>
+        </tr>
+        <tr>
+            <td>Ruby-1.9.2p180</td>
+            <td>98.0</td>
+            <td>628.4</td>
+            <td>15.4</td>
+            <td>30.3</td>
+            <td>8.6</td>
+        </tr>
+    </tbody>
+</table>
