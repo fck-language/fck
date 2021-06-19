@@ -763,9 +763,10 @@ class List(Value):
 
 
 class BaseFunction(Value):
-    def __init__(self, name):
+    def __init__(self, name, ret_type=None):
         super().__init__()
         self.name = name or "<anonymous>"
+        self.ret_type = ret_type
 
     def generate_new_context(self):
         new_context = Context(self.name, '', self.context, self.pos_start)
@@ -781,8 +782,8 @@ class BaseFunction(Value):
 
 
 class Function(BaseFunction):
-    def __init__(self, name, body_node, arg_names):
-        super().__init__(name)
+    def __init__(self, name, body_node, arg_names, ret_type):
+        super().__init__(name, ret_type)
         self.body_node = body_node
         self.arg_names = arg_names
 
@@ -790,7 +791,7 @@ class Function(BaseFunction):
         pass
 
     def copy(self):
-        copy = Function(self.name, self.body_node, self.arg_names)
+        copy = Function(self.name, self.body_node, self.arg_names, self.ret_type)
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
         return copy

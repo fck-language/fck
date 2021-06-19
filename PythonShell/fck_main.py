@@ -18,13 +18,13 @@ class Lexer:
         self.current_char = None
         self.advance()
         self.single_char_token_names = {'+': TT_PLUS, '%': TT_MOD, '(': TT_LPAREN, ')': TT_RPAREN, '{': TT_LPAREN_CURLY,
-                                        '}': TT_RPAREN_CURLY, ',': TT_COMMA, '-': TT_MINUS, '[': TT_LPAREN_SQUARE,
+                                        '}': TT_RPAREN_CURLY, ',': TT_COMMA, '[': TT_LPAREN_SQUARE,
                                         ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE, ';': TT_NEWLINE, '?': TT_QUESTION_MARK,
                                         '@': TT_AT}
         self.multi_char_token_methods = {'!': self.make_not_equals, '=': self.make_equals, '<': self.make_less_than,
                                          '>': self.make_greater_than, '*': self.make_mult_pow, ':': self.make_set,
                                          '/': self.make_div, '"': self.make_string, "'": self.make_string,
-                                         '#': self.skip_comment, '`': self.make_global_opt}
+                                         '#': self.skip_comment, '`': self.make_global_opt, '-': self.make_sub_to}
 
     def advance(self) -> None:
         self.pos.advance(self.current_char)
@@ -135,6 +135,17 @@ class Lexer:
             out.append(Token(TT_DOT, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()))
 
         return out
+
+    def make_sub_to(self):
+        out = TT_MINUS
+        pos_start = self.pos.generate_tok_pos()
+        self.advance()
+
+        if self.current_char == '>':
+            out = TT_ARROW
+            self.advance()
+
+        return Token(out, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()), None
 
     def make_not_equals(self):
         pos_start = self.pos.generate_tok_pos()
@@ -1246,6 +1257,18 @@ class Parser:
                                                          ' for function definition.', self.current_tok.pos_start,
                                         self.current_tok.pos_end, self.context))
 
+        ret_type = None
+        if self.current_tok.type == TT_ARROW:
+            res.register_advancement()
+            self.advance()
+            if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
+                return res.failure(ErrorNew(ET_ExpectedChar, 'Expected variable type identifier after \'->\''
+                                                             ' for function definition.', self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
+            ret_type = self.current_tok.value
+            res.register_advancement()
+            self.advance()
+
         while self.current_tok.type == TT_NEWLINE:
             res.register_advancement()
             self.advance()
@@ -1265,7 +1288,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        return res.success(FuncDefNode(var_name_tok, func_args, suite))
+        return res.success(FuncDefNode(var_name_tok, func_args, suite, ret_type))
 
     def bin_op(self, func_a, ops, func_b=None):
         if func_b is None:
