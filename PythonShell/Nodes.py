@@ -1,6 +1,6 @@
 from Errors import *
 from ErrorsNew import *
-from Bases import wrap_length, Token, TT_AT, Position
+from Bases import wrap_length, Token, TT_AT, TokenPosition
 
 
 class NumberNode:
@@ -85,7 +85,7 @@ class VarAccessNode:
         self.pos_end = self.name_tok.pos_end
 
 
-class VarGetSetNode:
+class VarGetRangeNode:
     def __init__(self, var_name_tok, rangeList):
         self.var_name_tok = var_name_tok
         self.rangeList = rangeList
@@ -255,7 +255,7 @@ class CaseNode:
                           WT_SilentCaseResetDefault).print_method()
         self.default = OptionNode(None, default_method, default_method.pos_start, default_method.pos_end,
                                   AtNameNode(Token(TT_AT, 'default',
-                                                   Position(0, 0, 0, '', ''), Position(0, 0, 0, '', ''))))
+                                                   TokenPosition(0, 0), TokenPosition(0, 0))))
 
     new_default.args = {'default_method': None}
     new_default.optional_args = {}

@@ -264,12 +264,9 @@ class Number(Value):
         return super().as_type(to_type, pos_start, pos_end, context)
 
     def ret_type(self, other):
-        return_types = {0.5: Float, 0: Int}
-        value_type = class_identifier_values.get(type(self.value))
-        value_type += class_identifier_values.get(type(other.value))
-        for i, n in enumerate(return_types.keys()):
-            if value_type >= n:
-                return list(return_types.values())[i]
+        if isinstance(self, Float) or isinstance(other, Float):
+            return Float
+        return Int
 
     def added_to(self, other) -> [Value, None or Error]:
         if isinstance(other, Number):

@@ -599,7 +599,7 @@ class Parser:
                 res.register_advancement()
                 self.advance()
 
-                return res.success(VarGetSetNode(var_name, ref_items))
+                return res.success(VarGetRangeNode(var_name, ref_items))
 
             self.reverse()
 
@@ -1201,7 +1201,7 @@ class Parser:
         else:
             var_name_tok = None
             if self.current_tok.type != TT_LPAREN:
-                return res.failure(ErrorNew(ET_ExpectedChar, "Expected identifier or ')'", self.current_tok.pos_start,
+                return res.failure(ErrorNew(ET_ExpectedChar, "Expected identifier or '('", self.current_tok.pos_start,
                                             self.current_tok.pos_end, self.context))
 
         res.register_advancement()
@@ -1464,10 +1464,10 @@ class Interpreter:
             traceback += f'.{method.name_tok.value}'
         return res.success(parent if isinstance(parent, Value) else None)
 
-    def visit_VarGetSetNode(self, node: VarGetSetNode, context):
+    def visit_VarGetRangeNode(self, node: VarGetRangeNode, context):
         res = RTResult()
         var_name = node.var_name_tok.value
-        value = context.symbol_table.get(var_name)
+        value = context.symbol_table.get(var_name)[0]
         if not value:
             return res.failure(ErrorNew(ET_UnknownIdentifier, f"'{var_name}' is not defined",
                                         node.pos_start, node.pos_end, context))
@@ -1733,7 +1733,7 @@ class Interpreter:
             start_value = res.register(self.visit(node.start_value_node, context))
             if res.should_return(): return res
         else:
-            start_value = Number(0)
+            start_value = Int(0)
 
         end_value = res.register(self.visit(node.end_value_node, context))
         if res.should_return(): return res
@@ -1759,12 +1759,13 @@ class Interpreter:
             else:
                 iterable = [String(char) for char in end_value.value]
                 return list_iteration(iterable)
-        if not (isinstance(end_value, Int) and isinstance(start_value, Int)):
+        if isinstance(end_value, Float) or isinstance(start_value, Float):
             end_value = res.register(end_value.as_type('float', end_value.pos_start, end_value.pos_end, context))
             if res.error: return res
             start_value = res.register(
                 start_value.as_type('float', start_value.pos_start, start_value.pos_end, context))
             if res.error: return res
+        iterable_var_type = Int if isinstance(start_value, Int) else Float
         end_value = end_value.value
         start_value = start_value.value
         i = start_value
@@ -1802,7 +1803,7 @@ class Interpreter:
 
         while condition():
             if node.var_name_tok:
-                context.symbol_table.set(node.var_name_tok.value, Number(i))
+                context.symbol_table.set(node.var_name_tok.value, iterable_var_type(i))
 
             value = res.register(self.visit(node.suite_node, context))
             if res.loop_should_break:
@@ -1864,7 +1865,7 @@ class Interpreter:
 
         func_name = node.var_name_tok.value if node.var_name_tok else None
         body_node = node.body_node
-        func_value = Function(func_name, body_node, node.arg_name_toks).set_context(context).set_pos(
+        func_value = Function(func_name, body_node, node.arg_name_toks, node.ret_type).set_context(context).set_pos(
             node.pos_start, node.pos_end)
 
         if node.var_name_tok:
@@ -1952,8 +1953,11 @@ class Interpreter:
 
         return_value = res.register(value_to_call.execute(args))
         if res.should_return(): return res
-        if not isinstance(return_value, Null) and return_value:
+        if return_value:
             return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
+        if value_to_call.ret_type:
+            return_value = res.register(return_value.as_type(value_to_call.ret_type, node.pos_start, node.pos_end, context))
+            if res.should_return(): return res
         return res.success(return_value)
 
     def visit_ReturnNode(self, node: ReturnNode, context):
