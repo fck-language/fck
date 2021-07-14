@@ -15,8 +15,8 @@ def type_(value):
 
 
 def assignment_error(value, parent, pos_start, pos_end, context):
-    return ErrorNew(ET_IllegalVariableAssignment, f'Cannot assign {value} of type {type(value)} to a '
-                                                  f'{type(parent)} type variable', pos_start, pos_end, context)
+    return ErrorNew(ET_IllegalVariableValue, f'Cannot assign {value} of type {type(value)} to a '
+                                             f'{type(parent)} type variable', pos_start, pos_end, context)
 
 
 class Value:
@@ -41,8 +41,9 @@ class Value:
     def as_type(self, to_type, pos_start, pos_end, context):
         if to_type == 'auto' or isinstance(self, Null):
             return RTResult().success(self)
-        return RTResult().failure(ErrorNew(ET_InvalidSyntax, f'Cannot cast \'{self.value}\' of type {type_(self.value)}'
-                                                             f' into a \'{to_type}\'', pos_start, pos_end, context))
+        return RTResult().failure(ErrorNew(ET_IllegalCastType, f'Cannot cast \'{self.value}\' of type '
+                                                               f'{type_(self.value)} into a \'{to_type}\'',
+                                           pos_start, pos_end, context))
 
     def post_init(self, value):
         raise Exception(f'Missing \'post_init()\' method for {type(self)}!')
@@ -232,7 +233,7 @@ class Number(Value):
 
     def assign_checks(self, value, pos_start, pos_end, context):
         res = RTResult()
-        illegal_value_error = ErrorNew(ET_IllegalVariableAssignment, '', pos_start, pos_end, context)
+        illegal_value_error = ErrorNew(ET_IllegalCastType, '', pos_start, pos_end, context)
         if isinstance(value, Number.allowed_types):
             return res.success(value)
         elif isinstance(value, String):
@@ -575,9 +576,7 @@ class Bool(Number):
         elif isinstance(value, List):
             recursive = value.recursive_single()
             return res.success(Bool(not recursive[0]))
-        return res.failure(ErrorNew(ET_IllegalVariableAssignment, f'Cannot assign \'{value}\' of type \'{type_(value)}'
-                                                                  f'\' to a \'{type_(self)}\' type variable',
-                                    pos_start, pos_end, context))
+        raise Exception(f'Missing bool cast for a \'{type_(value)}\' variable')
 
     def as_type(self, to_type, pos_start, pos_end, context):
         res = RTResult()
@@ -629,14 +628,14 @@ class String(Value):
                 out = int(self.value)
                 return res.success(Int(out))
             except ValueError:
-                return res.failure(ErrorNew(ET_IllegalValue, f'\'{self.value}\' cannot be cast to an \'int\' type',
+                return res.failure(ErrorNew(ET_IllegalCastType, f'\'{self.value}\' cannot be cast to an \'int\' type',
                                             pos_start, pos_end, context))
         elif to_type == 'float':
             try:
                 out = float(self.value)
                 return res.success(Float(out))
             except ValueError:
-                return res.failure(ErrorNew(ET_IllegalValue, f'\'{self.value}\' cannot be cast to an \'float\' type',
+                return res.failure(ErrorNew(ET_IllegalCastType, f'\'{self.value}\' cannot be cast to an \'float\' type',
                                             pos_start, pos_end, context))
         elif to_type == 'str':
             return res.success(self)
@@ -709,15 +708,15 @@ class List(Value):
             _, recursive, value = self.recursive_single()
             if recursive:
                 return value.as_type(to_type, pos_start, pos_end, context)
-            return res.failure(ErrorNew(ET_IllegalValue, f'Cannot convert \'{value}\' of type \'{type_(self)}\' '
-                                                         f'into an \'int\'',
+            return res.failure(ErrorNew(ET_IllegalCastType, f'Cannot convert \'{value}\' of type \'{type_(self)}\' '
+                                                            f'into an \'int\'',
                                         pos_start, pos_end, context))
         if to_type in ('float', 'str'):
             _, recursive, value = self.recursive_single()
             if recursive:
                 return value.as_type(to_type, pos_start, pos_end, context)
-            return res.failure(ErrorNew(ET_IllegalValue, f'Cannot convert \'{value}\' into a \'{to_type}\'', pos_start,
-                                        pos_end, context))
+            return res.failure(ErrorNew(ET_IllegalCastType, f'Cannot convert \'{value}\' into a \'{to_type}\'',
+                                        pos_start, pos_end, context))
         if to_type == 'bool':
             recursive, _, _ = self.recursive_single()
             return res.success(Bool(recursive))
