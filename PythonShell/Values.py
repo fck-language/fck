@@ -5,7 +5,8 @@ from Bases import *
 from Errors import *
 from Results import RTResult
 import os
-from ErrorsNew import *
+from ErrorsNew import ErrorNew
+from ErrorExplanations import *
 from Nodes import FuncArgNode
 
 
