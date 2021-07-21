@@ -4,7 +4,8 @@ from re import match
 
 from fck_main import run
 from shell import res_processing, shell
-from ErrorParser import get_explain, err_explain, wrn_explain
+from ErrorParser import get_explain, wrn_explain
+from ErrorExplanations import error_explain
 
 version = """
                              .*######*.                  .*#####*.**
@@ -63,6 +64,7 @@ else:
             i += 1
             run_script(path, sys.argv[i])
         elif current_arg in ('-e', '-w'):
+            max_code_num = len(error_explain) if current_arg == '-e' else len(wrn_explain)
             full_name = {'-e': 'Error', '-w': 'Warning'}.get(current_arg)
             i += 1
             if i == num:
@@ -78,13 +80,11 @@ else:
                 print(f'{full_name} code \'{code}\' is not a valid {full_name.lower()} code:\n'
                       f'Expected the form \'{full_name[0]}[0-9][0-9][0-9]\' (regex)')
                 sys.exit(1)
-            if int(code[1:]) > (len(err_explain) if current_arg == '-e' else len(wrn_explain)):
-                print(f'{full_name} codes for {full_name.lower()}s only go up to '
-                      f'{current_arg[1].upper()}'
-                      f'{str(len(err_explain) if current_arg == "-e" else len(wrn_explain)).rjust(3, "0")}')
+            if int(code[1:]) > max_code_num:
+                print(f'{full_name} codes only go up to {full_name[0]}{str(max_code_num).rjust(3, "0")}!')
                 sys.exit(1)
             if int(code[1:]) == 0:
-                print('Error and warning codes start at E001 and W001 respectively')
+                print(f'{full_name} codes start at {full_name[0]}001')
                 sys.exit(1)
             print(get_explain(code, current_arg == '-e'))
             i += 1
