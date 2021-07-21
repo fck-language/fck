@@ -2,6 +2,8 @@ from Arrows import string_with_arrows
 from textwrap import wrap
 from Bases import wrap_length
 from random import randint
+from ErrorExplanations import *
+from re import match
 
 ET_IllegalChar = "IllegalChar"
 ET_ExpectedChar = "ExpectedChar"
@@ -53,6 +55,24 @@ errorNames = {ET_IllegalChar: "Illegal character",
               AET_AttributeTypeError: "Attribute Type Error"}
 
 
+def highlight(e: str) -> str:
+    split = e.splitlines()
+    match_ = False
+    for line_num, line in enumerate(split[1:]):
+        match_ = match(r'( )*\^+', line)
+        if match_:
+            caret_line = line_num
+            break
+    if not match_:
+        return e
+    match_ = (match_.regs[1][0] + 1, match_.regs[0][1])
+    split[caret_line] = split[caret_line][:match_[0]] + '\033[35m' + \
+                        split[caret_line][match_[0]:match_[1]] + '\033[0m' + \
+                        split[caret_line][match_[1]:]
+
+    return '\n'.join(split)
+
+
 class ErrorNew:
     def __init__(self, error_name, details, pos_start, pos_end, context, **kwargs):
         self.pos_start = pos_start
@@ -77,11 +97,14 @@ class ErrorNew:
 
     def as_string(self):
         def wrap_(text: str):
-            return '\n'.join(wrap(text, wrap_length))
-        title = f'\nError:\033[35m {errorNames[self.error_name]}\033[0m\n'
-        body = '\n'.join([wrap_(self.details),
-                          errorFormatting[self.error_name].format(**dict(self.__dict__.items())),
-                          self.generate_traceback()])
+            split = text.splitlines()
+            return '\n'.join(['\n'.join(wrap(i, wrap_length)) for i in split])
+
+        error_number = str(list(error_explain.keys()).index(self.error_name) + 1).rjust(3, "0")
+        title = f'\nError:\033[35m {error_names[self.error_name]} (E{error_number})\033[0m\n'
+        body = wrap_(error_format[self.error_name].format(**dict(self.__dict__.items()),
+                                                          traceback=self.generate_traceback()))
         longest = max([len(i) for i in body.split('\n')])
         bounding = '\033[31m' + "*" * longest
-        return bounding + title + (f'{body}\n' if body else '') + bounding + '\033[0m'
+        return bounding + title + (f'{body}\n' if body else '') + f'\nUse \'fck -e E{error_number}\' for more ' \
+                                                                  f'details\n' + bounding + '\033[0m'
