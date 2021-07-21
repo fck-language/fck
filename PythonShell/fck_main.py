@@ -866,6 +866,9 @@ class Parser:
             if res.error: return res
             return res.success(out)
 
+        # TODO: THIS LINE BREAKS (almost) EVERYTHING!!!!!
+        # please change it back to what it used to be otherwise I will have to war crime someone... sorry
+        # Love B xx
         raise Exception('Parser.atom() should not have been called if not expression was expected')
 
     def list_expr(self):
@@ -1243,7 +1246,7 @@ class Parser:
             res.register_advancement()
             self.advance()
         else:
-            return res.failure(ErrorNew(ET_ExpectedChar, 'Expected variable type identifier or \')\' after \'(\''
+            return res.failure(ErrorNew(ET_ExpectedChar, 'Expected function argument or \')\' after \'(\''
                                                          ' for function definition.', self.current_tok.pos_start,
                                         self.current_tok.pos_end, self.context))
 
@@ -1408,7 +1411,7 @@ class Interpreter:
             if isinstance(method, MethodCallNode):
                 err, attr = attribute_check(parent.silenced_node, method.name_tok.value)
                 if err:
-                    return res.failure(ErrorNew(AET_UnknownAttributeError,
+                    return res.failure(ErrorNew(ET_UnknownAttribute,
                                                 f"Attribute '{method.name_tok.value}' does not exist for type "
                                                 f"'{parent.silenced_node}'", node.pos_start, node.pos_end, context))
                 args = attr.args
@@ -1417,7 +1420,7 @@ class Interpreter:
                     details = [len(args) - len(method.args), 'few'] if len(method.args) < len(args) else \
                         [len(method.args) - (len(args) + len(args_opt)), 'many']
                     details = f'{details[0]} too {details[1]} were passed into \'{method.name_tok.value}\''
-                    return res.failure(ErrorNew(AET_TooArgumentError, details, node.pos_start, node.pos_end, context,
+                    return res.failure(ErrorNew(ET_TooArgument, details, node.pos_start, node.pos_end, context,
                                                 arg_explain=arg_explain(args, method.name_tok.value)))
                 if method.name_tok.value == 'execute' and isinstance(parent.silenced_node, CaseNode):
                     parent = res.register(self.visit_CaseNode(parent.silenced_node, context))
@@ -1425,8 +1428,8 @@ class Interpreter:
                     for arg, type_ in args.items():
                         if type_ is not None:
                             if not isinstance(method.args[0], type_):
-                                return res.failure(ErrorNew(AET_AttributeTypeError, f'Argument {arg} must have a type '
-                                                                                    f'{type_}',
+                                return res.failure(ErrorNew(ET_ArgumentType, f'Argument {arg} must have a type '
+                                                                             f'{type_}',
                                                             method.args[0].pos_start, method.args[0].pos_end, context,
                                                             arg_explain=arg_explain(args, method.name_tok.value)))
                         args[arg] = method.args[0]
