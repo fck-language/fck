@@ -2,6 +2,8 @@ from string import ascii_letters
 from os.path import dirname
 from Bases import wrap_length
 from textwrap import wrap
+from ErrorExplanations import error_explain
+from ErrorsNew import highlight
 
 WT_DivideByZero = "DivideByZero"
 WT_ModByZero = "ModByZero"
@@ -130,9 +132,12 @@ wrn_explain = [[WT_DivideByZero, ['Raised when dividing by zero. Returns an infi
 
 
 def get_explain(eow_code: str, error: bool = True):
-    explain = (err_explain if error else wrn_explain)[int(eow_code[1:]) - 1]
-    out = f'{"Error" if error else "Warning"} number {int(eow_code[1:])} ({eow_code} : {explain[0]})\n'
-    out += "\n".join(wrap(explain[1][0], wrap_length)) + f'\n\nExample:\n{explain[1][1]}'
+    name = list(error_explain.keys())[int(eow_code[1:]) - 1]
+    explain = (error_explain if error else wrn_explain)[name]
+    out = f'{"Error" if error else "Warning"} number {int(eow_code[1:])} ({eow_code}: {name})\n'
+    out += "\n".join(wrap(explain[0], wrap_length))
+    out += f'\n\nExample:\n{highlight(explain[1])}\n'
+    out += "\n".join(wrap(explain[2], wrap_length))
     return out
 
 
