@@ -1,0 +1,11 @@
+[package]
+name = "fck-pure"
+version = "0.1.0"
+authors = ["RosiePuddles <rosiegbartlett@gmail.om>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lang = {path = "./src/lang"}
+ErrWrn = {path = "./src/ErrWrn"}
