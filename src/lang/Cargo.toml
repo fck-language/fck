@@ -1,0 +1,10 @@
+[package]
+name = "lang"
+version = "0.1.0"
+authors = ["RosiePuddles <rosiegbartlett@gmail.om>"]
+edition = "2018"
+description = "Language files for fck"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
