@@ -1,10 +1,14 @@
 [package]
 name = "lang"
+description = "Language files for fck"
 version = "0.1.0"
 authors = ["RosiePuddles <rosiegbartlett@gmail.om>"]
 edition = "2018"
-description = "Language files for fck"
+homepage = "https://github.com/RosiePuddles/fck/tree/main/src/lang"
+readme = "README.md"
+license = "GPL-3.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[badges]
+maintenance = {status = "as-is"}
 
 [dependencies]

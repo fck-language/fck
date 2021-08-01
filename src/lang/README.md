@@ -31,5 +31,5 @@ use crate::keywords::Keywords;
 pub const KEYWORDS: Keywords = Keywords{
     keywords: [...],
     var_keywords: [...]
-}
+};
 ```

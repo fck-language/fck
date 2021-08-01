@@ -1,10 +1,16 @@
 [package]
-name = "fck-pure"
+name = "fck_pure"
+description = "The source code for the fck coding language"
 version = "0.1.0"
 authors = ["RosiePuddles <rosiegbartlett@gmail.om>"]
 edition = "2018"
+repository = "https://github.com/RosiePuddles/fck"
+homepage = "https://RosiePuddles.github.io/fck"
+readme = "README.md"
+license = "GPL-3.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[badges]
+maintenance = {status = "actively-developed"}
 
 [dependencies]
 lang = {path = "./src/lang"}
