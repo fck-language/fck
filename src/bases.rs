@@ -1,3 +1,4 @@
+#[derive(Copy, Clone)]
 pub struct Position {
     ln: usize,
     pub col: usize
@@ -26,10 +27,10 @@ impl std::fmt::Display for Position {
 }
 
 pub struct Token {
-    type_: u8,
-    value: String,
-    pos_start: Position,
-    pos_end: Position,
+    pub type_: u8,
+    pub value: String,
+    pub pos_start: Position,
+    pub pos_end: Position,
 }
 
 impl Token {

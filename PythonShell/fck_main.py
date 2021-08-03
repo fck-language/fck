@@ -3,6 +3,7 @@ from re import split
 from Values import *
 from Results import *
 from Nodes import *
+from ErrorsNew import *
 
 
 #######################################
@@ -154,9 +155,7 @@ class Lexer:
         if self.current_char == '=':
             self.advance()
             return Token(TT_NE, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()), None
-        elif self.current_char in LETTERS + "_":
-            return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()), None
-        elif self.current_char == '!':
+        elif self.current_char in LETTERS + "_!":
             return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()), None
 
         self.advance()
