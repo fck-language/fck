@@ -11,9 +11,9 @@ version = """
                           .#####*   *#               .######*   *##    \033[4mfck version info
                        .*####.   .##.              .######*   .##*.
                      *####*   .**.               *#####*   .##*.       Current version     : {v}
-                  .####*   .**.               .*####*.  *##*           Current compiler    : {cv}
-                *####...**                  .#####. .*#*.              Release date        : {rd} 
-              *###****.                   .####**.**.
+                  .####*   .**.               .*####*.  *##*           Flavour             : {fl}
+                *####...**                  .#####. .*#*.              Current compiler    : {cv} 
+              *###****.                   .####**.**.                  Release date        : {rd}
            .######*      ....           .#####
          *#####*     .*######*.        ####*   *#*.        .
        *####*.  ..*######*  *.     .*####*.*##*     .****.
@@ -23,7 +23,7 @@ version = """
   **#*
 """
 version = '\n'.join([f'\033[35m{i[:70]}\033[0m{i[70:]}\033[0m' for i in version.splitlines()])
-args = {'v': '0.1.0-alpha', 'cv': 'N/A', 'rd': '2021/05/21'}
+args = {'v': '0.1.0-alpha', 'fl': 'Pure', 'cv': 'N/A', 'rd': '2021/05/21'}
 
 
 def run_script(script_path, short):
