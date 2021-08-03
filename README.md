@@ -7,9 +7,9 @@
 
 fck is an interpereted and compiled coding language, for fast and easy debugging, and fast binary files. fck has been designed in such a way so as to make it very difficult to break, with an emphasis placed on non-breaking warnings and trying to fix any small errors in the code.
 
-fck is completely open source and written in C++, with extensive [documentation](https://RosiePuddles.github.io/fck/docs) and [tutorials](https://rosiepuddles.github.io/fck/tutorial) to get you started on the language.
+fck is completely open source and written in Rust, with extensive [documentation](https://RosiePuddles.github.io/fck/docs) and [tutorials](https://rosiepuddles.github.io/fck/tutorial) to get you started on the language.
 
-If English isn't your first language, then don't worry! fck has multilingual support, which means that you can change the language of the syntax is in at any point in the code.
+If English isn't your first language, then don't worry! fck has multilingual support, which means that you can change the language that the syntax is in at any point in the code.
 
 Okay have a fun day darling xx
 
@@ -51,7 +51,7 @@ To install a version of fck, download one of the .tar.gz files from the [release
 
 # Syntax highlighting
 
-fck has seperate packages available for [Atom](https://atom.io) and [Vim](https://www.vim.org) for syntax highlighting. Please be aware that these are not maintained at the same rate as fck, and often lag behind development to make sure that any changes or additions made to fck are final before being added into the syntax highlighting. That being said, before any release these are updated to be in line with the upcoming release.
+fck has seperate packages available for [Atom](https://atom.io) and [Vim](https://www.vim.org) for syntax highlighting. Please be aware that these are not maintained at the same rate as the source code, and often lag behind development. That being said, before any release these are updated to be in line with the upcoming release.
 
 - [Atom highlighting](https://github.com/RosiePuddles/language-fck)
 - [Vim highlighting]()
