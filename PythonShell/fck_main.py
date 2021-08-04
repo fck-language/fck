@@ -866,10 +866,8 @@ class Parser:
             if res.error: return res
             return res.success(out)
 
-        # TODO: THIS LINE BREAKS (almost) EVERYTHING!!!!!
-        # please change it back to what it used to be otherwise I will have to war crime someone... sorry
-        # Love B xx
-        raise Exception('Parser.atom() should not have been called if not expression was expected')
+        return res.failure(ErrorNew(ET_ExpectedExpr, 'Expected an expression',
+                                    tok.pos_start, tok.pos_end, self.context))
 
     def list_expr(self):
         res = ParseResult()
