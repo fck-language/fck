@@ -3,7 +3,7 @@ from fck_main import *
 
 def res_processing(run_res):
     if run_res.error:
-        print(run_res.error.as_string())
+        print(str(run_res.error))
     else:
         assert isinstance(run_res.result, List)
         if len(run_res.result.elements) == 1:

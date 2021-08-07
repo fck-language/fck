@@ -4,8 +4,8 @@ from re import match
 
 from fck_main import run
 from shell import res_processing, shell
-from ErrorParser import get_explain, wrn_explain
-from ErrorExplanations import error_explain
+from fckErrors.explanations import *
+from fckErrors.classes import get_explain
 
 version = """
                              .*######*.                  .*#####*.**
@@ -65,7 +65,7 @@ else:
             run_script(path, sys.argv[i])
         elif current_arg in ('-e', '-w'):
             max_code_num = len(error_explain) if current_arg == '-e' else len(wrn_explain)
-            full_name = {'-e': 'Error', '-w': 'Warning'}.get(current_arg)
+            full_name = {'-e': 'Error', '-w': 'fckWarning'}.get(current_arg)
             i += 1
             if i == num:
                 print(f'Expected {full_name.lower()} code after \'{current_arg}\' flag')
@@ -86,7 +86,7 @@ else:
             if int(code[1:]) == 0:
                 print(f'{full_name} codes start at {full_name[0]}001')
                 sys.exit(1)
-            print(get_explain(code, current_arg == '-e'))
+            print(get_explain(int(code[1:]) - 1, current_arg == '-e'))
             i += 1
         else:
             path = getcwd() + f'/{sys.argv[i]}'

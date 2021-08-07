@@ -1,6 +1,9 @@
-from Errors import *
-from ErrorsNew import *
-from Bases import wrap_length, Token, TT_AT, Position
+from fckErrors.classes import *
+from fckErrors.explanations import *
+from fckErrors import wrap_length
+from Bases import Token, TT_AT, Position
+
+from textwrap import wrap
 
 
 class NumberNode:
@@ -234,8 +237,8 @@ class CaseNode:
     def new_option(self, option_expr, option_method, option_name: AtNameNode = None, context=None):
         if option_name:
             if option_name.at == 'default':
-                ErrorNew(AET_IllegalArgumentValue, 'Cannot give a case statement option the identifier \'@default\'',
-                         option_name.pos_start, option_name.pos_start, context)
+                Error(ET_IllegalArgumentValue, 'Cannot give a case statement option the identifier \'@default\'',
+                      option_name.pos_start, option_name.pos_start, context)
         self.cases.append(OptionNode(option_expr, option_method, option_expr.pos_start,
                                      option_name.pos_end if option_name else option_method.pos_end, option_name))
         return self
@@ -251,8 +254,7 @@ class CaseNode:
 
     def new_default(self, default_method, context=None):
         if self.default is not None:
-            NonBreakError(default_method.pos_start, default_method.pos_end, context,
-                          WT_SilentCaseResetDefault).print_method()
+            Warning(WT_SilentCaseResetDefault, default_method.pos_start, default_method.pos_end, context)
         self.default = OptionNode(None, default_method, default_method.pos_start, default_method.pos_end,
                                   AtNameNode(Token(TT_AT, 'default',
                                                    Position(0, 0, 0, '', ''), Position(0, 0, 0, '', ''))))
