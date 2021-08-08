@@ -2,10 +2,10 @@ import sys
 from math import sqrt, sin, cos, floor, ceil, pi, atan
 
 from Bases import *
-from Errors import *
+from fckErrors.classes import *
+from fckErrors.explanations import *
 from Results import RTResult
 import os
-from ErrorsNew import *
 from Nodes import FuncArgNode
 
 
@@ -14,8 +14,8 @@ def type_(value):
 
 
 def assignment_error(value, parent, pos_start, pos_end, context):
-    return ErrorNew(ET_IllegalVariableAssignment, f'Cannot assign {value} of type {type(value)} to a '
-                                                  f'{type(parent)} type variable', pos_start, pos_end, context)
+    return Error(ET_IllegalVariableValue, f'Cannot assign {value} of type {type(value)} to a '
+                                             f'{type(parent)} type variable', pos_start, pos_end, context)
 
 
 class Value:
@@ -40,8 +40,9 @@ class Value:
     def as_type(self, to_type, pos_start, pos_end, context):
         if to_type == 'auto' or isinstance(self, Null):
             return RTResult().success(self)
-        return RTResult().failure(ErrorNew(ET_InvalidSyntax, f'Cannot cast \'{self.value}\' of type {type_(self.value)}'
-                                                             f' into a \'{to_type}\'', pos_start, pos_end, context))
+        return RTResult().failure(Error(ET_IllegalCastType, f'Cannot cast \'{self.value}\' of type '
+                                                               f'{type_(self.value)} into a \'{to_type}\'',
+                                        pos_start, pos_end, context))
 
     def post_init(self, value):
         raise Exception(f'Missing \'post_init()\' method for {type(self)}!')
@@ -109,7 +110,8 @@ class Value:
 
     def illegal_operation(self, other=None):
         other = self if not other else other
-        return None, RTError(self.pos_start, other.pos_end, "Illegal operation. No can do sorry", self.context)
+        return None, Error(ET_IllegalOperation, "Illegal operation. No can do sorry",
+                           self.pos_start, other.pos_end, self.context)
 
     def get_type(self, log: bool):
         return "<" * log + 'value (base)' + ">" * log
@@ -231,7 +233,7 @@ class Number(Value):
 
     def assign_checks(self, value, pos_start, pos_end, context):
         res = RTResult()
-        illegal_value_error = ErrorNew(ET_IllegalVariableAssignment, '', pos_start, pos_end, context)
+        illegal_value_error = Error(ET_IllegalCastType, '', pos_start, pos_end, context)
         if isinstance(value, Number.allowed_types):
             return res.success(value)
         elif isinstance(value, String):
@@ -244,7 +246,7 @@ class Number(Value):
         elif isinstance(value, List):
             recursion_check = value.recursive_single()
             if recursion_check[1]:
-                NonBreakError(pos_start, pos_end, context, WT_ValueFromList).print_method()
+                Warning(WT_ValueFromList, pos_start, pos_end, context)
                 if isinstance(recursion_check[2], Number.allowed_types):
                     return res.success(recursion_check[2])
                 elif isinstance(recursion_check[2], String):
@@ -268,7 +270,7 @@ class Number(Value):
             return Float
         return Int
 
-    def added_to(self, other) -> [Value, None or Error]:
+    def added_to(self, other):
         if isinstance(other, Number):
             return self.ret_type(other)(self.value + other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
@@ -303,10 +305,10 @@ class Number(Value):
     def dived_by(self, other):
         if isinstance(other, Number):
             if isinstance(other.value, Infinity):
-                NonBreakError(self.pos_start, other.pos_end, self.context, WT_ValueDivInfinity).print_method()
+                Warning(WT_ValueDivInfinity, self.pos_start, other.pos_end, self.context)
                 return Int(0).set_context(self.context), None
             if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, WT_DivideByZero).print_method()
+                Warning(WT_DivideByZero, self.pos_start, other.pos_end, self.context)
                 return Infinity(self.value, Int).set_context(self.context), None
             return Float(self.value / other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
@@ -316,10 +318,10 @@ class Number(Value):
     def fdived_by(self, other):
         if isinstance(other, Number):
             if isinstance(other.value, Infinity):
-                NonBreakError(self.pos_start, other.pos_end, self.context, WT_ValueDivInfinity).print_method()
+                Warning(WT_ValueDivInfinity, self.pos_start, other.pos_end, self.context)
                 return Int(0).set_context(self.context), None
             if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, WT_DivideByZero).print_method()
+                Warning(WT_DivideByZero, self.pos_start, other.pos_end, self.context)
                 return Infinity(self.value, Int).set_context(self.context), None
             return Int(self.value // other.value).set_context(self.context), None
         elif isinstance(other, Infinity):
@@ -331,7 +333,7 @@ class Number(Value):
             if isinstance(other.value, Infinity):
                 return self.illegal_operation()
             if other.value == 0:
-                NonBreakError(self.pos_start, other.pos_end, self.context, WT_ModByZero).print_method()
+                Warning(WT_ModByZero, self.pos_start, other.pos_end, self.context)
                 return Int(0).set_context(self.context), None
             return self.ret_type(other)(self.value % other.value).set_context(self.context), None
         return self.illegal_operation()
@@ -482,7 +484,7 @@ class Float(Number):
 #     def dived_by(self, other):
 #         if isinstance(other, Number):
 #             if other.value == 0:
-#                 NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
+#                 fckWarning(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
 #                 return Infinity(self.value).set_context(self.context), None
 #             return Number(self.value / other.value).set_context(self.context), None
 #         return self.illegal_operation()
@@ -490,7 +492,7 @@ class Float(Number):
 #     def fdived_by(self, other):
 #         if isinstance(other, Number):
 #             if other.value == 0:
-#                 repr(NonBreakError(self.pos_start, other.pos_end, self.context, ET_DivideByZero))
+#                 repr(fckWarning(self.pos_start, other.pos_end, self.context, ET_DivideByZero))
 #                 return Infinity(self.value).set_context(self.context), None
 #             return Number(self.value // other.value).set_context(self.context), None
 #         return self.illegal_operation()
@@ -498,7 +500,7 @@ class Float(Number):
 #     def modded_by(self, other):
 #         if isinstance(other, Number):
 #             if other.value == 0:
-#                 repr(NonBreakError(self.pos_start, other.pos_end, self.context, ET_ModByZero))
+#                 repr(fckWarning(self.pos_start, other.pos_end, self.context, ET_ModByZero))
 #                 return Number(0).set_context(self.context), None
 #             return Number(self.value % other.value).set_context(self.context), None
 #         return self.illegal_operation()
@@ -571,9 +573,7 @@ class Bool(Number):
         elif isinstance(value, List):
             recursive = value.recursive_single()
             return res.success(Bool(not recursive[0]))
-        return res.failure(ErrorNew(ET_IllegalVariableAssignment, f'Cannot assign \'{value}\' of type \'{type_(value)}'
-                                                                  f'\' to a \'{type_(self)}\' type variable',
-                                    pos_start, pos_end, context))
+        raise Exception(f'Missing bool cast for a \'{type_(value)}\' variable')
 
     def as_type(self, to_type, pos_start, pos_end, context):
         res = RTResult()
@@ -614,7 +614,7 @@ class String(Value):
         if isinstance(value, String):
             return res.success(value)
         elif isinstance(value, Number):
-            NonBreakError(pos_start, pos_end, context, WT_StringFromValue).print_method()
+            Warning(WT_StringFromValue, pos_start, pos_end, context)
             return res.success(String(str(value.value)))
         return res.failure(assignment_error(value, self, pos_start, pos_end, context))
 
@@ -625,15 +625,15 @@ class String(Value):
                 out = int(self.value)
                 return res.success(Int(out))
             except ValueError:
-                return res.failure(ErrorNew(ET_IllegalValue, f'\'{self.value}\' cannot be cast to an \'int\' type',
-                                            pos_start, pos_end, context))
+                return res.failure(Error(ET_IllegalCastType, f'\'{self.value}\' cannot be cast to an \'int\' type',
+                                         pos_start, pos_end, context))
         elif to_type == 'float':
             try:
                 out = float(self.value)
                 return res.success(Float(out))
             except ValueError:
-                return res.failure(ErrorNew(ET_IllegalValue, f'\'{self.value}\' cannot be cast to an \'float\' type',
-                                            pos_start, pos_end, context))
+                return res.failure(Error(ET_IllegalCastType, f'\'{self.value}\' cannot be cast to an \'float\' type',
+                                         pos_start, pos_end, context))
         elif to_type == 'str':
             return res.success(self)
         elif to_type == 'list':
@@ -705,15 +705,15 @@ class List(Value):
             _, recursive, value = self.recursive_single()
             if recursive:
                 return value.as_type(to_type, pos_start, pos_end, context)
-            return res.failure(ErrorNew(ET_IllegalValue, f'Cannot convert \'{value}\' of type \'{type_(self)}\' '
-                                                         f'into an \'int\'',
-                                        pos_start, pos_end, context))
+            return res.failure(Error(ET_IllegalCastType, f'Cannot convert \'{value}\' of type \'{type_(self)}\' '
+                                                            f'into an \'int\'',
+                                     pos_start, pos_end, context))
         if to_type in ('float', 'str'):
             _, recursive, value = self.recursive_single()
             if recursive:
                 return value.as_type(to_type, pos_start, pos_end, context)
-            return res.failure(ErrorNew(ET_IllegalValue, f'Cannot convert \'{value}\' into a \'{to_type}\'', pos_start,
-                                        pos_end, context))
+            return res.failure(Error(ET_IllegalCastType, f'Cannot convert \'{value}\' into a \'{to_type}\'',
+                                     pos_start, pos_end, context))
         if to_type == 'bool':
             recursive, _, _ = self.recursive_single()
             return res.success(Bool(recursive))
@@ -726,7 +726,7 @@ class List(Value):
         if isinstance(value, List):
             return res.success(value)
         elif isinstance(value, Number) or isinstance(value, String):
-            NonBreakError(pos_start, pos_end, context, WT_ListFromValue).print_method()
+            Warning(WT_ListFromValue, pos_start, pos_end, context)
             return res.success(List([value]))
         return res.failure(assignment_error(value, self, pos_start, pos_end, context))
 
