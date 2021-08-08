@@ -1,7 +1,7 @@
 from fckErrors.classes import *
 from fckErrors.explanations import *
 from fckErrors import wrap_length
-from Bases import Token, TT_AT, Position
+from Bases import Token, TT_AT, TokenPosition
 
 from textwrap import wrap
 
@@ -257,7 +257,7 @@ class CaseNode:
             Warning(WT_SilentCaseResetDefault, default_method.pos_start, default_method.pos_end, context)
         self.default = OptionNode(None, default_method, default_method.pos_start, default_method.pos_end,
                                   AtNameNode(Token(TT_AT, 'default',
-                                                   Position(0, 0, 0, '', ''), Position(0, 0, 0, '', ''))))
+                                                   TokenPosition(0, 0), TokenPosition(0, 0))))
 
     new_default.args = {'default_method': None}
     new_default.optional_args = {}

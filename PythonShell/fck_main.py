@@ -112,8 +112,8 @@ class Lexer:
                     string += self.current_char
             self.advance()
         if self.current_char is None:
-            Warning(WT_NoStringEnd, pos_start, self.pos.generate_tok_pos(), self.context)
-            pass
+            return None, Error(ET_NoStringEnd, f'No delimiter of \'{end_char}\' was found',
+                               pos_start, self.pos.generate_tok_pos(), self.context)
         self.advance()
         return Token(TT_STRING, string, pos_start, self.pos.generate_tok_pos()), None
 
@@ -1216,6 +1216,10 @@ class Parser:
                 identifier = self.current_tok.value
                 res.register_advancement()
                 self.advance()
+                if self.current_tok.type not in [*VAR_SET, *VAR_SET_RET]:
+                    return res.failure(Error(ET_ExpectedAssignmentOperator, f"A :: was expected after \'{arg.type_} "
+                                                                            f"{identifier}\'",
+                                             self.current_tok.pos_start, self.current_tok.pos_end, self.context))
                 if self.current_tok.type in VAR_SET_RET:
                     Warning(WT_FuncArgRet, self.current_tok.pos_start, self.current_tok.pos_end, self.context)
                     self.current_tok.type = VAR_EQUIV[self.current_tok.type]

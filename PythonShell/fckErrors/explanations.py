@@ -31,6 +31,7 @@ ET_TooArgument = "TooArgument"
 ET_IllegalArgumentValue = "IllegalArgumentValue"
 ET_UnknownAttribute = "UnknownAttribute"
 ET_UnknownIdentifier = "UnknownIdentifier"
+ET_NoStringEnd = "NoStringEnd"
 
 error_names = {ET_ExpectedChar: "Expected character",
                ET_ExpectedExpr: "Expected expression",
@@ -54,7 +55,8 @@ error_names = {ET_ExpectedChar: "Expected character",
                ET_TooArgument: "Too arguments",
                ET_IllegalArgumentValue: "Illegal argument value",
                ET_UnknownAttribute: "Unknown attribute",
-               ET_UnknownIdentifier: "Unknown identifier"}
+               ET_UnknownIdentifier: "Unknown identifier",
+               ET_NoStringEnd: "No string end"}
 
 error_format = {ET_ExpectedChar: "{details}\n{traceback}",
                 ET_ExpectedExpr: "{details}\n{traceback}",
@@ -78,7 +80,8 @@ error_format = {ET_ExpectedChar: "{details}\n{traceback}",
                 ET_TooArgument: "{details}\n{arg_explain}\n{traceback}",
                 ET_IllegalArgumentValue: "{details}\n{arg_explain}\n{traceback}",
                 ET_UnknownAttribute: "{details}\n{arg_explain}\n{traceback}",
-                ET_UnknownIdentifier: "{details}\n{traceback}"}
+                ET_UnknownIdentifier: "{details}\n{traceback}",
+                ET_NoStringEnd: "{details}\n{traceback}"}
 
 error_explain = {ET_ExpectedChar: ["Returned when a character was expected but not found",
                                    'print(3 ? "hello")\n'
@@ -178,7 +181,10 @@ error_explain = {ET_ExpectedChar: ["Returned when a character was expected but n
                  ET_UnknownIdentifier: ["Returned when a variable identifier is referenced but the identifier has not "
                                         "been defined",
                                         "print(a)\n"
-                                        "      ^", ""]}
+                                        "      ^", ""],
+                 ET_NoStringEnd: ["Returned when a string has no closing delimiter",
+                                  "str a :: \"hello world!\n"
+                                  "                       ^", ""]}
 
 ############
 # Warnings #
@@ -200,7 +206,6 @@ WT_IterateStepZero = "IterateStepZero"
 WT_ValueFromList = "ValueFromList"
 WT_ValueFromString = "ValueFromString"
 WT_StringFromValue = "StringFromValue"
-WT_NoStringEnd = "NoStringEnd"
 WT_FuncArgRet = "FuncArgRet"
 WT_FuncAssignOperator = "FuncAssignOperator"
 WT_ArgCastError = "ArgCastError"
@@ -222,7 +227,6 @@ wrn_names = {WT_DivideByZero: "Divide by zero",
              WT_ValueFromList: "Value from list",
              WT_ValueFromString: "Value from string",
              WT_StringFromValue: "String from value",
-             WT_NoStringEnd: "First string delimiter had no ending delimiter on the same line",  # TODO: MAKE INTO ERROR
              WT_FuncArgRet: "Function argument return",
              WT_FuncAssignOperator: "Function assignment operator",
              WT_ArgCastError: "Argument cast error",
@@ -244,7 +248,6 @@ wrn_format = {WT_DivideByZero: "{details}\n{traceback}",
               WT_ValueFromList: "{details}\n{traceback}",
               WT_ValueFromString: "{details}\n{traceback}",
               WT_StringFromValue: "{details}\n{traceback}",
-              WT_NoStringEnd: "{details}\n{traceback}",  # TODO: MAKE INTO ERROR
               WT_FuncArgRet: "{details}\n{traceback}",
               WT_FuncAssignOperator: "{details}\n{traceback}",
               WT_ArgCastError: "{details}\n{traceback}",
@@ -268,20 +271,69 @@ wrn_explain = {WT_DivideByZero: ["Raised when a value is divided by zero. Return
                                     ">>> \"abc\" * 1.8\n"
                                     "    ^^^^^^^^^^^\n"
                                     "\"abcabc\"", ""],
-               WT_InfinityDivValue: ["Raised when infinity is divided by a numerical value", "", ""],
-               WT_ValueDivInfinity: ["", "", ""],
-               WT_InfinityDivInfinity: ["", "", ""],
-               WT_ListFromValue: ["", "", ""],
-               WT_ListIndexOutOfRange: ["", "", ""],
-               WT_ListIndexFloat: ["", "", ""],
-               WT_SilentCaseResetDefault: ["", "", ""],
-               WT_IterateStepLoop: ["", "", ""],
-               WT_IterateStepZero: ["", "", ""],
-               WT_ValueFromList: ["", "", ""],
-               WT_ValueFromString: ["", "", ""],
-               WT_StringFromValue: ["", "", ""],
-               WT_NoStringEnd: ["", "", ""],
-               WT_FuncArgRet: ["", "", ""],
-               WT_FuncAssignOperator: ["", "", ""],
-               WT_ArgCastError: ["", "", ""],
-               WT_UnknownGlobalOpt: ["", "", ""]}
+               WT_InfinityDivValue: ["Raised when infinity is divided by a numerical value. Returns an infinity "
+                                     "instance with the zero multiplication value being altered",
+                                     ">>> auto a :: 10 / 0\n"
+                                     ">>> a / 5\n"
+                                     "    ^^^^^\n"
+                                     "Infinity<2>", ""],
+               WT_ValueDivInfinity: ["Raised when a numerical value is divided bu infinity. Returns 0",
+                                     ">>> int a :: 5 / 0\n"
+                                     ">>> 10 / a\n"
+                                     "    ^^^^^^\n"
+                                     "0", ""],
+               WT_InfinityDivInfinity: ["Raised when an infinity is divided by another infinity. Returns the zero "
+                                        "multiplied values divided by each other",
+                                        ">>> Infinity<10> / Infinity<2>\n"
+                                        "    ^^^^^^^^^^^^^^^^^^^^^^^^^^\n"
+                                        "5", ""],
+               WT_ListFromValue: ["Raised when a list type is assigned to a single value. Turns the value into a list",
+                                  "list a :: 1\n"
+                                  "^^^^^^^^^^^", ""],
+               WT_ListIndexOutOfRange: ["Raised when a list range is outside of the list",
+                                        "list a :: [4, 2, 5, 7, 8, 8]\n"
+                                        "print(a[6:8])\n"
+                                        "        ^^^", ""],
+               WT_ListIndexFloat: ["Raised when a list index is a float. The float is rounded and then the rounded"
+                                   " value used",
+                                   ">>> list a :: [6, 4, 4, 3, 5, 9, 7]\n"
+                                   ">>> a[4.3]\n"
+                                   "      ^^^\n"
+                                   "5", ""],
+               WT_SilentCaseResetDefault: ["Raised when the default option of a silent<case> is set. This only happens "
+                                           "if the default option has already been set",
+                                           "silent<case> a :: case \"hello\" { ... }\n"
+                                           "a.set_default({ ... })\n"
+                                           "...\n"
+                                           "a.set_default({ ... })\n"
+                                           "^^^^^^^^^^^^^^^^^^^^^^", ""],
+               WT_IterateStepLoop: ["Raised when an iterate statement has a step value that would result in an infinite"
+                                    " loop",
+                                    "iterate 5 to 10 step -1 { ... }\n"
+                                    "                ^^^^^^^", ""],
+               WT_IterateStepZero: ["Raised when an iterate statement has a step value of 0",
+                                    "iterate 10 step 0 { ... }\n"
+                                    "           ^^^^^^", ""],
+               WT_ValueFromList: ["Raised when a single value is assigned to a list that recursively has one element."
+                                  " Uses the single element as the value to be assigned",
+                                  "int a :: [[[1]]]\n"
+                                  "         ^^^^^^^", ""],
+               WT_ValueFromString: ["Raised when a numerical value is assigned to a string. Only raised if the"
+                                    " string can be cast as a number",
+                                    "float a :: \"-19.3\"", ""],
+               WT_StringFromValue: ["Raised when a string is assigned to a numerical value. The value is cast as a str",
+                                    "str a :: 12", ""],
+               WT_FuncArgRet: ["Raised when an argument has a return assignment operator in the definition. This is "
+                               "changed to a non-returning assignment",
+                               "def example_func(int a :> 3) -> float { ... }", ""],
+               WT_FuncAssignOperator: ["Raised when the :: operator is not used for a function argument. This is "
+                                       "changed to a :: operator",
+                                       "def example_func(float a :+: 9) -> list { ... }", ""],
+               WT_ArgCastError: ["Raised when an argument was cast as the required type and an error was returned. "
+                                 "This is only returned when the argument has a default, which is used instead",
+                                 "def example_func(int a :: 5) -> float { ... }\n"
+                                 "print(example_func(a :: \"not a number\"))\n"
+                                 "                          ^^^^^^^^^^^^", ""],
+               WT_UnknownGlobalOpt: ["Raised when a global option is set that does not exist. The option is ignored",
+                                     "`this_does_not_exist\n"
+                                     "^^^^^^^^^^^^^^^^^^^^", ""]}
