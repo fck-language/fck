@@ -88,7 +88,7 @@ class VarAccessNode:
         self.pos_end = self.name_tok.pos_end
 
 
-class VarGetSetNode:
+class VarGetRangeNode:
     def __init__(self, var_name_tok, rangeList):
         self.var_name_tok = var_name_tok
         self.rangeList = rangeList
@@ -320,10 +320,11 @@ class WhileNode:
 
 
 class FuncDefNode:
-    def __init__(self, var_name_tok, arg_name_toks, body_node):
+    def __init__(self, var_name_tok, arg_name_toks, body_node, ret_type=None):
         self.var_name_tok = var_name_tok
         self.arg_name_toks = arg_name_toks
         self.body_node = body_node
+        self.ret_type = ret_type
 
         if self.var_name_tok:
             self.pos_start = self.var_name_tok.pos_start

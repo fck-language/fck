@@ -3,6 +3,7 @@ from re import split
 from Values import *
 from Results import *
 from Nodes import *
+from ErrorsNew import *
 
 
 #######################################
@@ -18,13 +19,13 @@ class Lexer:
         self.current_char = None
         self.advance()
         self.single_char_token_names = {'+': TT_PLUS, '%': TT_MOD, '(': TT_LPAREN, ')': TT_RPAREN, '{': TT_LPAREN_CURLY,
-                                        '}': TT_RPAREN_CURLY, ',': TT_COMMA, '-': TT_MINUS, '[': TT_LPAREN_SQUARE,
+                                        '}': TT_RPAREN_CURLY, ',': TT_COMMA, '[': TT_LPAREN_SQUARE,
                                         ']': TT_RPAREN_SQUARE, "\n": TT_NEWLINE, ';': TT_NEWLINE, '?': TT_QUESTION_MARK,
                                         '@': TT_AT}
         self.multi_char_token_methods = {'!': self.make_not_equals, '=': self.make_equals, '<': self.make_less_than,
                                          '>': self.make_greater_than, '*': self.make_mult_pow, ':': self.make_set,
                                          '/': self.make_div, '"': self.make_string, "'": self.make_string,
-                                         '#': self.skip_comment, '`': self.make_global_opt}
+                                         '#': self.skip_comment, '`': self.make_global_opt, '-': self.make_sub_to}
 
     def advance(self) -> None:
         self.pos.advance(self.current_char)
@@ -137,6 +138,17 @@ class Lexer:
 
         return out
 
+    def make_sub_to(self):
+        out = TT_MINUS
+        pos_start = self.pos.generate_tok_pos()
+        self.advance()
+
+        if self.current_char == '>':
+            out = TT_ARROW
+            self.advance()
+
+        return Token(out, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()), None
+
     def make_not_equals(self):
         pos_start = self.pos.generate_tok_pos()
         self.advance()
@@ -144,9 +156,7 @@ class Lexer:
         if self.current_char == '=':
             self.advance()
             return Token(TT_NE, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()), None
-        elif self.current_char in LETTERS + "_":
-            return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()), None
-        elif self.current_char == '!':
+        elif self.current_char in LETTERS + "_!":
             return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos.generate_tok_pos()), None
 
         self.advance()
@@ -589,7 +599,7 @@ class Parser:
                 res.register_advancement()
                 self.advance()
 
-                return res.success(VarGetSetNode(var_name, ref_items))
+                return res.success(VarGetRangeNode(var_name, ref_items))
 
             self.reverse()
 
@@ -1251,6 +1261,18 @@ class Parser:
                                                          ' for function definition.', self.current_tok.pos_start,
                                      self.current_tok.pos_end, self.context))
 
+        ret_type = None
+        if self.current_tok.type == TT_ARROW:
+            res.register_advancement()
+            self.advance()
+            if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
+                return res.failure(ErrorNew(ET_ExpectedChar, 'Expected variable type identifier after \'->\''
+                                                             ' for function definition.', self.current_tok.pos_start,
+                                            self.current_tok.pos_end, self.context))
+            ret_type = self.current_tok.value
+            res.register_advancement()
+            self.advance()
+
         while self.current_tok.type == TT_NEWLINE:
             res.register_advancement()
             self.advance()
@@ -1270,7 +1292,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        return res.success(FuncDefNode(var_name_tok, func_args, suite))
+        return res.success(FuncDefNode(var_name_tok, func_args, suite, ret_type))
 
     def bin_op(self, func_a, ops, func_b=None):
         if func_b is None:
@@ -1445,10 +1467,10 @@ class Interpreter:
             traceback += f'.{method.name_tok.value}'
         return res.success(parent if isinstance(parent, Value) else None)
 
-    def visit_VarGetSetNode(self, node: VarGetSetNode, context):
+    def visit_VarGetRangeNode(self, node: VarGetRangeNode, context):
         res = RTResult()
         var_name = node.var_name_tok.value
-        value = context.symbol_table.get(var_name)
+        value = context.symbol_table.get(var_name)[0]
         if not value:
             return res.failure(Error(ET_UnknownIdentifier, f"'{var_name}' is not defined",
                                      node.pos_start, node.pos_end, context))
@@ -1715,7 +1737,7 @@ class Interpreter:
             start_value = res.register(self.visit(node.start_value_node, context))
             if res.should_return(): return res
         else:
-            start_value = Number(0)
+            start_value = Int(0)
 
         end_value = res.register(self.visit(node.end_value_node, context))
         if res.should_return(): return res
@@ -1741,12 +1763,13 @@ class Interpreter:
             else:
                 iterable = [String(char) for char in end_value.value]
                 return list_iteration(iterable)
-        if not (isinstance(end_value, Int) and isinstance(start_value, Int)):
+        if isinstance(end_value, Float) or isinstance(start_value, Float):
             end_value = res.register(end_value.as_type('float', end_value.pos_start, end_value.pos_end, context))
             if res.error: return res
             start_value = res.register(
                 start_value.as_type('float', start_value.pos_start, start_value.pos_end, context))
             if res.error: return res
+        iterable_var_type = Int if isinstance(start_value, Int) else Float
         end_value = end_value.value
         start_value = start_value.value
         i = start_value
@@ -1785,7 +1808,7 @@ class Interpreter:
 
         while condition():
             if node.var_name_tok:
-                context.symbol_table.set(node.var_name_tok.value, Number(i))
+                context.symbol_table.set(node.var_name_tok.value, iterable_var_type(i))
 
             value = res.register(self.visit(node.suite_node, context))
             if res.loop_should_break:
@@ -1847,7 +1870,7 @@ class Interpreter:
 
         func_name = node.var_name_tok.value if node.var_name_tok else None
         body_node = node.body_node
-        func_value = Function(func_name, body_node, node.arg_name_toks).set_context(context).set_pos(
+        func_value = Function(func_name, body_node, node.arg_name_toks, node.ret_type).set_context(context).set_pos(
             node.pos_start, node.pos_end)
 
         if node.var_name_tok:
@@ -1935,8 +1958,11 @@ class Interpreter:
 
         return_value = res.register(value_to_call.execute(args))
         if res.should_return(): return res
-        if not isinstance(return_value, Null) and return_value:
+        if return_value:
             return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
+        if value_to_call.ret_type:
+            return_value = res.register(return_value.as_type(value_to_call.ret_type, node.pos_start, node.pos_end, context))
+            if res.should_return(): return res
         return res.success(return_value)
 
     def visit_ReturnNode(self, node: ReturnNode, context):

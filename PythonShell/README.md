@@ -1,6 +1,6 @@
 # fck Python Shell
 
-This directory contains the source code for the fck shell written in Python and released as v0.1.0-alpha. This directory has been removed from the repo as it is no longer maintained, but is still available through the release. This README file will detail what this release includes, and will walk you through installing and configuring fck.
+This directory contains the source code for the fck shell and interpreter written in Python and released as v0.1.0-alpha. This directory has been removed from the repo as it is no longer maintained, but is still available through the release. This README file will detail what this release includes, and will walk you through installing and configuring fck. So to start, installing!
 
 > This code is unmaintained! Please do not submit bug reports related to this code on the fck repo.  
 > This code was written in Python 3.9, and forward compatibility is not guaranteed.
@@ -36,4 +36,3 @@ I hope you enjoy fck, and thank you for giving it a try. As ever if you want to 
 I wish you the best of fun with this language
 
 Rosie xx
-
