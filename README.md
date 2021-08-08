@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="/img/logo/icon.jpeg" alt="fck readme header image" width=300>
+    <img src="/img/logo/logo_2.png" alt="fck readme header image" width=90%>
 </p>
 
 # fck  
