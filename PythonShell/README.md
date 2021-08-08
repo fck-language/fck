@@ -2,7 +2,8 @@
 
 This directory contains the source code for the fck shell written in Python and released as v0.1.0-alpha. This directory has been removed from the repo as it is no longer maintained, but is still available through the release. This README file will detail what this release includes, and will walk you through installing and configuring fck.
 
-> This code is unmaintained! Please do not submit bug reports related to this code on the fck repo. This code was written in Python 3.9, and forward compatibility is not guaranteed.
+> This code is unmaintained! Please do not submit bug reports related to this code on the fck repo.  
+> This code was written in Python 3.9, and forward compatibility is not guaranteed.
 
 # Installing fck
 
@@ -23,17 +24,16 @@ This release is a proof of concept and was written to be able to help in the dev
 
 The config file should be placed in your root directory. If you're not sure where that is, open a terminal and type ``echo $HOME`` which should tell you where it is.
 
-## Errors and warnings
-
-As with all of fck, the errors and warnings have custom error messages. This is explained in greater depth in the [docs](https://rosiepuddles.github.io/fck/docs/_build/html/Error%20messages.html). The file for the error messages is called ``errors.txt`` and is in the same directory as this file.
-
 ## Multi-lingual support
 
-One of the main goals of fck was to create a language that you could use regardless of what your first language is, and to allow anyone to use code written by anyone from anywhere. This release does not include that. Creating a single coding language with multi-lingual support is incredibly complex and requires a lot of different approaches to various aspects of coding languages as a whole. To be able to add this feature to the Python shell would require a significant amount of work that would not be worth the effort. If you require multi-lingual support, I invite you to take a look at the most recent release of [fck](https://github.com/fck-language/fck/releases) which does include multi-lingual support for all versions after this one. Each release comes with a readme file which will include a list of the included languages in that version.
+One of the main goals of fck was to create a language that you could use regardless of what your first language is, and to allow anyone to use code written by anyone from anywhere. This release does not include that.  
+Creating a single coding language with multi-lingual support is incredibly complex and requires a lot of forethought to how certain aspects need to work, and for that to be embedded in the code from the beginning. If you require multi-lingual support, I invite you to take a look at the most recent release of [fck](https://github.com/fck-language/fck/releases) which does include multi-lingual support for all versions after this one. Each release comes with a README file which will include a list of the included languages in that version.
 
 # Final words
 
 I hope you enjoy fck, and thank you for giving it a try. As ever if you want to help develop it, you are more than welcome to. Unfortunately because the Python shell is no longer maintained after its release, any issues or bugs you find won't be able to be worked on as part of the project officially, but you have the source code, so feel free to play around and see what you can do.
 
-I with you the bestest of fun with this language darling xx
+I wish you the best of fun with this language
+
+Rosie xx
 
