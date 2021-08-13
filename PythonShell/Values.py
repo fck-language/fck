@@ -49,49 +49,49 @@ class Value:
         pass
 
     def added_to(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def subbed_by(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def multed_by(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def dived_by(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def fdived_by(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def modded_by(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def powed_by(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_lt(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_gt(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_lte(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_gte(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_eq(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_ne(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def anded_by(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def ored_by(self, other):
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def execute(self, args):
         return self.illegal_operation()
@@ -138,92 +138,6 @@ class Null(Value):
 
     def __repr__(self):
         return "<Null value>"
-
-
-class Infinity(Value):
-    def __init__(self, value, previous_type):
-        super().__init__()
-        self.mult_zero = value
-        self.previous_type = previous_type
-
-    def added_to(self, other):
-        return self, None
-
-    def subbed_by(self, other):
-        return self, None
-
-    def multed_by(self, other):
-        if isinstance(other, Number):
-            if other.value == 0:
-                return self.previous_type(self.mult_zero).set_context(self.context), None
-            return Infinity(self.mult_zero * other.value, self.previous_type).set_context(self.context), None
-        return self.illegal_operation()
-
-    def dived_by(self, other):
-        if isinstance(other, Number):
-            return self, None
-        elif isinstance(other, Infinity):
-            return Int(0).set_context(self.context), None
-        return self.illegal_operation()
-
-    def fdived_by(self, other):
-        return self.dived_by(other)
-
-    def modded_by(self, other):
-        # TODO: Decide what happens here
-        return self.illegal_operation()
-
-    def powed_by(self, other):
-        return self.illegal_operation()
-
-    def get_comparison_lt(self, other):
-        # TODO: Decide what happens here
-        return self.illegal_operation()
-
-    def get_comparison_gt(self, other):
-        # TODO: Decide what happens here
-        return self.illegal_operation()
-
-    def get_comparison_lte(self, other):
-        return self.get_comparison_lt(other)
-
-    def get_comparison_gte(self, other):
-        return self.get_comparison_gt(other)
-
-    def get_comparison_eq(self, other):
-        # TODO: Return false
-        return self.illegal_operation()
-
-    def get_comparison_ne(self, other):
-        # TODO: Decide what happens here
-        return self.illegal_operation()
-
-    def anded_by(self, other):
-        # TODO: Convert self.value to bool?
-        return self.illegal_operation()
-
-    def ored_by(self, other):
-        # TODO: Convert self.value to bool?
-        return self.illegal_operation()
-
-    def notted(self):
-        # TODO: Convert self.value to bool?
-        return self.illegal_operation()
-
-    def is_true(self):
-        # TODO: Convert self.value to bool?
-        return self.illegal_operation()
-
-    def get_type(self, log: bool):
-        return "<" * log + 'Infinity' + f' ({self.mult_zero})>' * log
-
-    def copy(self):
-        copy = Infinity(self.mult_zero, self.previous_type)
-        copy.set_context(self.context).set_pos(self.pos_start, self.pos_start)
-        return copy
-
-    def __repr__(self):
-        return f'<Infinity ({self.mult_zero})>'
 
 
 class Number(Value):
@@ -273,8 +187,6 @@ class Number(Value):
     def added_to(self, other):
         if isinstance(other, Number):
             return self.ret_type(other)(self.value + other.value).set_context(self.context), None
-        elif isinstance(other, Infinity):
-            return Infinity(other.mult_zero, other.previous_type).set_context(self.context), None
         elif isinstance(other, String):
             value = other.as_type(type_values[type(self)], self.pos_start, other.pos_end, None)
             if value.error: return None, value.error
@@ -291,101 +203,83 @@ class Number(Value):
     def subbed_by(self, other):
         if isinstance(other, Number):
             return self.ret_type(other)(self.value - other.value).set_context(self.context), None
-        elif isinstance(other, Infinity):
-            return Infinity(-other.mult_zero, other.previous_type).set_context(self.context), None
         return self.illegal_operation(other)
 
     def multed_by(self, other):
         if isinstance(other, Number):
             return self.ret_type(other)(self.value * other.value).set_context(self.context), None
-        elif isinstance(other, Infinity):
-            return Infinity(self.value * other.mult_zero, other.previous_type).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def dived_by(self, other):
         if isinstance(other, Number):
-            if isinstance(other.value, Infinity):
-                Warning(WT_ValueDivInfinity, self.pos_start, other.pos_end, self.context)
-                return Int(0).set_context(self.context), None
             if other.value == 0:
-                Warning(WT_DivideByZero, self.pos_start, other.pos_end, self.context)
-                return Infinity(self.value, Int).set_context(self.context), None
+                return None, Error(ET_DivideByZero, "Cannot divide by zero", other.pos_start,
+                                   other.pos_end, self.context)
             return Float(self.value / other.value).set_context(self.context), None
-        elif isinstance(other, Infinity):
-            return Int(0).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def fdived_by(self, other):
         if isinstance(other, Number):
-            if isinstance(other.value, Infinity):
-                Warning(WT_ValueDivInfinity, self.pos_start, other.pos_end, self.context)
-                return Int(0).set_context(self.context), None
             if other.value == 0:
-                Warning(WT_DivideByZero, self.pos_start, other.pos_end, self.context)
-                return Infinity(self.value, Int).set_context(self.context), None
+                return None, Error(ET_DivideByZero, "Cannot divide by zero", other.pos_start,
+                                   other.pos_end, self.context)
             return Int(self.value // other.value).set_context(self.context), None
-        elif isinstance(other, Infinity):
-            return Int(0).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def modded_by(self, other):
         if isinstance(other, Number):
-            if isinstance(other.value, Infinity):
-                return self.illegal_operation()
             if other.value == 0:
                 Warning(WT_ModByZero, self.pos_start, other.pos_end, self.context)
                 return Int(0).set_context(self.context), None
             return self.ret_type(other)(self.value % other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def powed_by(self, other):
         if isinstance(other, Number):
-            if isinstance(other.value, Infinity):
-                return self.illegal_operation()
             return self.ret_type(other)(self.value ** other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_lt(self, other):
         if isinstance(other, Number):
             return Bool(self.value < other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_gt(self, other):
         if isinstance(other, Number):
             return Bool(self.value > other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_lte(self, other):
         if isinstance(other, Number):
             return Bool(self.value <= other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_gte(self, other):
         if isinstance(other, Number):
             return Bool(self.value >= other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_eq(self, other):
         if isinstance(other, Number):
             return Bool(self.value == other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def get_comparison_ne(self, other):
         if isinstance(other, Number):
             return Bool(self.value != other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def anded_by(self, other):
         if isinstance(other, Number):
             return Bool(__value_to_bool__(self.value) and __value_to_bool__(other.value)) \
                        .set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def ored_by(self, other):
         if isinstance(other, Number):
             return Bool(__value_to_bool__(self.value) or __value_to_bool__(other.value)) \
                        .set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def notted(self):
         return Bool(not __value_to_bool__(self.value)).set_context(self.context), None
@@ -402,7 +296,7 @@ class Number(Value):
 
 class Int(Number):
     def __init__(self, value):
-        super().__init__(Infinity(round(value.mult_zero), Int) if isinstance(value, Infinity) else round(value))
+        super().__init__(round(value))
 
     def as_type(self, to_type, pos_start, pos_end, context):
         res = RTResult()
@@ -479,7 +373,7 @@ class Float(Number):
 #     def multed_by(self, other):
 #         if isinstance(other, Number):
 #             return Number(self.value * other.value).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def dived_by(self, other):
 #         if isinstance(other, Number):
@@ -487,7 +381,7 @@ class Float(Number):
 #                 fckWarning(self.pos_start, other.pos_end, self.context, ET_DivideByZero).print_method()
 #                 return Infinity(self.value).set_context(self.context), None
 #             return Number(self.value / other.value).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def fdived_by(self, other):
 #         if isinstance(other, Number):
@@ -495,7 +389,7 @@ class Float(Number):
 #                 repr(fckWarning(self.pos_start, other.pos_end, self.context, ET_DivideByZero))
 #                 return Infinity(self.value).set_context(self.context), None
 #             return Number(self.value // other.value).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def modded_by(self, other):
 #         if isinstance(other, Number):
@@ -503,52 +397,52 @@ class Float(Number):
 #                 repr(fckWarning(self.pos_start, other.pos_end, self.context, ET_ModByZero))
 #                 return Number(0).set_context(self.context), None
 #             return Number(self.value % other.value).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def powed_by(self, other):
 #         if isinstance(other, Number):
 #             return Number(self.value ** other.value).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def get_comparison_lt(self, other):
 #         if isinstance(other, Number):
 #             return Number(int(self.value < other.value)).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def get_comparison_gt(self, other):
 #         if isinstance(other, Number):
 #             return Number(int(self.value > other.value)).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def get_comparison_lte(self, other):
 #         if isinstance(other, Number):
 #             return Number(int(self.value <= other.value)).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def get_comparison_gte(self, other):
 #         if isinstance(other, Number):
 #             return Number(int(self.value >= other.value)).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def get_comparison_eq(self, other):
 #         if isinstance(other, Number):
 #             return Number(int(self.value == other.value)).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def get_comparison_ne(self, other):
 #         if isinstance(other, Number):
 #             return Number(int(self.value != other.value)).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def anded_by(self, other):
 #         if isinstance(other, Number):
 #             return Number(int(self.value and other.value)).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def ored_by(self, other):
 #         if isinstance(other, Number):
 #             return Number(int(self.value or other.value)).set_context(self.context), None
-#         return self.illegal_operation()
+#         return self.illegal_operation(other)
 #
 #     def notted(self):
 #         return Number(1 if self.value <= 0 else 0).set_context(self.context), None
@@ -649,12 +543,12 @@ class String(Value):
             return String(self.value + str(other.value)).set_context(self.context), None
         elif isinstance(other, Null):
             return String(self.value + other.__repr__()).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def multed_by(self, other):
-        if isinstance(other, Number) and not isinstance(other.value, Infinity):
+        if isinstance(other, Number):
             return String(self.value * other.value).set_context(self.context), None
-        return self.illegal_operation()
+        return self.illegal_operation(other)
 
     def is_true(self):
         return len(self.value) > 0, None
@@ -738,14 +632,14 @@ class List(Value):
             self.elements = [i.value + other.value for i in self.elements]
             return self, None
         else:
-            return self.illegal_operation()
+            return self.illegal_operation(other)
 
     def multed_by(self, other):
         if isinstance(other, Number):
             self.elements = [i.value * other.value for i in self.elements]
             return self, None
         else:
-            return self.illegal_operation()
+            return self.illegal_operation(other)
 
     def copy(self):
         copy = List(self.elements)

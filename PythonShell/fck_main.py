@@ -3,7 +3,6 @@ from re import split
 from Values import *
 from Results import *
 from Nodes import *
-from ErrorsNew import *
 
 
 #######################################

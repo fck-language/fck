@@ -32,6 +32,7 @@ ET_IllegalArgumentValue = "IllegalArgumentValue"
 ET_UnknownAttribute = "UnknownAttribute"
 ET_UnknownIdentifier = "UnknownIdentifier"
 ET_NoStringEnd = "NoStringEnd"
+ET_DivideByZero = "DivideByZero"
 
 error_names = {ET_ExpectedChar: "Expected character",
                ET_ExpectedExpr: "Expected expression",
@@ -56,7 +57,8 @@ error_names = {ET_ExpectedChar: "Expected character",
                ET_IllegalArgumentValue: "Illegal argument value",
                ET_UnknownAttribute: "Unknown attribute",
                ET_UnknownIdentifier: "Unknown identifier",
-               ET_NoStringEnd: "No string end"}
+               ET_NoStringEnd: "No string end",
+               ET_DivideByZero: "Divide by zero"}
 
 error_format = {ET_ExpectedChar: "{details}\n{traceback}",
                 ET_ExpectedExpr: "{details}\n{traceback}",
@@ -81,7 +83,8 @@ error_format = {ET_ExpectedChar: "{details}\n{traceback}",
                 ET_IllegalArgumentValue: "{details}\n{arg_explain}\n{traceback}",
                 ET_UnknownAttribute: "{details}\n{arg_explain}\n{traceback}",
                 ET_UnknownIdentifier: "{details}\n{traceback}",
-                ET_NoStringEnd: "{details}\n{traceback}"}
+                ET_NoStringEnd: "{details}\n{traceback}",
+                ET_DivideByZero: "{details}\n{traceback}"}
 
 error_explain = {ET_ExpectedChar: ["Returned when a character was expected but not found",
                                    'print(3 ? "hello")\n'
@@ -159,8 +162,11 @@ error_explain = {ET_ExpectedChar: ["Returned when a character was expected but n
                                    "print(a[b])\n"
                                    "        ^", "In this example, 'b' is a list and cannot be used to index values "
                                                 "in 'a'. A 'correct' way would be print(a[b[0]]) in this example"],
+                 # TODO: Find somewhere when an illegal operation is returned
                  ET_IllegalOperation: ["Returned when an operation is performed on a type that does not have the "
-                                       "that operation implemented as a trait", "Can't think of anything", ""],
+                                       "that operation implemented as a trait",
+                                       "\"hello\" / 5\n"
+                                       "^^^^^^^^^^^", ""],
                  ET_ArgumentType: ["Returned when a function argument does not have the correct type",
                                    "def example(int a) -> int {;return a + 3;}\n"
                                    "example(\"123\")\n"
@@ -184,19 +190,18 @@ error_explain = {ET_ExpectedChar: ["Returned when a character was expected but n
                                         "      ^", ""],
                  ET_NoStringEnd: ["Returned when a string has no closing delimiter",
                                   "str a :: \"hello world!\n"
-                                  "                       ^", ""]}
+                                  "                       ^", ""],
+                 ET_DivideByZero: ["Returned when a value is divided by zero",
+                                   "(12 + 9) / (2 - 2)\n"
+                                   "            ^^^^^", "Division by infinity is undefined and is not infinity"]}
 
 ############
 # Warnings #
 ############
 
-WT_DivideByZero = "DivideByZero"
 WT_ModByZero = "ModByZero"
 WT_ValueMultString = "ValueMultString"
 WT_StringMultFloat = "StringMultFloat"
-WT_InfinityDivValue = "InfinityDivValue"
-WT_ValueDivInfinity = "ValueDivInfinity"
-WT_InfinityDivInfinity = "InfinityDivInfinity"
 WT_ListFromValue = "ListFromValue"
 WT_ListIndexOutOfRange = "ListIndexOutOfRange"
 WT_ListIndexFloat = "ListIndexFloat"
@@ -211,13 +216,9 @@ WT_FuncAssignOperator = "FuncAssignOperator"
 WT_ArgCastError = "ArgCastError"
 WT_UnknownGlobalOpt = "UnknownGlobalOpt"
 
-wrn_names = {WT_DivideByZero: "Divide by zero",
-             WT_ModByZero: "Modulo by zero",
+wrn_names = {WT_ModByZero: "Modulo by zero",
              WT_ValueMultString: "Value multiplied by string",
              WT_StringMultFloat: "String multiplied by float",
-             WT_InfinityDivValue: "Infinity divided by value",
-             WT_ValueDivInfinity: "Value divided by infinity",
-             WT_InfinityDivInfinity: "Infinity divided by infinity",
              WT_ListFromValue: "List assigned to a value",
              WT_ListIndexOutOfRange: "List index out of range",
              WT_ListIndexFloat: "List index was float",
@@ -232,13 +233,9 @@ wrn_names = {WT_DivideByZero: "Divide by zero",
              WT_ArgCastError: "Argument cast error",
              WT_UnknownGlobalOpt: "Unknown global option"}
 
-wrn_format = {WT_DivideByZero: "{details}\n{traceback}",
-              WT_ModByZero: "{details}\n{traceback}",
+wrn_format = {WT_ModByZero: "{details}\n{traceback}",
               WT_ValueMultString: "{details}\n{traceback}",
               WT_StringMultFloat: "{details}\n{traceback}",
-              WT_InfinityDivValue: "{details}\n{traceback}",
-              WT_ValueDivInfinity: "{details}\n{traceback}",
-              WT_InfinityDivInfinity: "Infinity divided by infinity",
               WT_ListFromValue: "{details}\n{traceback}",
               WT_ListIndexOutOfRange: "{details}\n{traceback}",
               WT_ListIndexFloat: "{details}\n{traceback}",
@@ -253,10 +250,7 @@ wrn_format = {WT_DivideByZero: "{details}\n{traceback}",
               WT_ArgCastError: "{details}\n{traceback}",
               WT_UnknownGlobalOpt: "{details}\n{traceback}"}
 
-wrn_explain = {WT_DivideByZero: ["Raised when a value is divided by zero. Returns an infinity instance",
-                                 "int a :: 5 / 0\n"
-                                 "         ^^^^^", ""],
-               WT_ModByZero: ["Raised when a value is modded by zero. Returns 0",
+wrn_explain = {WT_ModByZero: ["Raised when a value is modded by zero. Returns 0",
                               "int a :: 12 % 0\n"
                               "         ^^^^^^", ""],
                WT_ValueMultString: ["Raised when a value is multiplied by a string. This is considered bad practice and"
@@ -271,22 +265,6 @@ wrn_explain = {WT_DivideByZero: ["Raised when a value is divided by zero. Return
                                     ">>> \"abc\" * 1.8\n"
                                     "    ^^^^^^^^^^^\n"
                                     "\"abcabc\"", ""],
-               WT_InfinityDivValue: ["Raised when infinity is divided by a numerical value. Returns an infinity "
-                                     "instance with the zero multiplication value being altered",
-                                     ">>> auto a :: 10 / 0\n"
-                                     ">>> a / 5\n"
-                                     "    ^^^^^\n"
-                                     "Infinity<2>", ""],
-               WT_ValueDivInfinity: ["Raised when a numerical value is divided bu infinity. Returns 0",
-                                     ">>> int a :: 5 / 0\n"
-                                     ">>> 10 / a\n"
-                                     "    ^^^^^^\n"
-                                     "0", ""],
-               WT_InfinityDivInfinity: ["Raised when an infinity is divided by another infinity. Returns the zero "
-                                        "multiplied values divided by each other",
-                                        ">>> Infinity<10> / Infinity<2>\n"
-                                        "    ^^^^^^^^^^^^^^^^^^^^^^^^^^\n"
-                                        "5", ""],
                WT_ListFromValue: ["Raised when a list type is assigned to a single value. Turns the value into a list",
                                   "list a :: 1\n"
                                   "^^^^^^^^^^^", ""],
