@@ -2023,15 +2023,40 @@ def run(fn, text, previous=None) -> RunRes:
         previous.previous.append(Token(TT_NEWLINE, None, TokenPosition(0, 0), TokenPosition(0, 0)))
         tokens = previous.previous + tokens
 
-    for tok_l, tok_r in [[TT_LPAREN, TT_RPAREN], [TT_LPAREN_CURLY, TT_RPAREN_CURLY],
-                         [TT_LPAREN_SQUARE, TT_RPAREN_SQUARE]]:
-        paren = sum([tok.type == tok_l for tok in tokens]) - sum([tok.type == tok_r for tok in tokens])
-        if paren != 0:
-            out.previous = tokens[:-1]
-            out.newLineNeeded = True
-            return out
+    brackets = []
+    for tok in tokens:
+        if tok.type in [TT_LPAREN, TT_LPAREN_CURLY, TT_LPAREN_SQUARE]:
+            brackets.append(tok.type)
+        elif tok.type in [TT_RPAREN, TT_RPAREN_CURLY, TT_RPAREN_SQUARE]:
+            if len(brackets) == 0:
+                out.error = Error(ET_UnmatchedBracket, 'Unexpected closing bracket', tok.pos_start,
+                                  tok.pos_end, context)
+                return out
+            if tok.type == TT_RPAREN:
+                if brackets[-1] == TT_LPAREN:
+                    brackets = brackets[:-1]
+                else:
+                    out.error = Error(ET_UnmatchedBracket, 'Expected )', tok.pos_start, tok.pos_end, context)
+                    return out
+            elif tok.type == TT_RPAREN_CURLY:
+                if brackets[-1] == TT_LPAREN_CURLY:
+                    brackets = brackets[:-1]
+                else:
+                    out.error = Error(ET_UnmatchedBracket, 'Expected }', tok.pos_start, tok.pos_end, context)
+                    return out
+            else:
+                if brackets[-1] == TT_LPAREN_SQUARE:
+                    brackets = brackets[:-1]
+                else:
+                    out.error = Error(ET_UnmatchedBracket, 'Expected ]', tok.pos_start, tok.pos_end, context)
+                    return out
 
-    del paren
+    if len(brackets) > 0:
+        out.previous = tokens[:-1]
+        out.newLineNeeded = True
+        return out
+
+    del brackets, tok
 
     # Generate AST
     parser = Parser(tokens, Context(fn, text))
