@@ -383,7 +383,7 @@ class Parser:
                 Warning(WT_UnknownGlobalOpt, pos_start, self.current_tok.pos_end, self.context)
             res.register_advancement()
             self.advance()
-            return res.success(False)
+            return res.success(None)
 
         if self.current_tok.matches(TT_KEYWORD, 'return'):
             res.register_advancement()
@@ -1265,9 +1265,9 @@ class Parser:
             res.register_advancement()
             self.advance()
             if not self.current_tok.list_matches(TT_KEYWORD, VAR_KEYWORDS):
-                return res.failure(ErrorNew(ET_ExpectedChar, 'Expected variable type identifier after \'->\''
+                return res.failure(Error(ET_ExpectedChar, 'Expected variable type identifier after \'->\''
                                                              ' for function definition.', self.current_tok.pos_start,
-                                            self.current_tok.pos_end, self.context))
+                                         self.current_tok.pos_end, self.context))
             ret_type = self.current_tok.value
             res.register_advancement()
             self.advance()

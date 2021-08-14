@@ -1,5 +1,4 @@
 import sys
-from math import sqrt, sin, cos, floor, ceil, pi, atan
 
 from Bases import *
 from fckErrors.classes import *
@@ -7,6 +6,7 @@ from fckErrors.explanations import *
 from Results import RTResult
 import os
 from Nodes import FuncArgNode
+from maths_repr import process_full
 
 
 def type_(value):
@@ -734,6 +734,8 @@ def __value_to_bool__(value):
 
 
 def execute_log(self, exec_ctx: Context):
+    if not exec_ctx.symbol_table.options['log']:
+        return RTResult().success(None)
     added = ''
     out = exec_ctx.symbol_table.get("value")[0]
     if exec_ctx.parent.display_name == '<shell>':
@@ -745,7 +747,11 @@ def execute_log(self, exec_ctx: Context):
 
 def execute_print(self, exec_ctx: Context):
     value, _ = exec_ctx.symbol_table.get("value")
-    print(value) if not isinstance(value, Null) else None
+    if exec_ctx.symbol_table.options['math']:
+        if not isinstance(value, Null):
+            value = str(value)
+            value = process_full(value)
+            print(value)
     del value, exec_ctx
     return RTResult().success(None)
 
