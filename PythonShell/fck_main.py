@@ -1813,6 +1813,9 @@ class Interpreter:
             if res.loop_should_break:
                 if res.break_loop_name != node.reference_name:
                     return res
+            if res.loop_should_continue:
+                if res.continue_loop_name != node.reference_name:
+                    return res
             if res.should_return() and (not res.loop_should_continue) and (not res.loop_should_break): return res
 
             if node.var_name_tok:
@@ -1980,7 +1983,7 @@ class Interpreter:
             if node.continue_to not in context.named_loops:
                 return RTResult().failure(
                     Error(ET_UndefinedLoopIdentifier, f'Loop \'@{node.continue_to}\' is undefined in the '
-                                                         f'current scope',
+                                                      f'current scope',
                           node.pos_start, node.pos_end, context))
         return RTResult().success_continue(node.continue_to)
 
@@ -1988,7 +1991,7 @@ class Interpreter:
         if node.break_to:
             if node.break_to not in context.named_loops:
                 return RTResult().failure(Error(ET_UndefinedLoopIdentifier, f'Loop \'@{node.break_to}\' is undefined'
-                                                                               f' in the current scope',
+                                                                            f' in the current scope',
                                                 node.pos_start, node.pos_end, context))
         return RTResult().success_break(node.break_to)
 
