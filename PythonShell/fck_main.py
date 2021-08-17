@@ -1225,9 +1225,9 @@ class Parser:
                 identifier = self.current_tok.value
                 res.register_advancement()
                 self.advance()
-                if self.current_tok.type not in [*VAR_SET, *VAR_SET_RET]:
-                    return res.failure(Error(ET_ExpectedAssignmentOperator, f"A :: was expected after \'{arg.type_} "
-                                                                            f"{identifier}\'",
+                if self.current_tok.type not in [*VAR_SET, *VAR_SET_RET, TT_COMMA, TT_RPAREN]:
+                    return res.failure(Error(ET_ExpectedAssignmentOperator, f"'::', ',', or ')' was expected after "
+                                                                            f"'{arg.type_} {identifier}'",
                                              self.current_tok.pos_start, self.current_tok.pos_end, self.context))
                 if self.current_tok.type in VAR_SET_RET:
                     Warning(WT_FuncArgRet, self.current_tok.pos_start, self.current_tok.pos_end, self.context)
