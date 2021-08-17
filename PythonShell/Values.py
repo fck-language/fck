@@ -747,11 +747,12 @@ def execute_log(self, exec_ctx: Context):
 
 def execute_print(self, exec_ctx: Context):
     value, _ = exec_ctx.symbol_table.get("value")
-    if exec_ctx.symbol_table.options['math']:
-        if not isinstance(value, Null):
-            value = str(value)
-            value = process_full(value)
-            print(value)
+    if exec_ctx.symbol_table.options["math"] and not isinstance(Value, Null):
+        value = str(value)
+        value = process_full(value)
+    else:
+        value = str(value)
+    print(value)
     del value, exec_ctx
     return RTResult().success(None)
 
