@@ -2020,7 +2020,6 @@ def run(fn, text, previous=None) -> RunRes:
     del lexer
 
     if previous:
-        previous.previous.append(Token(TT_NEWLINE, None, TokenPosition(0, 0), TokenPosition(0, 0)))
         tokens = previous.previous + tokens
 
     brackets = []

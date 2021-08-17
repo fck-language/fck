@@ -77,7 +77,7 @@ class Base:
         ctx = self.context
 
         while ctx:
-            result = f'  Line {pos.ln}, in {ctx.display_name}\n' + result
+            result = f'  Line {pos.ln + 1}, in {ctx.display_name}\n' + result
             pos = ctx.parent_entry_pos
             ctx = ctx.parent
 
