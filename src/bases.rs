@@ -26,6 +26,7 @@ impl std::fmt::Display for Position {
     }
 }
 
+#[derive(Clone)]
 pub struct Token {
     pub type_: u8,
     pub value: String,

@@ -25,7 +25,7 @@ fn main() {
 
     let mut parser = Parser::new(tokens);
     let ast_list = parser.parse();
-    for (i, ast) in ast_list.iter().enumerate() {
+    for (i, ast) in ast_list.ast.iter().enumerate() {
         println!("** {} **\n{:?}", i + 1, ast)
     }
     // println!("{}", tokens.iter().fold(String::new(), |acc, arg| acc + &arg.to_string() + "\n"));

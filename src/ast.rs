@@ -3,7 +3,6 @@ use crate::bases::*;
 use crate::ErrWrn::*;
 use lang::keywords::Keywords;
 use crate::nodes::{ASTNode, ASTNodeType};
-use std::slice::Iter;
 
 pub struct Lexer<'a> {
     split_text: Vec<char>,
@@ -233,9 +232,9 @@ impl Lexer<'_> {
     }
 }
 
-struct ParserResult {
-    error: Option<Error>,
-    ast: Vec<ASTNode>
+pub struct ParserResult {
+    pub error: Option<Error>,
+    pub ast: Vec<ASTNode>
 }
 
 impl ParserResult {
@@ -246,63 +245,85 @@ impl ParserResult {
 
 struct ParserFunctionReturn {
     error: Option<Error>,
-    node: Option<ASTNode>,
-    last_registered_advance_count: usize,
-    advance_count: usize,
-    to_reverse_count: usize
+    node: Option<ASTNode>
 }
 
 impl ParserFunctionReturn {
     pub fn new() -> ParserFunctionReturn {
-        return ParserFunctionReturn{error: None, node: None,
-            last_registered_advance_count: 0, advance_count: 0, to_reverse_count: 0 }
+        return ParserFunctionReturn{error: None, node: None}
     }
 }
 
 pub struct Parser {
-    tokens: Vec<Token>
+    to_process: Vec<Token>,
+    intermediate: Vec<Token>,
+    processed: Vec<Token>,
+    current_tok: Token
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
-        return Parser{tokens}
+        let mut tokens = tokens;
+        tokens.reverse();
+        let current_tok = tokens.clone().pop().unwrap();
+        return Parser{to_process: tokens, intermediate: Vec::new(), processed: Vec::new(),
+            current_tok
+        }
+    }
+
+    fn next(&mut self) -> bool {
+        /// Goes to the next token and adds the previous one to the intermediate vector
+        /// Returns true if more tokens are left and false otherwise
+        self.intermediate.append(&mut Vec::from(vec![self.to_process.remove(0)]));
+        match self.to_process.pop() {
+            Some(T) => {self.current_tok = T; true}
+            None => {false}
+        }
+    }
+    fn finalise(&mut self) {
+        /// Called when the previously processed tokens can safely be moved into the processed
+        /// vector and the intermediate vector can be cleared
+        self.processed.append(&mut self.intermediate);
+        self.processed = Vec::new()
+    }
+    pub fn put_back(&mut self) {
+        todo!()
     }
 
     pub fn parse(&mut self) -> ParserResult {
         // Setup
-        let mut iterator = self.tokens.iter();
-        let mut current_tok = iterator.next().unwrap();
-        let pos_start = &current_tok.pos_start.clone();
-        let mut res = ParserResult::new();
+        let pos_start = self.current_tok.pos_start.clone();
         let mut out = ParserResult::new();
-        let mut token_index = 0u128;
 
         // Loop through tokens to create an ast
         loop {
-            while current_tok.matches(TT_NEWLINE, "".into()) {
-                token_index += 1;
-                current_tok = iterator.next().unwrap();
+            while self.current_tok.matches(TT_NEWLINE, "".into()) {
+                match self.next() {
+                    true => {}
+                    false => return out
+                };
+                self.finalise()
             }
 
-            let res = self.statement(*iterator, current_tok);
+            let res = self.statement();
             match res.error {
                 Some(Error) => {},
                 None => out.ast.push(res.node.unwrap())
             }
 
-            current_tok = match iterator.next() {
-                Some(tok) => tok,
-                None => break
-            };
+            match self.next() {
+                true => {},
+                false => {break}
+            }
+            self.finalise()
         }
         // let node1 = ASTNode::new(ASTNodeType::Bool, Vec::new(), Position::new(), Position::new(), None);
         // out.push(ASTNode::new(ASTNodeType::IntNode, Vec::from([node1]), Position::new(), Position::new(), None));
         return out;
     }
 
-    fn statement(&mut self, mut iterator: Iter<Token>, current_tok: &Token) -> ParserFunctionReturn {
+    fn statement(&mut self) -> ParserFunctionReturn {
         let mut out = ParserFunctionReturn::new();
-        let mut current_token = current_tok;
         return out;
     }
 }
