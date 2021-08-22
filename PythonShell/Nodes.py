@@ -6,23 +6,17 @@ from Bases import Token, TT_AT, TokenPosition
 from textwrap import wrap
 
 
-class NumberNode:
-    def __init__(self, tok):
-        self.tok = tok
-
-        self.pos_start = self.tok.pos_start
-        self.pos_end = self.tok.pos_end
-
-    def __repr__(self):
-        return f'{self.tok}'
-
-
 class autoNode:
     def __init__(self, tok):
         self.tok = tok
 
         self.pos_start = self.tok.pos_start
         self.pos_end = self.tok.pos_end
+
+    def __eq__(self, other):
+        if not isinstance(other, autoNode):
+            return False
+        return self.tok == other.tok and self.pos_start == other.pos_start and self.pos_end == other.pos_end
 
     def __repr__(self):
         return f'{self.tok}'
@@ -35,6 +29,11 @@ class IntNode:
         self.pos_start = self.tok.pos_start
         self.pos_end = self.tok.pos_end
 
+    def __eq__(self, other):
+        if not isinstance(other, IntNode):
+            return False
+        return self.tok == other.tok and self.pos_start == other.pos_start and self.pos_end == other.pos_end
+
     def __repr__(self):
         return f'{self.tok}'
 
@@ -45,6 +44,11 @@ class FloatNode:
 
         self.pos_start = self.tok.pos_start
         self.pos_end = self.tok.pos_end
+
+    def __eq__(self, other):
+        if not isinstance(other, FloatNode):
+            return False
+        return self.tok == other.tok and self.pos_start == other.pos_start and self.pos_end == other.pos_end
 
     def __repr__(self):
         return f'{self.tok}'
@@ -57,6 +61,11 @@ class BoolNode:
         self.pos_start = self.tok.pos_start
         self.pos_end = self.tok.pos_end
 
+    def __eq__(self, other):
+        if not isinstance(other, BoolNode):
+            return False
+        return self.tok == other.tok and self.pos_start == other.pos_start and self.pos_end == other.pos_end
+
     def __repr__(self):
         return f'{self.tok}'
 
@@ -67,6 +76,11 @@ class StringNode:
 
         self.pos_start = self.tok.pos_start
         self.pos_end = self.tok.pos_end
+
+    def __eq__(self, other):
+        if not isinstance(other, StringNode):
+            return False
+        return self.tok == other.tok and self.pos_start == other.pos_start and self.pos_end == other.pos_end
 
     def __repr__(self):
         return f'{self.tok}'
@@ -79,6 +93,11 @@ class ListNode:
         self.pos_start = pos_start
         self.pos_end = pos_end
 
+    def __eq__(self, other):
+        if not isinstance(other, ListNode):
+            return False
+        return self.element_nodes == other.element_nodes and self.pos_start == other.pos_start and self.pos_end == other.pos_end
+
 
 class VarAccessNode:
     def __init__(self, var_name_tok):
@@ -86,6 +105,11 @@ class VarAccessNode:
 
         self.pos_start = self.name_tok.pos_start
         self.pos_end = self.name_tok.pos_end
+
+    def __eq__(self, other):
+        if not isinstance(other, VarAccessNode):
+            return False
+        return self.name_tok == other.name_tok and self.pos_start == other.pos_start and self.pos_end == other.pos_end
 
 
 class VarGetRangeNode:
@@ -95,6 +119,11 @@ class VarGetRangeNode:
 
         self.pos_start = self.var_name_tok.pos_start
         self.pos_end = self.rangeList[-1].pos_end
+
+    def __eq__(self, other):
+        if not isinstance(other, VarGetRangeNode):
+            return False
+        return self.var_name_tok == other.var_name_tok and self.rangeList == other.range_list and self.pos_start == other.pos_start and self.pos_end == other.pos_end
 
 
 class VarGetItemNode:
@@ -106,6 +135,11 @@ class VarGetItemNode:
         self.pos_start = pos_start
         self.pos_end = pos_end
 
+    def __eq__(self, other):
+        if not isinstance(other, VarGetItemNode):
+            return False
+        return self.lower == other.lower and self.higher == other.higher and self.range_get == other.range_get and self.pos_start == other.pos_start and self.pos_end == other.pos_end
+
 
 class VarAssignNode:
     def __init__(self, default_value, var_name_tok, value_node, ret, pos_start, pos_end):
@@ -116,10 +150,20 @@ class VarAssignNode:
         self.pos_start = pos_start
         self.pos_end = pos_end
 
+    def __eq__(self, other):
+        if not isinstance(other, VarAssignNode):
+            return False
+        return self.default_value == other.default_value and self.var_name_tok == other.var_name_tok and self.value_node == other.value_node and self.ret == other.ret and self.pos_start == other.pos_start and self.pos_end
+
 
 class AutoVarAssignNode(VarAssignNode):
     def __init__(self, default_value, var_name_tok, value_node, ret, pos_start, pos_end):
         super().__init__(default_value, var_name_tok, value_node, ret, pos_start, pos_end)
+
+    def __eq__(self, other):
+        if not isinstance(other, AutoVarAssignNode):
+            return False
+        return self.default_value == other.default_value and self.var_name_tok == other.var_name_tok and self.value_node == other.value_node and self.ret == other.ret and self.pos_start == other.pos_start and self.pos_end
 
 
 class VarReassignNode:
@@ -174,6 +218,11 @@ class BinOpNode:
         self.pos_start = self.left_node.pos_start
         self.pos_end = self.right_node.pos_end
 
+    def __eq__(self, other):
+        if not isinstance(other, BinOpNode):
+            return False
+        return self.left_node == other.left_node and self.right_node == other.right_node and self.op_tok == other.op_tok and self.pos_start == other.pos_start and self.pos_end == other.pos_end
+
     def __repr__(self):
         return f'({self.left_node}, {self.op_tok}, {self.right_node})'
 
@@ -185,6 +234,10 @@ class UnaryOpNode:
 
         self.pos_start = self.op_tok.pos_start
         self.pos_end = node.pos_end
+
+    def __eq__(self, other):
+        if not isinstance(other, UnaryOpNode):
+            return False
 
     def __repr__(self):
         return f'({self.op_tok}, {self.node})'

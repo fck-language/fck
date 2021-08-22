@@ -747,10 +747,15 @@ class Parser:
         out = False
         pos_start = self.current_tok.pos_start
 
-        if tok.type in (TT_INT, TT_FLOAT):
+        if tok.type == TT_INT:
             res.register_advancement()
             self.advance()
-            out = NumberNode(tok)
+            out = IntNode(tok)
+
+        if tok.type == TT_FLOAT:
+            res.register_advancement()
+            self.advance()
+            out = FloatNode(tok)
 
         elif tok.type == TT_STRING:
             res.register_advancement()
@@ -1340,11 +1345,11 @@ class Interpreter:
 
     ###################################
 
-    def visit_NumberNode(self, node: NumberNode, context):
-        ret_class = {'INT': Int, 'FLOAT': Float}.get(node.tok.type)
-        return RTResult().success(
-            ret_class(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end)
-        )
+    def visit_IntNode(self, node: IntNode, context):
+        return RTResult().success(Int(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end))
+
+    def visit_FloatNode(self, node: FloatNode, context):
+        return RTResult().success(Float(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end))
 
     def visit_StringNode(self, node: StringNode, context):
         return RTResult().success(

@@ -116,6 +116,9 @@ class Value:
     def get_type(self, log: bool):
         return "<" * log + 'value (base)' + ">" * log
 
+    def __eq__(self, other):
+        return self.pos_start == other.pos_start and self.pos_end == other.pos_end
+
     def __repr__(self):
         return f'{type_(self)}: {self.value}'
 
@@ -135,6 +138,9 @@ class Null(Value):
     def copy(self):
         copy = Null()
         return copy.set_pos(self.pos_start, self.pos_end).set_context(self.context)
+
+    def __eq__(self, other):
+        return isinstance(other, Null)
 
     def __repr__(self):
         return "<Null value>"
@@ -320,6 +326,11 @@ class Int(Number):
     def get_type(self, log: bool):
         return "<" * log + 'int' + ">" * log
 
+    def __eq__(self, other):
+        if not isinstance(other, Int):
+            return False
+        return self.value == other.value and super().__eq__(other)
+
     def __repr__(self):
         return str(self.value)
 
@@ -349,6 +360,11 @@ class Float(Number):
 
     def get_type(self, log: bool):
         return "<" * log + 'float' + ">" * log
+
+    def __eq__(self, other):
+        if not isinstance(other, Float):
+            return False
+        return self.value == other.value and super().__eq__(other)
 
     def __repr__(self):
         return str(self.value)
@@ -494,6 +510,11 @@ class Bool(Number):
     def get_type(self, log: bool):
         return "<" * log + 'bool' + ">" * log
 
+    def __eq__(self, other):
+        if not isinstance(other, Bool):
+            return False
+        return self.value == other.value and super().__eq__(other)
+
     def __repr__(self):
         return 'true' if self.value else 'false'
 
@@ -563,6 +584,11 @@ class String(Value):
 
     def get_type(self, log: bool):
         return "<" * log + 'string' + ">" * log
+
+    def __eq__(self, other):
+        if not isinstance(other, String):
+            return False
+        return self.value == other.value and super().__eq__(other)
 
     def __str__(self):
         return f'{self.value}'
@@ -646,6 +672,11 @@ class List(Value):
         copy.set_context(self.context).set_pos(self.pos_start, self.pos_end)
         return copy
 
+    def __eq__(self, other):
+        if not isinstance(other, List):
+            return False
+        return self.elements == other.elements and super().__eq__(other)
+
     def __str__(self):
         return repr(self)
 
@@ -671,6 +702,9 @@ class BaseFunction(Value):
             exec_ctx.symbol_table.set(arg_name, arg_value)
         return RTResult().success(None)
 
+    def __eq__(self, other):
+        return self.name == other.name and self.ret_type == other.ret_type and super().__eq__(other)
+
 
 class Function(BaseFunction):
     def __init__(self, name, body_node, arg_names, ret_type):
@@ -686,6 +720,11 @@ class Function(BaseFunction):
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
         return copy
+
+    def __eq__(self, other):
+        if not isinstance(other, Function):
+            return False
+        return self.body_node == other.body_node and self.arg_names == other.arg_names and super().__eq__(other)
 
     def __repr__(self):
         return f"<function {self.name}>"
@@ -724,6 +763,11 @@ class BuiltInFunction(BaseFunction):
 
     def get_type(self, log: bool):
         return "<" * log + 'built-in method' + ">" * log
+
+    def __eq__(self, other):
+        if not isinstance(other, BuiltInFunction):
+            return False
+        return self.executable == other.executable and self.arg_names == other.arg_names and super().__eq__(other)
 
     def __repr__(self):
         return f'<built-in function {self.name}>'
