@@ -8,10 +8,7 @@ assignees: ''
 ---
 
 ### The problem
-A clear and concise description of what the bug is.
-
-### How did make?
-How did it happen? Throw in some code blocks of shells or whatever. The more info the better
+Explain what happened, and any thoughts on how it happened
 
 ### What did expect...
 What you thought was supposed to happen
