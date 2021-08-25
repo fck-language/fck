@@ -451,14 +451,22 @@ class Parser:
                 self.advance()
                 expr = res.register(self.expr())
                 if res.error: return res
+                pos_end = expr.pos_end
             elif tok_type == TT_SET_RET:
                 res.register_advancement()
                 self.advance()
                 if self.current_tok.type not in (TT_NEWLINE, TT_EOF):
                     expr = res.register(self.expr())
                     if res.error: return res
+                pos_end = expr.pos_end
+            elif tok_type in (TT_NEWLINE, TT_EOF):
+                pos_end = self.current_tok.pos_start.copy()
+                expr = default_value
+            else:
+                return res.failure(Error(ET_IllegalChar, 'Expected an assignment operator or new line',
+                                         self.current_tok.pos_start, self.current_tok.pos_end, self.context))
             return res.success(VarAssignNode(default_value, var_name, expr, tok_type == TT_SET_RET,
-                                             pos_start, expr.pos_end))
+                                             pos_start, pos_end))
 
         elif self.current_tok.matches(TT_KEYWORD, 'auto'):
             pos_start = self.current_tok.pos_start
