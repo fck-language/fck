@@ -144,11 +144,19 @@ class TokenPosition:
         self.col = col
 
     def advance(self):
-        self.ln += 1
+        self.col += 1
         return self
 
     def copy(self):
         return TokenPosition(self.ln, self.col)
+
+    def __eq__(self, other):
+        if not isinstance(other, TokenPosition):
+            return False
+        return self.col == other.col and self.ln == other.ln
+
+    def __repr__(self):
+        return f'[{self.ln},{self.col}]'
 
 
 class SymbolTable:
@@ -200,5 +208,10 @@ class Token:
     def list_matches(self, type_, value_list):
         return self.type == type_ and self.value in value_list
 
+    def __eq__(self, other):
+        if not isinstance(other, Token):
+            return False
+        return self.type == other.type and self.value == other.value and self.pos_start == other.pos_start and self.pos_end == other.pos_end
+
     def __repr__(self):
-        return f'{self.type}:{self.value}' if self.value else f'{self.type}'
+        return (f'{self.type}:{self.value}' if self.value else f'{self.type}') + f'({self.pos_start} - {self.pos_end})'
