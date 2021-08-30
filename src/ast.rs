@@ -9,14 +9,18 @@ pub struct Lexer<'a> {
     current_pos: Position,
     char_index: usize,
     current_char: char,
-    keywords: Keywords<'a>
+    pub(crate) keywords: Keywords<'a>,
 }
 
 impl Lexer<'_> {
     pub fn new(full_text: String, keywords: Keywords) -> Lexer {
-        return Lexer{split_text: full_text.chars().collect(), current_pos: Position::new(),
-            char_index: 0, current_char: full_text.chars().nth(0).unwrap(),
-            keywords}
+        return Lexer {
+            split_text: full_text.chars().collect(),
+            current_pos: Position::new(),
+            char_index: 0,
+            current_char: full_text.chars().nth(0).unwrap(),
+            keywords,
+        };
     }
 
     fn advance(&mut self) {
@@ -31,7 +35,7 @@ impl Lexer<'_> {
 
     // TODO: Change the return type to either an error or token
     // TODO: Change the return types of referenced functions to be (ErrorOrNot, Option<Token>, Option<Error>)
-    pub fn make_tokens(&mut self) -> Vec<Token> {
+    pub fn make_tokens(&mut self) -> Result<Vec<Token>, Error> {
         let mut tokens: Vec<Token> = Vec::new();
         while self.char_index < self.split_text.len() {
             if " \t".contains(self.current_char) {
@@ -64,7 +68,6 @@ impl Lexer<'_> {
                         ']' => TT_RPAREN_SQUARE,
                         ';' => TT_NEWLINE,
                         '?' => TT_QUESTION_MARK,
-                        '@' => TT_AT,
                         '.' => TT_DOT,
                         _ => 0
                     };
@@ -75,7 +78,7 @@ impl Lexer<'_> {
                         continue;
                     }
 
-                    let (res, tok, err) = match self.current_char {
+                    let tok = match match self.current_char {
                         '!' => self.make_not_equals(),
                         '<' => self.single_double_token('=', TT_LT, TT_LTE),
                         '>' => self.single_double_token('=', TT_GT, TT_GTE),
@@ -83,17 +86,17 @@ impl Lexer<'_> {
                         '/' => self.single_double_token('/', TT_DIV, TT_FDIV),
                         ':' => self.make_set(),
                         '=' => self.make_equals(),
-                        _ => (ErrorOrNot::Err, Token::blank(), Error{})
+                        '@' => self.make_loop_identifier(),
+                        _ => Result::Err(Error::new())
+                    } {
+                        Ok(tok) => tok,
+                        Err(e) => return Result::Err(e)
                     };
-
-                    match res {
-                        ErrorOrNot::Err => {panic!("A error was found! uh oh...");}
-                        ErrorOrNot::NotErr => {tokens.push(tok)}
-                    }
+                    tokens.push(tok);
                 }
             }
         }
-        return tokens
+        Result::Ok(tokens)
     }
 
     // Character parsing functions
@@ -138,34 +141,51 @@ impl Lexer<'_> {
         return Token::new(tok_type, keyword, pos_start, self.current_pos.generate_position())
     }
 
-    fn make_not_equals(&mut self) -> (ErrorOrNot, Token, Error) {
+    fn make_loop_identifier(&mut self) -> Result<Token, Error> {
+        let pos_start = self.current_pos.generate_position();
+        self.advance();
+        if !self.current_char.is_alphanumeric() || self.current_char == '_' {
+            return Result::Err(Error::new());
+        };
+        let mut value = self.current_char.to_string();
+        while (self.current_char.is_alphanumeric() || self.current_char == '_') &&
+            self.char_index < self.split_text.len() {
+            value.push(self.current_char);
+            self.advance()
+        };
+        Result::Ok(Token::new(TT_AT, value, pos_start,
+                              self.current_pos.generate_position()))
+    }
+
+    fn make_not_equals(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.generate_position();
         self.advance();
         if self.current_char == '=' {
-            return (ErrorOrNot::NotErr, Token::new(TT_NE, "".into(), pos_start,
-                                                   self.current_pos.generate_position()),
-                    Error{})
+            return Result::Ok(Token::new(TT_NE, "".into(), pos_start,
+                                         self.current_pos.generate_position()));
         } else if self.current_char.is_alphabetic() || "_!".contains(self.current_char) {
-            return (ErrorOrNot::NotErr, Token::new(TT_NOT, "".into(), pos_start,
-                                                   self.current_pos.generate_position()),
-                    Error{})
+            return Result::Ok(Token::new(TT_NOT, "".into(), pos_start,
+                                         self.current_pos.generate_position()));
         }
-        return (ErrorOrNot::Err, Token::blank(), Error{});
+        return Result::Err(Error::new());
     }
 
-    fn make_equals(&mut self) -> (ErrorOrNot, Token, Error) {
+    fn make_equals(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.generate_position();
         self.advance();
 
         if self.current_char == '=' {
             self.advance();
-            return (ErrorOrNot::NotErr, Token::new(TT_EQ, "".into(), pos_start, self.current_pos.generate_position()), Error{});
+            return Result::Ok(
+                Token::new(TT_EQ, "".into(),
+                           pos_start,
+                           self.current_pos.generate_position()));
         }
         self.advance();
-        return (ErrorOrNot::Err, Token::blank(), Error{});
+        return Result::Err(Error::new());
     }
 
-    fn single_double_token(&mut self, second_char: char, single_type: u8, double_type: u8) -> (ErrorOrNot, Token, Error) {
+    fn single_double_token(&mut self, second_char: char, single_type: u8, double_type: u8) -> Result<Token, Error> {
         let pos_start = self.current_pos.generate_position();
         self.advance();
         let mut tok_type = 0;
@@ -175,45 +195,67 @@ impl Lexer<'_> {
         } else {
             tok_type = single_type;
         }
-        return (ErrorOrNot::NotErr, Token::new(tok_type, "".into(), pos_start, self.current_pos.generate_position()), Error{})
+        return Result::Ok(Token::new(tok_type, "".into(), pos_start,
+                                     self.current_pos.generate_position()));
     }
 
-    fn make_set(&mut self) -> (ErrorOrNot, Token, Error) {
+    fn make_set(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.generate_position();
         self.advance();
         let mut tok_type = 0u8;
         if !":>".contains(self.current_char) {
             tok_type += match self.current_char {
-                '+' => {self.advance();TT_PLUS},
-                '-' => {self.advance();TT_MINUS},
-                '%' => {self.advance();TT_MOD},
-                '*' => {self.advance();
-                match self.current_char {
-                    '*' => {self.advance(); TT_POW}
-                    ':' => TT_MULT,
-                    '>' => TT_MULT,
-                    _ => return (ErrorOrNot::Err, Token::blank(), Error{})
-                }},
-                '/' => {self.advance();
-                match self.current_char {
-                    '/' => {self.advance(); TT_FDIV}
-                    ':' => TT_DIV,
-                    '>' => TT_DIV,
-                    _ => return (ErrorOrNot::Err, Token::blank(), Error{})
-                }},
-                _ => return (ErrorOrNot::Err, Token::blank(), Error{})
+                '+' => {
+                    self.advance();
+                    TT_PLUS
+                }
+                '-' => {
+                    self.advance();
+                    TT_MINUS
+                }
+                '%' => {
+                    self.advance();
+                    TT_MOD
+                }
+                '*' => {
+                    self.advance();
+                    match self.current_char {
+                        '*' => {
+                            self.advance();
+                            TT_POW
+                        }
+                        ':' => TT_MULT,
+                        '>' => TT_MULT,
+                        _ => return Result::Err(Error::new())
+                    }
+                }
+                '/' => {
+                    self.advance();
+                    match self.current_char {
+                        '/' => {
+                            self.advance();
+                            TT_FDIV
+                        }
+                        ':' => TT_DIV,
+                        '>' => TT_DIV,
+                        _ => return Result::Err(Error::new())
+                    }
+                }
+                _ => return Result::Err(Error::new())
             } - 2;
         }
         tok_type += match self.current_char {
             ':' => 32,
             '>' => 40,
-            _ => {self.advance();
-                return (ErrorOrNot::NotErr,
-                        Token::new(TT_COLON, "".into(),pos_start,
-                                   self.current_pos.generate_position()), Error{})}
+            _ => {
+                self.advance();
+                return Result::Ok(Token::new(TT_COLON, "".into(), pos_start,
+                                             self.current_pos.generate_position()));
+            }
         };
         self.advance();
-        return (ErrorOrNot::NotErr, Token::new(tok_type, "".into(), pos_start, self.current_pos.generate_position()), Error{});
+        return Result::Ok(Token::new(tok_type, "".into(), pos_start,
+                                     self.current_pos.generate_position()));
     }
 
     fn skip_comment(&mut self) {
@@ -234,23 +276,12 @@ impl Lexer<'_> {
 
 pub struct ParserResult {
     pub error: Option<Error>,
-    pub ast: Vec<ASTNode>
+    pub ast: Vec<ASTNode>,
 }
 
 impl ParserResult {
     pub fn new() -> ParserResult {
-        return ParserResult{error: None, ast: Vec::new()}
-    }
-}
-
-struct ParserFunctionReturn {
-    error: Option<Error>,
-    node: Option<ASTNode>
-}
-
-impl ParserFunctionReturn {
-    pub fn new() -> ParserFunctionReturn {
-        return ParserFunctionReturn{error: None, node: None}
+        return ParserResult { error: None, ast: Vec::new() };
     }
 }
 
@@ -258,7 +289,7 @@ pub struct Parser {
     to_process: Vec<Token>,
     intermediate: Vec<Token>,
     processed: Vec<Token>,
-    current_tok: Token
+    current_tok: Token,
 }
 
 impl Parser {

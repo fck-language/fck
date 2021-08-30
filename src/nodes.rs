@@ -36,11 +36,11 @@ pub enum ASTNodeType {
 }
 
 pub struct ASTNode {
-    node_type: ASTNodeType,
-    child_nodes: Vec<ASTNode>,
-    pos_start: Position,
-    pos_end: Position,
-    value: Option<String>
+    pub(crate) node_type: ASTNodeType,
+    pub(crate) child_nodes: Vec<ASTNode>,
+    pub(crate) pos_start: Position,
+    pub(crate) pos_end: Position,
+    pub(crate) value: Option<String>
 }
 
 

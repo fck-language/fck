@@ -31,7 +31,7 @@ pub struct Token {
     pub type_: u8,
     pub value: String,
     pub pos_start: Position,
-    pub pos_end: Position,
+    pub pos_end: Position
 }
 
 impl Token {
@@ -41,8 +41,8 @@ impl Token {
     pub fn blank() -> Token {
         return Token::new(0, "".into(), Position::new(), Position::new());
     }
-    pub fn matches(&self, type_: u8, value: String) -> bool {
-        return self.type_ == type_ && self.value == value;
+    pub fn matches(&self, type_: u8, value: &str) -> bool {
+        return self.type_ == type_ && self.value == String::from(value);
     }
 }
 
@@ -51,9 +51,4 @@ impl std::fmt::Display for Token {
         write!(f, "Type: {:<3} (Value: {})\n\tpos_start: {}\n\tpos_end  : {}",
                self.type_, self.value, self.pos_start, self.pos_end)
     }
-}
-
-pub enum ErrorOrNot {
-    NotErr,
-    Err
 }
