@@ -108,7 +108,7 @@ impl Lexer<'_> {
         while self.current_char.is_numeric() || self.current_char == '.' {
             if self.current_char == '.' {
                 if has_dot {
-                    break
+                    break;
                 }
                 has_dot = true;
                 value.push('.')
@@ -119,7 +119,7 @@ impl Lexer<'_> {
         }
 
         return Token::new(has_dot as u8, value, pos_start,
-                                 self.current_pos.generate_position())
+                          self.current_pos.generate_position());
     }
 
     fn make_identifier(&mut self) -> Token {
@@ -133,12 +133,12 @@ impl Lexer<'_> {
             self.advance();
         }
 
-        let tok_type = match self.keywords.contains(&keyword.clone() as &str) {
-            true => TT_KEYWORD,
-            false => TT_IDENTIFIER
+        let (value, tok_type) = match self.keywords.contains(&keyword) {
+            Some(val) => (val, TT_KEYWORD),
+            None => (keyword, TT_IDENTIFIER)
         };
 
-        return Token::new(tok_type, keyword, pos_start, self.current_pos.generate_position())
+        return Token::new(tok_type, value, pos_start, self.current_pos.generate_position());
     }
 
     fn make_loop_identifier(&mut self) -> Result<Token, Error> {
