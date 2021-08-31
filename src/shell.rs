@@ -5,7 +5,7 @@ use crate::ast;
 
 use lang::keywords::Keywords;
 
-pub fn shell(default_language: Keywords) {
+pub fn shell(default_language: Keywords<'static>) {
     let mut current_language = default_language;
     loop {
         let mut given = String::new();
@@ -22,6 +22,7 @@ pub fn shell(default_language: Keywords) {
         current_language = lexer.keywords.clone();
 
         if tokens.is_empty() {
+            println!("Empty token vector");
             continue;
         }
         let mut parser = ast::Parser::new(tokens);

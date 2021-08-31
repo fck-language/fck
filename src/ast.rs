@@ -3,17 +3,18 @@ use crate::bases::*;
 use crate::ErrWrn::*;
 use lang::keywords::Keywords;
 use crate::nodes::{ASTNode, ASTNodeType};
+use lang::get_associated_keywords;
 
-pub struct Lexer<'a> {
+pub struct Lexer {
     split_text: Vec<char>,
     current_pos: Position,
     char_index: usize,
     current_char: char,
-    pub(crate) keywords: Keywords<'a>,
+    pub(crate) keywords: Keywords<'static>,
 }
 
-impl Lexer<'_> {
-    pub fn new(full_text: String, keywords: Keywords) -> Lexer {
+impl Lexer {
+    pub fn new(full_text: String, keywords: Keywords<'static>) -> Lexer {
         return Lexer {
             split_text: full_text.chars().collect(),
             current_pos: Position::new(),
@@ -54,7 +55,19 @@ impl Lexer<'_> {
                     }
                     self.advance();
                 } else if self.current_char == '#' {
-                    self.skip_comment();
+                    self.advance();
+                    if self.current_char == '!' {
+                        self.advance();
+                        let mut lang_code = String::from(self.current_char);
+                        self.advance();
+                        lang_code.push(self.current_char);
+                        match get_associated_keywords(lang_code.as_str()) {
+                            Some(k) => self.keywords = k,
+                            None => return Result::Err(Error::new())
+                        }
+                    } else {
+                        self.skip_comment();
+                    }
                 } else {
                     let tok_type: u8 = match self.current_char {
                         '+' => TT_PLUS,
@@ -259,8 +272,6 @@ impl Lexer<'_> {
     }
 
     fn skip_comment(&mut self) {
-        self.advance();
-
         if self.current_char == '#' {
             while self.current_char != '\n' || self.char_index + 1 != self.split_text.len() {
                 self.advance();
