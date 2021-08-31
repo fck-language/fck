@@ -3,7 +3,7 @@ pub mod en;
 pub mod fr;
 pub mod de;
 
-pub fn get_associated_keywords(lang_code: &str) -> Option<keywords::Keywords> {
+pub fn get_associated_keywords(lang_code: &str) -> Option<keywords::Keywords<'static>> {
     match lang_code {
         "en" => Some(en::KEYWORDS_EN),
         "de" => Some(de::KEYWORDS_DE),
