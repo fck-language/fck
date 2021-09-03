@@ -2,20 +2,28 @@
     <img src="/img/logo/logo_2.png" alt="fck readme header image" width=90%>
 </p>
 
-# fck  
+![example workflow](https://github.com/fck-language/fck/actions/workflows/rust_build.yml/badge.svg)
+[![wakatime](https://wakatime.com/badge/github/fck-language/fck.svg)](https://wakatime.com/badge/github/fck-language/fck)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md)
 
-fck is an interpereted and compiled coding language, for fast and easy debugging, and fast binary files. fck has been designed in such a way so as to make it very difficult to break, with an emphasis placed on non-breaking warnings and trying to fix any small errors in the code.
+fck is the worlds first coding language with full support for any language imaginable! Seems fancy right?! We have designed the language to be able to seamlessly switch between languages, so you can work on code with anyone from anywhere! fck is also a compiled and interpreted language, allowing complete flexibility in your workflow.
 
-fck is completely open source and written in Rust, with extensive [documentation](https://RosiePuddles.github.io/fck/docs) and [tutorials](https://rosiepuddles.github.io/fck/tutorial) to get you started on the language.
+---
 
-If English isn't your first language, then don't worry! fck has multilingual support, which means that you can change the language that the syntax is in at any point in the code.
+## Contents
 
-Okay have a fun day darling xx
+- [Installing](#installing)
+  - [SHA sums](#sha-sums)
+  - [Flavours](#flavours)
+- [Syntax highlighting](#syntax-highlighting)
+- [Contributing](#contributing)
+
+---
 
 # Installing
 
-To install a version of fck, download one of the .tar.gz files from the [releases page](https://github.com/RosiePuddles/fck/releases). All the SHA sums are given below, and each release hs its SHA sums along with the release. If you download a release and it doesn't have the correct SHA sums, redownload the file and check again. If it still doesn't, check the discussions page for that release, linked with the release, and see if anyone else has had the same problem. If no one has, ask and we'll have a look. If the SHA sums need changing, they will be done so as soon as possible.
+Installing fck is fairly simple. Currently, you need to go the the [releases page](https://github.com/fck-language/fck/releases) and pick your version and [flavour](#flavours).
+Once the file is downloaded, we highly recommend you check the SHA sums of the file against this readme. If the SHA sums match up, then uncompress the file and cd into the uncompressed directory. Then run `install.sh` with `sudo` permissions. This will install the correct binary file for your system.
 
 ## SHA sums
 
@@ -28,17 +36,8 @@ To install a version of fck, download one of the .tar.gz files from the [release
         </tr>
     </thead>
     <tbody>
-<!--         <tr>
-            <td rowspan=2><a href=release_link>release .tar.gz file</a></td>
-            <td>256</td>
-            <td>SHA256sum</td>
-        </tr>
         <tr>
-            <td>512</td>
-            <td>SHA512sum</td>
-        </tr> -->
-        <tr>
-            <td rowspan=2><a href=https://github.com/RosiePuddles/fck/releases>fck-v0_1_0-alpha.tar.gz</a></td>
+            <td rowspan=2><a href=https://github.com/RosiePuddles/fck/releases>fck-v0_1_0.tar.gz</a></td>
             <td>256</td>
             <td> </td>
         </tr>
@@ -48,77 +47,49 @@ To install a version of fck, download one of the .tar.gz files from the [release
         </tr>
     </tbody>
 </table>
+
+## Flavours
+
+As well as fck being the first language to support multiple languages, it is also the first (so far as I can tell) language that implements *flavours*. Each release will have several flavours, each with its own special additions and each being suited for different types of programmers. For a more in depth explanation and the features of each flavour, see the flavours section of the fck website. The current flavours are as follows:
+
+### Pure
+
+This flavour is the simplest flavour, and is what all other flavours are built off of. Everything in the pure flavour is in all other flavours.
+
+### Counting
+
+A maths based flavour with added constants and built-in functions
+
+#### Constants
+
+- `phi`, The golden ratio (≈1.61803)
+- `euler_mascheroni`, Euler-Mascheroni constant (≈0.57722)
+- `catalan`, Catalan's constant (≈0.91597)
+- `wierstrass`, Wierstrass' constant (≈0.47495)
+
+and others...
+
+#### Functions
+
+- `gamma`, Gamma function
+- `digamma`, Digamma function
+- `beta`, Beta function
+- `polylogarithm`, Polylogarithm functions
+
+and others...
+
+---
 
 # Syntax highlighting
 
-fck has seperate packages available for [Atom](https://atom.io) and [Vim](https://www.vim.org) for syntax highlighting. Please be aware that these are not maintained at the same rate as the source code, and often lag behind development. That being said, before any release these are updated to be in line with the upcoming release.
+fck has separate packages available for [Atom](https://atom.io), [Vim](https://www.vim.org), and [VS Code]() for syntax highlighting. Please be aware that these are not maintained at the same rate as the source code, and often lag behind development. These are often left until just before the next release to be updated.
 
 - [Atom highlighting](https://github.com/RosiePuddles/language-fck)
 - [Vim highlighting]()
+- [VS Code highlighting]()
 
-# Benchmarking
+# Contributing
 
-fck has been (in a bit) benchmarked using [The Computer Language Benchmarks Game](https://benchmarksgame-team.pages.debian.net/benchmarksgame/). At current, only times are given for execution, all of which are given relative to fck-interpreted:
+Contribution is always welcome! Before contributing, please make sure you have a read of our [contributing guidelines](CONTRIBUTING.md). If you have any questions after reading that, feel free to ask them on the [Q&A section](https://github.com/fck-language/fck/discussions/categories/q-a) of our discussions page.
 
-<table>
-    <thead>
-        <tr>
-            <td rowspan="2">Language</td>
-            <td colspan="10" align="center">Benchmark</td>
-        </tr>
-        <tr>
-            <td>fannkuch-redux</td>
-            <td>n-body</td>
-            <td>spectral-norm</td>
-            <td>mandlebrot</td>
-            <td>pidigits</td>
-            <td>regex-redux</td>
-            <td>fasta</td>
-            <td>k-nucleotide</td>
-            <td>reverse-complement</td>
-            <td>binary-trees</td>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>fck-0.1.0-alpha</td>
-            <td>1</td>
-            <td>1</td>
-            <td>1</td>
-            <td>1</td>
-            <td>1</td>
-        </tr>
-        <tr>
-            <td>CPython-3.2</td>
-            <td>352.29</td>
-            <td>567.56</td>
-            <td>120.99</td>
-            <td>13.8</td>
-            <td>5.1</td>
-        </tr>
-        <tr>
-            <td>GCC-4.3.2(C)</td>
-            <td>1.0</td>
-            <td>2.3</td>
-            <td>1.7</td>
-            <td>4.5</td>
-            <td>3.0</td>
-        </tr>
-        <tr>
-            <td>Java@JRE-1.6.0_25</td>
-            <td>1.7</td>
-            <td>2.6</td>
-            <td>6.8</td>
-            <td>13.4</td>
-            <td>6.7</td>
-        </tr>
-        <tr>
-            <td>Ruby-1.9.2p180</td>
-            <td>98.0</td>
-            <td>628.4</td>
-            <td>15.4</td>
-            <td>30.3</td>
-            <td>8.6</td>
-        </tr>
-    </tbody>
-</table>
+[comment]: <> (fck has, in a bit, been benchmarked using [The Computer Language Benchmarks Game]&#40;https://benchmarksgame-team.pages.debian.net/benchmarksgame/&#41;. At current, only times are given for execution, all of which are given relative to fck-interpreted:)
