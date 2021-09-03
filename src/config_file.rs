@@ -108,16 +108,20 @@ pub fn read_config_file<'a>() -> ConfigFile {
     }
     let config_keys = keyword_match.unwrap();
     let mut config_keys = config_keys.config_keys.iter();
+    println!("{:?}", config_keys);
     read_file.reverse();
 
     let mut out = ConfigFile::new(read_file.pop().unwrap().to_string());
 
     for line in read_file {
+        if line.trim() == "" {
+            continue;
+        }
         let split: Vec<&str> = line.split('=').collect::<Vec<&str>>().iter().map(|x| x.trim()).collect();
         assert_eq!(split.len(), 2, "Each line should contain a key and associated value!\n{}", line);
-        let position = config_keys.position(|&x| x == split[0]);
+        let position = config_keys.clone().position(|&x| x == split[0]);
         if position.is_none() {
-            println!("Unknown config file key '{}'!", { split[0] });
+            println!("Unknown config file key '{}'!", split[0]);
             continue;
         }
         match out.value_type(position.unwrap()) {
