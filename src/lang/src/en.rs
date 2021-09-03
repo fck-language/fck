@@ -6,7 +6,9 @@ pub const KEYWORDS_EN: Keywords = Keywords{
         "iterate", "to", "import", "step", "while", "def", "return", "continue", "break",
         "silent", "as"],
     var_keywords:
-    ["int", "float", "bool", "list", "str"]
+    ["int", "float", "bool", "list", "str"],
+    config_keys:
+    ["wrapLength", "shellLanguageInfo", "historyLength"]
 };
 
 //  0 "and"

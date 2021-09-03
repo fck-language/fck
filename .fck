@@ -1,2 +1,4 @@
 en
 wrapLength=70
+shellLanguageInfo=false
+historyLength=100
