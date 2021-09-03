@@ -52,6 +52,7 @@ pub fn shell(config_file: ConfigFile) {
                 continue;
             }
         };
+        // println!("{}", ast_list.is_empty());
         for (i, ast) in ast_list.iter().enumerate() {
             println!("** {} **\n{:?}", i + 1, ast)
         }

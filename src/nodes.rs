@@ -1,38 +1,38 @@
-use crate::bases::{Token, Position};
+use crate::bases::Position;
 use std::fmt::Formatter;
 
 #[derive(Debug)]
 pub enum ASTNodeType {
-    IntNode,
-    FloatNode,
-    Bool,
-    String,
-    List,
-    VarAccess,
-    VarGetRange,
-    VarGetItem,
-    VarAssign,
-    VarReassign,
-    VarSubFunc,
-    MethodCall,
-    TrueFalse,
-    AssErrorCatch,
-    BinOp,
-    UnaryOp,
-    Silent,
-    As,
-    If,
-    AtName,
-    Case,
-    Option,
-    Iterate,
-    While,
-    FuncDef,
-    FuncArg,
-    Call,
-    Return,
-    Continue,
-    Break
+    Int,             // {value as a String}
+    Float,           // {value as a String}
+    Bool,            // {value as a String (0 = false, 1 = true)}
+    String,          // {value as a String}
+    List,            // None
+    VarAccess,       // Variable identifier
+    VarGetRange,     //
+    VarGetItem,      //
+    VarAssign,       // {return as int}{variable type from token excluding '1.'}{variable name}
+    VarReassign,     //
+    VarSubFunc,      //
+    MethodCall,      //
+    TrueFalse,       //
+    AssErrorCatch,   //
+    BinOp,           //
+    UnaryOp,         //
+    Static,          //
+    As,              //
+    If,              // None
+    AtName,          //
+    Case,            //
+    Option,          //
+    Iterate,         //
+    While,           // None
+    FuncDef,         // Function identifier
+    FuncArg,         // Argument identifier
+    Call,            //
+    Return,          // None
+    Continue,        // None
+    Break            // None
 }
 
 pub struct ASTNode {

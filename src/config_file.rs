@@ -37,6 +37,7 @@ impl ConfigFile {
         // 0 => just what the fuck
         // 1 => u8
         // 2 => bool
+        // 3 => String
         match key_index {
             0 => 1,
             1 => 2,
@@ -108,7 +109,6 @@ pub fn read_config_file<'a>() -> ConfigFile {
     }
     let config_keys = keyword_match.unwrap();
     let mut config_keys = config_keys.config_keys.iter();
-    println!("{:?}", config_keys);
     read_file.reverse();
 
     let mut out = ConfigFile::new(read_file.pop().unwrap().to_string());
@@ -125,7 +125,7 @@ pub fn read_config_file<'a>() -> ConfigFile {
             continue;
         }
         match out.value_type(position.unwrap()) {
-            0 => println!("What the fuck"),
+            0 => panic!("No"),
             1 => {
                 match split[1].parse::<u8>() {
                     Ok(v) => out.new_value(position.unwrap(),
@@ -148,6 +148,9 @@ pub fn read_config_file<'a>() -> ConfigFile {
                     }
                 }
             }
+            3 => out.new_value(position.unwrap(),
+                               None,
+                               Some(split[1].to_string())),
             _ => {}
         }
     }
