@@ -8,10 +8,10 @@ use clap::Format;
 
 #[derive(Clone)]
 pub struct ConfigFile {
-    default_lang: String,
-    wrap_length: ConfigU8,
-    shell_language_info: bool,
-    history_length: ConfigU8,
+    pub(crate) default_lang: String,
+    pub(crate) wrap_length: ConfigU8,
+    pub(crate) shell_language_info: bool,
+    pub(crate) history_length: ConfigU8,
 }
 
 impl ConfigFile {
@@ -57,7 +57,7 @@ impl Debug for ConfigFile {
 }
 
 #[derive(Clone)]
-struct ConfigU8 {
+pub struct ConfigU8 {
     value: u8,
     min_value: u8,
     max_value: u8,

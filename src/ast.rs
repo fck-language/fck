@@ -11,6 +11,7 @@ pub struct Lexer {
     char_index: usize,
     current_char: char,
     pub(crate) keywords: Keywords<'static>,
+    pub(crate) keyword_code: String
 }
 
 impl Lexer {
@@ -21,6 +22,7 @@ impl Lexer {
             char_index: 0,
             current_char: full_text.chars().nth(0).unwrap(),
             keywords,
+            keyword_code
         };
     }
 
@@ -58,13 +60,13 @@ impl Lexer {
                     self.advance();
                     if self.current_char == '!' {
                         self.advance();
-                        let mut lang_code = String::from(self.current_char);
-                        self.advance();
-                        lang_code.push(self.current_char);
+                        let mut lang_code = self.make_identifier().value;
                         match get_associated_keywords(lang_code.as_str()) {
                             Some(k) => self.keywords = k,
                             None => return Result::Err(Error::new())
                         }
+                        self.keyword_code = lang_code;
+                        self.advance();
                     } else {
                         self.skip_comment();
                     }

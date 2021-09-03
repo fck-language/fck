@@ -1,6 +1,6 @@
-use crate::keywords::Keywords;
+use crate::keywords::{Keywords, Messages};
 
-pub const KEYWORDS_FR: Keywords = Keywords{
+pub const KEYWORDS: Keywords = Keywords{
     keywords:
     ["et", "ou", "non", "si", "autre", "auti", "cas", "option", "défaut",
         "répéter", "à", "import", "pas", "pendant", "déf", "rendre", "continuer", "interruption",
@@ -10,4 +10,8 @@ pub const KEYWORDS_FR: Keywords = Keywords{
     config_keys:
     // TODO: Work out the actual words
     ["wrapLength", "shellLanguageChange", "historyLength"]
+};
+
+pub const MESSAGES: Messages = Messages{
+    generic: ["La langue du shell a été changée en français"]
 };

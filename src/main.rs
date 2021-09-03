@@ -18,7 +18,7 @@ fn main() {
     let config_file = config_file::read_config_file();
     println!("{:?}", config_file);
 
-    let app = App::new("fck")
+    let _app = App::new("fck")
         .version(crate_version!())
         .arg(Arg::with_name("version")
             .short("v")
@@ -33,5 +33,5 @@ fn main() {
             .help("File or project path to "))
         .arg(Arg::with_name("input")).get_matches();
 
-    shell(get_associated_keywords(config_file[0]).unwrap());
+    shell(config_file);
 }

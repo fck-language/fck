@@ -1,6 +1,6 @@
-use crate::keywords::Keywords;
+use crate::keywords::{Keywords, Messages};
 
-pub const KEYWORDS_EN: Keywords = Keywords{
+pub const KEYWORDS: Keywords = Keywords{
     keywords:
     ["and", "or", "not", "if", "else", "elif", "case", "option", "default",
         "iterate", "to", "import", "step", "while", "def", "return", "continue", "break",
@@ -9,6 +9,10 @@ pub const KEYWORDS_EN: Keywords = Keywords{
     ["int", "float", "bool", "list", "str"],
     config_keys:
     ["wrapLength", "shellLanguageInfo", "historyLength"]
+};
+
+pub const MESSAGES: Messages = Messages{
+    generic: ["The shell language has been changed to english"]
 };
 
 //  0 "and"

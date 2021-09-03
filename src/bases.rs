@@ -1,3 +1,6 @@
+use crate::tokens::TT_KEYWORD;
+use std::str::Chars;
+
 #[derive(Copy, Clone)]
 pub struct Position {
     ln: usize,
@@ -38,11 +41,11 @@ impl Token {
     pub fn new(type_: u8, value: String, pos_start: Position, pos_end: Position) -> Token {
         return Token{type_, value, pos_start, pos_end};
     }
-    pub fn blank() -> Token {
-        return Token::new(0, "".into(), Position::new(), Position::new());
-    }
     pub fn matches(&self, type_: u8, value: &str) -> bool {
         return self.type_ == type_ && self.value == String::from(value);
+    }
+    pub fn matches_list(&mut self, list: u8) -> bool {
+        self.type_ == TT_KEYWORD && self.value.clone().get(0..1).unwrap() == format!("{}", list)
     }
 }
 

@@ -18,3 +18,7 @@ impl Keywords<'_> {
         None
     }
 }
+
+pub struct Messages<'a> {
+    pub generic: [&'a str; 1]
+}
