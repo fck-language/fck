@@ -108,6 +108,7 @@ pub fn read_config_file<'a>() -> ConfigFile {
     }
     let config_keys = keyword_match.unwrap();
     let mut config_keys = config_keys.config_keys.iter();
+    println!("{:?}", config_keys);
     read_file.reverse();
 
     let mut out = ConfigFile::new(read_file.pop().unwrap().to_string());
