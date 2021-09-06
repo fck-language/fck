@@ -1,5 +1,4 @@
 extern crate lang;
-extern crate ErrWrn;
 
 use crate::ast;
 
@@ -20,7 +19,10 @@ pub fn shell(config_file: ConfigFile) {
         let mut lexer = ast::Lexer::new(given, current_language.clone(), keyword_code.clone());
         let tokens = match lexer.make_tokens() {
             Ok(t) => t,
-            Err(_) => { panic!() }
+            Err(e) => {
+                println!("0{}", e);
+                continue
+            }
         };
         current_language = lexer.keywords.clone();
         keyword_code = match keyword_code == lexer.keyword_code {
@@ -47,12 +49,11 @@ pub fn shell(config_file: ConfigFile) {
         let mut parser = ast::Parser::new(tokens);
         let ast_list = match parser.parse() {
             Ok(t) => t,
-            Err(_) => {
-                println!("Error in parser");
+            Err(e) => {
+                println!("{}", e);
                 continue;
             }
         };
-        // println!("{}", ast_list.is_empty());
         for (i, ast) in ast_list.iter().enumerate() {
             println!("** {} **\n{:?}", i + 1, ast)
         }

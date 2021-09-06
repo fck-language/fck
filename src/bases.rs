@@ -11,8 +11,9 @@ impl Position {
     pub fn new() -> Position {
         return Position{ln: 0, col: 0}
     }
-    pub fn advance(&mut self) {
-        self.col += 1
+    pub fn advance(mut self) -> Self {
+        self.col += 1;
+        self
     }
     pub fn advance_ln(&mut self) {
         self.ln += 1;

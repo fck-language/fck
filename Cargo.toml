@@ -15,4 +15,3 @@ maintenance = {status = "actively-developed"}
 [dependencies]
 clap = "2.33.3"
 lang = {path = "./src/lang"}
-ErrWrn = {path = "./src/ErrWrn"}

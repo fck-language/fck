@@ -1,5 +1,4 @@
 extern crate lang;
-extern crate ErrWrn;
 extern crate clap;
 
 use crate::shell::shell;
@@ -13,6 +12,7 @@ mod ast;
 mod nodes;
 mod shell;
 mod config_file;
+mod err_wrn;
 
 fn main() {
     let config_file = config_file::read_config_file();

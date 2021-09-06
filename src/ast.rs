@@ -1,6 +1,6 @@
 use crate::tokens::*;
 use crate::bases::*;
-use crate::ErrWrn::*;
+use crate::err_wrn::*;
 use lang::keywords::Keywords;
 use crate::nodes::{ASTNode, ASTNodeType};
 use lang::get_associated_keywords;
@@ -63,7 +63,10 @@ impl Lexer {
                         let mut lang_code = self.make_identifier().value;
                         match get_associated_keywords(lang_code.as_str()) {
                             Some(k) => self.keywords = k,
-                            None => return Result::Err(Error::new())
+                            None => return Result::Err(Error::new(pos_start,
+                                                                  self.current_pos.generate_position(),
+                                                                  0u16,
+                                                                  "".to_string()))
                         }
                         self.keyword_code = lang_code;
                         self.advance();
@@ -160,7 +163,7 @@ impl Lexer {
         let pos_start = self.current_pos.generate_position();
         self.advance();
         if !self.current_char.is_alphanumeric() || self.current_char == '_' {
-            return Result::Err(Error::new());
+            return Result::Err(Error::new(pos_start, pos_start.clone().advance(), 0u16, String::new()));
         };
         let mut value = self.current_char.to_string();
         while (self.current_char.is_alphanumeric() || self.current_char == '_') &&
@@ -182,7 +185,7 @@ impl Lexer {
             return Result::Ok(Token::new(TT_NOT, "".into(), pos_start,
                                          self.current_pos.generate_position()));
         }
-        return Result::Err(Error::new());
+        return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()));
     }
 
     fn make_equals(&mut self) -> Result<Token, Error> {
@@ -196,8 +199,8 @@ impl Lexer {
                            pos_start,
                            self.current_pos.generate_position()));
         }
-        self.advance();
-        return Result::Err(Error::new());
+        // self.advance();
+        return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()));
     }
 
     fn single_double_token(&mut self, second_char: char, single_type: u8, double_type: u8) -> Result<Token, Error> {
@@ -241,7 +244,7 @@ impl Lexer {
                         }
                         ':' => TT_MULT,
                         '>' => TT_MULT,
-                        _ => return Result::Err(Error::new())
+                        _ => return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()))
                     }
                 }
                 '/' => {
@@ -253,10 +256,10 @@ impl Lexer {
                         }
                         ':' => TT_DIV,
                         '>' => TT_DIV,
-                        _ => return Result::Err(Error::new())
+                        _ => return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()))
                     }
                 }
-                _ => return Result::Err(Error::new())
+                _ => return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()))
             } - 2;
         }
         tok_type += match self.current_char {
@@ -303,6 +306,7 @@ pub struct Parser {
     intermediate: Vec<Token>,
     processed: Vec<Token>,
     current_tok: Token,
+    previous_end: Position
 }
 
 impl Parser {
@@ -314,7 +318,8 @@ impl Parser {
             to_process: tokens,
             intermediate: Vec::new(),
             processed: Vec::new(),
-            current_tok,
+            current_tok: current_tok.clone(),
+            previous_end: current_tok.pos_start
         };
     }
 
@@ -322,6 +327,7 @@ impl Parser {
     fn next(&mut self) -> bool {
         // Goes to the next token and adds the previous one to the intermediate vector
         // Returns true if more tokens are left and false otherwise
+        self.previous_end = self.current_tok.pos_end;
         match self.to_process.pop() {
             Some(t) => {
                 self.current_tok = t;
@@ -414,7 +420,8 @@ impl Parser {
             };
 
             if self.next() {
-                return Result::Err(Error::new());
+                // TODO: check for loop identifiers here and process appropriately
+                return Result::Err(Error::new(pos_start, self.current_tok.pos_end, 0u16, String::new()));
             }
             if self.current_tok.type_ == TT_NEWLINE {
                 return Result::Ok(ASTNode::new(node_type,
@@ -448,10 +455,10 @@ impl Parser {
         if self.current_tok.matches_list(1) {
             let var_type = self.current_tok.value.clone().get(2..).unwrap().parse::<u8>().unwrap();
             if !self.next() {
-                return Result::Err(Error::new());
+                return Result::Err(Error::new(self.previous_end, self.previous_end.advance().clone(), 0u16, String::new()));
             };
             if self.current_tok.type_ != TT_IDENTIFIER {
-                return Result::Err(Error::new());
+                return Result::Err(Error::new(self.current_tok.pos_start, self.current_tok.pos_end, 0u16, String::new()));
             }
             let var_name = self.current_tok.value.clone();
             pos_end = self.current_tok.pos_end.clone();
@@ -478,7 +485,7 @@ impl Parser {
             match self.current_tok.type_ {
                 TT_SET => {
                     if !self.next() {
-                        return Result::Err(Error::new());
+                        return Result::Err(Error::new(self.previous_end, self.previous_end.advance().clone(), 0u16, String::new()));
                     } else {
                         expr = match self.expr() {
                             Ok(ast) => ast,
@@ -512,7 +519,7 @@ impl Parser {
                     todo!();
                     panic!()
                 }
-                _ => return Result::Err(Error::new())
+                _ => return Result::Err(Error::new(self.current_tok.pos_start, self.current_tok.pos_start, 0u16, String::new()))
             }
             return Result::Ok(ASTNode::new(ASTNodeType::VarAssign,
                                            Vec::from([expr]),
@@ -538,6 +545,6 @@ impl Parser {
             }
         }
 
-        Result::Err(Error::new())
+        Result::Err(Error::new(self.current_tok.pos_start, self.current_tok.pos_end, 0u16, String::new()))
     }
 }
