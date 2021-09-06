@@ -85,7 +85,7 @@ and others...
 fck has separate packages available for [Atom](https://atom.io), [Vim](https://www.vim.org), and [VS Code]() for syntax highlighting. Please be aware that these are not maintained at the same rate as the source code, and often lag behind development. These are often left until just before the next release to be updated.
 
 - [Atom highlighting](https://github.com/RosiePuddles/language-fck)
-- [Vim highlighting]()
+- [Vim highlighting](https://github.com/fck-language/fck.vim)
 - [VS Code highlighting]()
 
 # Contributing
