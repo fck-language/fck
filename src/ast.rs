@@ -27,7 +27,7 @@ impl Lexer {
     }
 
     fn advance(&mut self) {
-        self.current_pos.advance();
+        self.current_pos = self.current_pos.advance();
         self.char_index += 1;
         if self.char_index >= self.split_text.len() {
             self.current_char = char::from(0);
