@@ -4,6 +4,7 @@ use crate::err_wrn::*;
 use lang::keywords::Keywords;
 use crate::nodes::{ASTNode, ASTNodeType};
 use lang::get_associated_keywords;
+use std::collections::HashMap;
 
 pub struct Lexer {
     split_text: Vec<char>,
@@ -48,11 +49,11 @@ impl Lexer {
             } else if self.current_char.is_alphabetic() {
                 tokens.push(self.make_identifier());
             } else {
-                let pos_start = self.current_pos.generate_position();
+                let pos_start = self.current_pos.clone();
                 if self.current_char == '\n' {
                     if !(self.char_index == self.split_text.len() - 1) {
                         tokens.push(Token::new(TT_NEWLINE, "".into(), pos_start,
-                                               self.current_pos.generate_position()));
+                                               self.current_pos.clone()));
                         self.current_pos.advance_ln();
                     }
                     self.advance();
@@ -64,7 +65,7 @@ impl Lexer {
                         match get_associated_keywords(lang_code.as_str()) {
                             Some(k) => self.keywords = k,
                             None => return Result::Err(Error::new(pos_start,
-                                                                  self.current_pos.generate_position(),
+                                                                  self.current_pos.clone(),
                                                                   0u16,
                                                                   "".to_string()))
                         }
@@ -92,7 +93,7 @@ impl Lexer {
                     if tok_type > 0 {
                         self.advance();
                         tokens.push(Token::new(tok_type, "".into(), pos_start,
-                                               self.current_pos.generate_position()));
+                                               self.current_pos.clone()));
                         continue;
                     }
 
@@ -105,7 +106,8 @@ impl Lexer {
                         ':' => self.make_set(),
                         '=' => self.make_equals(),
                         '@' => self.make_loop_identifier(),
-                        _ => Result::Err(Error::new())
+                        '\'' | '"' => self.make_string(self.current_char),
+                        _ => Result::Err(Error::new(pos_start, pos_start.clone().advance(), 0u16, String::new()))
                     } {
                         Ok(tok) => tok,
                         Err(e) => return Result::Err(e)
@@ -120,7 +122,7 @@ impl Lexer {
     // Character parsing functions
     fn make_number(&mut self) -> Token {
         let mut has_dot = false;
-        let pos_start = self.current_pos.generate_position();
+        let pos_start = self.current_pos.clone();
         let mut value = String::new();
 
         while self.current_char.is_numeric() || self.current_char == '.' {
@@ -137,11 +139,11 @@ impl Lexer {
         }
 
         return Token::new(has_dot as u8, value, pos_start,
-                          self.current_pos.generate_position());
+                          self.current_pos.clone());
     }
 
     fn make_identifier(&mut self) -> Token {
-        let pos_start = self.current_pos.generate_position();
+        let pos_start = self.current_pos.clone();
         let mut keyword = self.current_char.to_string();
         self.advance();
 
@@ -156,11 +158,11 @@ impl Lexer {
             None => (keyword, TT_IDENTIFIER)
         };
 
-        return Token::new(tok_type, value, pos_start, self.current_pos.generate_position());
+        return Token::new(tok_type, value, pos_start, self.current_pos.clone());
     }
 
     fn make_loop_identifier(&mut self) -> Result<Token, Error> {
-        let pos_start = self.current_pos.generate_position();
+        let pos_start = self.current_pos.clone();
         self.advance();
         if !self.current_char.is_alphanumeric() || self.current_char == '_' {
             return Result::Err(Error::new(pos_start, pos_start.clone().advance(), 0u16, String::new()));
@@ -172,24 +174,53 @@ impl Lexer {
             self.advance()
         };
         Result::Ok(Token::new(TT_AT, value, pos_start,
-                              self.current_pos.generate_position()))
+                              self.current_pos.clone()))
+    }
+
+    fn make_string(&mut self, starting_character: char) -> Result<Token, Error> {
+        let mut out = String::new();
+        let pos_start = self.current_pos.clone().clone();
+        let mut escape = false;
+        let escape_chars: HashMap<char, char> = [('n', '\n'), ('t', '\t'), ('r', '\r')]
+            .iter().cloned().collect();
+
+        self.advance();
+        while self.current_char != starting_character {
+            if escape {
+                out += &*format!("{}", match escape_chars.get(&self.current_char) {
+                    Some(c) => c.clone(),
+                    None => self.current_char
+                });
+                escape = false;
+            } else {
+                if self.current_char == '\\' {
+                    escape = true;
+                } else {
+                    out += &*format!("{}", self.current_char)
+                }
+            }
+            self.advance()
+        }
+        self.advance();
+        println!("{}", self.current_pos.clone());
+        Result::Ok(Token::new(TT_STRING, out, pos_start, self.current_pos.clone()))
     }
 
     fn make_not_equals(&mut self) -> Result<Token, Error> {
-        let pos_start = self.current_pos.generate_position();
+        let pos_start = self.current_pos.clone();
         self.advance();
         if self.current_char == '=' {
             return Result::Ok(Token::new(TT_NE, "".into(), pos_start,
-                                         self.current_pos.generate_position()));
+                                         self.current_pos.clone()));
         } else if self.current_char.is_alphabetic() || "_!".contains(self.current_char) {
             return Result::Ok(Token::new(TT_NOT, "".into(), pos_start,
-                                         self.current_pos.generate_position()));
+                                         self.current_pos.clone()));
         }
-        return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()));
+        return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()));
     }
 
     fn make_equals(&mut self) -> Result<Token, Error> {
-        let pos_start = self.current_pos.generate_position();
+        let pos_start = self.current_pos.clone();
         self.advance();
 
         if self.current_char == '=' {
@@ -197,14 +228,14 @@ impl Lexer {
             return Result::Ok(
                 Token::new(TT_EQ, "".into(),
                            pos_start,
-                           self.current_pos.generate_position()));
+                           self.current_pos.clone()));
         }
         // self.advance();
-        return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()));
+        return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()));
     }
 
     fn single_double_token(&mut self, second_char: char, single_type: u8, double_type: u8) -> Result<Token, Error> {
-        let pos_start = self.current_pos.generate_position();
+        let pos_start = self.current_pos.clone();
         self.advance();
         let mut tok_type = 0;
         if self.current_char == second_char {
@@ -214,11 +245,11 @@ impl Lexer {
             tok_type = single_type;
         }
         return Result::Ok(Token::new(tok_type, "".into(), pos_start,
-                                     self.current_pos.generate_position()));
+                                     self.current_pos.clone()));
     }
 
     fn make_set(&mut self) -> Result<Token, Error> {
-        let pos_start = self.current_pos.generate_position();
+        let pos_start = self.current_pos.clone();
         self.advance();
         let mut tok_type = 0u8;
         if !":>".contains(self.current_char) {
@@ -244,7 +275,7 @@ impl Lexer {
                         }
                         ':' => TT_MULT,
                         '>' => TT_MULT,
-                        _ => return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()))
+                        _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()))
                     }
                 }
                 '/' => {
@@ -256,10 +287,10 @@ impl Lexer {
                         }
                         ':' => TT_DIV,
                         '>' => TT_DIV,
-                        _ => return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()))
+                        _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()))
                     }
                 }
-                _ => return Result::Err(Error::new(pos_start, self.current_pos.generate_position(), 0u16, String::new()))
+                _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()))
             } - 2;
         }
         tok_type += match self.current_char {
@@ -268,12 +299,12 @@ impl Lexer {
             _ => {
                 self.advance();
                 return Result::Ok(Token::new(TT_COLON, "".into(), pos_start,
-                                             self.current_pos.generate_position()));
+                                             self.current_pos.clone()));
             }
         };
         self.advance();
         return Result::Ok(Token::new(tok_type, "".into(), pos_start,
-                                     self.current_pos.generate_position()));
+                                     self.current_pos.clone()));
     }
 
     fn skip_comment(&mut self) {
