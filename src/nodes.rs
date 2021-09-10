@@ -1,7 +1,7 @@
 use crate::bases::Position;
 use std::fmt::Formatter;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ASTNodeType {
     Int,             // {value as a String}
     Float,           // {value as a String}
@@ -16,9 +16,13 @@ pub enum ASTNodeType {
     VarSubFunc,      //
     MethodCall,      //
     TrueFalse,       //
-    AssErrorCatch,   //
-    BinOp,           //
-    UnaryOp,         //
+    AsErrorCatch,   //
+    ArithOp,         // {single character operator identifier}*
+                     // Double character operators like ** are turned into characters, ** = p (power) for example
+    CompOp,          // Same as ArithOp {and:& or:| not:!}
+    UnaryNot,        // None
+    UnaryPlus,       // None
+    UnaryMinus,      // None
     Static,          //
     As,              //
     If,              // None
@@ -35,6 +39,7 @@ pub enum ASTNodeType {
     Break            // None
 }
 
+#[derive(Clone)]
 pub struct ASTNode {
     pub(crate) node_type: ASTNodeType,
     pub(crate) child_nodes: Vec<ASTNode>,
@@ -51,6 +56,12 @@ impl ASTNode {
                pos_end: Position,
                value: Option<String>) -> ASTNode {
         return ASTNode{node_type, child_nodes, pos_start, pos_end, value}
+    }
+    pub fn new_v(node_type: ASTNodeType,
+               pos_start: Position,
+               pos_end: Position,
+               value: Option<String>) -> ASTNode {
+        return ASTNode { node_type, child_nodes: vec![], pos_start, pos_end, value }
     }
 }
 
