@@ -2,8 +2,10 @@
     <img src="/img/logo/logo_2.png" alt="fck readme header image" width=90%>
 </p>
 
-![example workflow](https://github.com/fck-language/fck/actions/workflows/rust_build.yml/badge.svg)
+![build](https://github.com/fck-language/fck/actions/workflows/rust_build.yml/badge.svg)
 [![wakatime](https://wakatime.com/badge/github/fck-language/fck.svg)](https://wakatime.com/badge/github/fck-language/fck)
+![lines](https://img.shields.io/tokei/lines/github/fck-language/fck?color=%23ff4a69)
+![license](https://img.shields.io/github/license/fck-language/fck)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md)
 
 fck is the worlds first coding language with full support for any language imaginable! Seems fancy right?! We have designed the language to be able to seamlessly switch between languages, so you can work on code with anyone from anywhere! fck is also a compiled and interpreted language, allowing complete flexibility in your workflow.
@@ -82,7 +84,7 @@ and others...
 
 # Syntax highlighting
 
-fck has separate packages available for [Atom](https://atom.io), [Vim](https://www.vim.org), and [VS Code]() for syntax highlighting. Please be aware that these are not maintained at the same rate as the source code, and often lag behind development. These are often left until just before the next release to be updated.
+fck has separate packages available for [Atom](https://atom.io), [Vim](https://www.vim.org), and [VS Code](https://code.visualstudio.com) for syntax highlighting. Please be aware that these are not maintained at the same rate as the source code, and often lag behind development. These are often left until just before the next release to be updated.
 
 - [Atom highlighting](https://github.com/RosiePuddles/language-fck)
 - [Vim highlighting](https://github.com/fck-language/fck.vim)
