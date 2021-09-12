@@ -165,16 +165,7 @@ impl Lexer {
     fn make_loop_identifier(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         self.advance();
-        if !self.current_char.is_alphanumeric() || self.current_char == '_' {
-            return Result::Err(Error::new(pos_start, pos_start.clone().advance(), 0u16, String::new()));
-        };
-        let mut value = self.current_char.to_string();
-        while (self.current_char.is_alphanumeric() || self.current_char == '_') &&
-            self.char_index < self.split_text.len() {
-            value.push(self.current_char);
-            self.advance()
-        };
-        Result::Ok(Token::new(TT_AT, value, pos_start,
+        Result::Ok(Token::new(TT_AT, self.make_identifier().value, pos_start,
                               self.current_pos.clone()))
     }
 
@@ -203,7 +194,6 @@ impl Lexer {
             self.advance()
         }
         self.advance();
-        println!("{}", self.current_pos.clone());
         Result::Ok(Token::new(TT_STRING, out, pos_start, self.current_pos.clone()))
     }
 
@@ -211,6 +201,7 @@ impl Lexer {
         let pos_start = self.current_pos.clone();
         self.advance();
         if self.current_char == '=' {
+            self.advance();
             return Result::Ok(Token::new(TT_NE, "".into(), pos_start,
                                          self.current_pos.clone()));
         } else if self.current_char.is_alphabetic() || "_!".contains(self.current_char) {
