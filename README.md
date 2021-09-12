@@ -6,7 +6,7 @@
 [![wakatime](https://wakatime.com/badge/github/fck-language/fck.svg)](https://wakatime.com/badge/github/fck-language/fck)
 ![lines](https://img.shields.io/tokei/lines/github/fck-language/fck?color=%23ff4a69)
 ![license](https://img.shields.io/github/license/fck-language/fck)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 fck is the worlds first coding language with full support for any language imaginable! Seems fancy right?! We have designed the language to be able to seamlessly switch between languages, so you can work on code with anyone from anywhere! fck is also a compiled and interpreted language, allowing complete flexibility in your workflow.
 
