@@ -42,7 +42,7 @@ impl Token {
     pub fn matches(&self, type_: u8, value: &str) -> bool {
         return self.type_ == type_ && self.value == String::from(value);
     }
-    pub fn matches_list(&mut self, list: u8) -> bool {
+    pub fn matches_list(&self, list: u8) -> bool {
         self.type_ == TT_KEYWORD && self.value.clone().get(0..1).unwrap() == format!("{}", list)
     }
 }
@@ -51,5 +51,24 @@ impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Type: {:<3} (Value: {})\n\tpos_start: {}\n\tpos_end  : {}",
                self.type_, self.value, self.pos_start, self.pos_end)
+    }
+}
+
+impl std::fmt::Debug for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "T:{:<3} V:{} ps:{} pe:{}", self.type_, self.value, self.pos_start, self.pos_end)
+    }
+}
+
+
+pub struct Context<'a> {
+    display_name: String,
+    full_text: String,
+    parent: Option<&'a Context<'a>>
+}
+
+impl Context<'_> {
+    pub fn new<'a>(display_name: String, full_text: String, parent: Option<&'a Context>) -> Context<'a> {
+        Context{display_name, full_text, parent}
     }
 }

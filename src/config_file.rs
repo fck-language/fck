@@ -59,7 +59,7 @@ impl Debug for ConfigFile {
 
 #[derive(Clone)]
 pub struct ConfigU8 {
-    value: u8,
+    pub(crate) value: u8,
     min_value: u8,
     max_value: u8,
 }

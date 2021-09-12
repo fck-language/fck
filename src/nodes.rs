@@ -25,7 +25,7 @@ pub enum ASTNodeType {
     UnaryMinus,      // None
     Static,          //
     As,              //
-    If,              // None
+    If,              // Number of elif statements
     AtName,          //
     Case,            //
     Option,          //
