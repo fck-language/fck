@@ -316,9 +316,9 @@ impl Lexer {
 pub struct Parser {
     to_process: Vec<Token>,
     intermediate: Vec<Token>,
-    processed: Vec<Token>,
     current_tok: Option<Token>,
     previous_end: Position,
+    safe: bool,
 }
 
 impl Parser {
@@ -329,9 +329,9 @@ impl Parser {
         return Parser {
             to_process: tokens,
             intermediate: Vec::new(),
-            processed: Vec::new(),
             current_tok: Some(current_tok.clone()),
             previous_end: current_tok.pos_start,
+            safe: false,
         };
     }
 
@@ -341,24 +341,27 @@ impl Parser {
         // Returns true if more tokens are left and false otherwise
         if self.current_tok.is_none() {
             return;
+        } else if self.safe {
+            self.intermediate.append(&mut vec![self.current_tok.clone().unwrap()]);
         }
         self.current_tok = self.to_process.pop();
-    }
-
-    fn safe_next(&mut self) {
-        self.intermediate.append(&mut Vec::from(vec![self.to_process.remove(0)]));
-        self.next()
     }
 
     fn finalise(&mut self) {
         // Called when the previously processed tokens can safely be moved into the processed
         // vector and the intermediate vector can be cleared
-        self.processed.append(&mut self.intermediate);
-        self.processed = Vec::new()
+        self.intermediate.clear();
+        self.safe = false;
     }
 
     fn put_back(&mut self) {
-        todo!()
+        self.intermediate.reverse();
+        self.intermediate.push(self.current_tok.clone().unwrap());
+        self.intermediate.reverse();
+
+        self.to_process.append(&mut self.intermediate);
+        self.safe = false;
+        self.next();
     }
 
     // General useful functions
