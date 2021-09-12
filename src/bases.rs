@@ -19,9 +19,6 @@ impl Position {
         self.ln += 1;
         self.col = 0
     }
-    pub fn generate_position(&self) -> Position {
-        return Position{ln: self.ln, col: self.col}
-    }
 }
 
 impl std::fmt::Display for Position {

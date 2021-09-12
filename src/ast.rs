@@ -66,7 +66,7 @@ impl Lexer {
                             Some(k) => self.keywords = k,
                             None => return Result::Err(Error::new(pos_start,
                                                                   self.current_pos.clone(),
-                                                                  0u16,
+                                                                  line!() as u16,
                                                                   "".to_string()))
                         }
                         self.keyword_code = lang_code;
@@ -108,7 +108,7 @@ impl Lexer {
                         '=' => self.make_equals(),
                         '@' => self.make_loop_identifier(),
                         '\'' | '"' => self.make_string(self.current_char),
-                        _ => Result::Err(Error::new(pos_start, pos_start.clone().advance(), 0u16, String::new()))
+                        _ => Result::Err(Error::new(pos_start, pos_start.clone().advance(), line!() as u16, String::new()))
                     } {
                         Ok(tok) => tok,
                         Err(e) => return Result::Err(e)
@@ -217,7 +217,7 @@ impl Lexer {
             return Result::Ok(Token::new(TT_NOT, "".into(), pos_start,
                                          self.current_pos.clone()));
         }
-        return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()));
+        return Result::Err(Error::new(pos_start, self.current_pos.clone(), line!() as u16, String::new()));
     }
 
     fn make_equals(&mut self) -> Result<Token, Error> {
@@ -232,7 +232,7 @@ impl Lexer {
                            self.current_pos.clone()));
         }
         // self.advance();
-        return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()));
+        return Result::Err(Error::new(pos_start, self.current_pos.clone(), line!() as u16, String::new()));
     }
 
     fn single_double_token(&mut self, second_char: char, single_type: u8, double_type: u8) -> Result<Token, Error> {
@@ -276,7 +276,7 @@ impl Lexer {
                         }
                         ':' => TT_MULT,
                         '>' => TT_MULT,
-                        _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()))
+                        _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), line!() as u16, String::new()))
                     }
                 }
                 '/' => {
@@ -288,10 +288,10 @@ impl Lexer {
                         }
                         ':' => TT_DIV,
                         '>' => TT_DIV,
-                        _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()))
+                        _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), line!() as u16, String::new()))
                     }
                 }
-                _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), 0u16, String::new()))
+                _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), line!() as u16, String::new()))
             } - 2;
         }
         tok_type += match self.current_char {
@@ -395,10 +395,15 @@ impl Parser {
 
             match self.statement() {
                 Ok(AST) => out.push(AST),
-                Err(error) => {
-                    println!("{:?}", out);
-                    return Result::Err(error);
-                }
+                Err(error) => return Result::Err(error)
+            }
+            if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_NEWLINE {
+                let tok = self.current_tok.clone().unwrap();
+                return Result::Err(Error::new(tok.pos_start,
+                                              tok.pos_end,
+                                              line!() as u16,
+                                              "".to_string(),
+                ));
             }
         }
         return Result::Ok(out);
@@ -454,7 +459,7 @@ impl Parser {
                                                None));
             }
             if self.current_tok.clone().unwrap().type_ == TT_AT {
-                return Result::Err(Error::new(pos_start, pos_end, 1u16, String::new()));
+                return Result::Err(Error::new(pos_start, pos_end, line!() as u16, String::new()));
             }
         }
 
@@ -482,11 +487,11 @@ impl Parser {
             let var_type = tok.value.get(2..).unwrap().parse::<u8>().unwrap();
             self.next();
             if self.current_tok.is_none() {
-                return Result::Err(Error::new(self.previous_end, self.previous_end.advance().clone(), 2u16, String::new()));
+                return Result::Err(Error::new(self.previous_end, self.previous_end.advance().clone(), line!() as u16, String::new()));
             };
             tok = self.current_tok.clone().unwrap();
             if tok.type_ != TT_IDENTIFIER {
-                return Result::Err(Error::new(tok.pos_start, tok.pos_end, 3u16, String::new()));
+                return Result::Err(Error::new(tok.pos_start, tok.pos_end, line!() as u16, String::new()));
             }
             let var_name = tok.value.clone();
             pos_end = tok.pos_end.clone();
@@ -515,7 +520,7 @@ impl Parser {
                 TT_SET => {
                     self.next();
                     if self.current_tok.is_none() {
-                        return Result::Err(Error::new(self.previous_end, self.previous_end.advance().clone(), 4u16, String::new()));
+                        return Result::Err(Error::new(self.previous_end, self.previous_end.advance().clone(), line!() as u16, String::new()));
                     } else {
                         expr = match self.expr() {
                             Ok(ast) => ast,
@@ -550,7 +555,7 @@ impl Parser {
                     todo!();
                     panic!()
                 }
-                _ => return Result::Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_start, 5u16, String::new()))
+                _ => return Result::Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_start, line!() as u16, String::new()))
             }
             return Result::Ok(ASTNode::new(ASTNodeType::VarAssign,
                                            Vec::from([expr]),
@@ -586,7 +591,7 @@ impl Parser {
             let op_tok = self.current_tok.clone().unwrap().clone();
             self.next();
             if self.current_tok.is_none() {
-                return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), 6u16, String::new()));
+                return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
             }
             let node = match self.comp_expr() {
                 Ok(n) => n,
@@ -648,7 +653,7 @@ impl Parser {
                 operators += if self.current_tok.clone().unwrap().type_ == TT_PLUS { "+" } else { "-" };
                 self.next();
                 if self.current_tok.is_none() {
-                    return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 7u16, String::new()));
+                    return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
                 }
                 children.push(match self.term() {
                     Ok(n) => n,
@@ -692,7 +697,7 @@ impl Parser {
                 };
                 self.next();
                 if self.current_tok.is_none() {
-                    return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 8u16, String::new()));
+                    return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
                 }
                 children.push(match self.power() {
                     Ok(n) => n,
