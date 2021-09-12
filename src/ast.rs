@@ -842,7 +842,7 @@ impl Parser {
     }
 
     fn power(&mut self) -> Result<ASTNode, Error> {
-        let node = match self.call() {
+        let node = match self.factor() {
             Ok(n) => n,
             Err(e) => return Result::Err(e)
         };
@@ -860,7 +860,7 @@ impl Parser {
                 if self.current_tok.is_none() {
                     return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
                 }
-                children.push(match self.call() {
+                children.push(match self.factor() {
                     Ok(n) => n,
                     Err(e) => return Result::Err(e)
                 });
@@ -879,7 +879,50 @@ impl Parser {
         Result::Ok(node)
     }
 
+    fn factor(&mut self) -> Result<ASTNode, Error> {
+        if self.current_tok.is_none() {
+            return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
+        }
+        let tok = self.current_tok.clone().unwrap();
+        let tok_type = tok.type_;
+        let pos_start = tok.pos_start;
+        if tok_type == TT_PLUS || tok_type == TT_MINUS || tok_type == TT_NOT {
+            let node_type = match tok_type {
+                TT_PLUS => ASTNodeType::UnaryPlus,
+                TT_MINUS => ASTNodeType::UnaryMinus,
+                TT_NOT => ASTNodeType::UnaryNot,
+                _ => {panic!("why are here?!")}
+            };
+            self.next();
+            let out = match self.factor() {
+                Ok(n) => n,
+                Err(e) => return Result::Err(e)
+            };
+            return Result::Ok(ASTNode::new(node_type, vec![out.clone()], pos_start, out.pos_end, None))
+        }
+
+        self.call()
+    }
+
     fn call(&mut self) -> Result<ASTNode, Error> {
+        if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TT_LPAREN {
+            let pos_start = self.current_tok.clone().unwrap().pos_start;
+            self.next();
+            if self.current_tok.is_none() {
+                return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
+            }
+            let mut expr = match self.expr() {
+                Ok(n) => n,
+                Err(e) => return Result::Err(e)
+            };
+            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN {
+                return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
+            }
+            expr.pos_start = pos_start;
+            expr.pos_end = self.current_tok.clone().unwrap().pos_end;
+            self.next();
+            return Result::Ok(expr)
+        }
         let node = match self.atom() {
             Ok(n) => n,
             Err(e) => return Result::Err(e)
