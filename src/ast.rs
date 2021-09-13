@@ -594,84 +594,6 @@ impl Parser {
             }
         }
 
-        // if(0.3) elif(0.5) else(0.4)
-        if tok.matches(TT_KEYWORD, "0.3") {
-            let mut children = vec![];
-
-            // if(0.3) statement
-            self.next();
-            if self.current_tok.is_none() {
-                return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
-            }
-            children.push(match self.conditional_suite_generator() {
-                Ok(n) => n,
-                Err(e) => return Result::Err(e)
-            });
-
-            self.skip_newlines();
-
-            // Check for elif(0.5) statements
-            if self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.5") {
-                let mut elif_exprs = vec![];
-                while self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.5") {
-                    self.next();
-                    if self.current_tok.is_none() {
-                        return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
-                    }
-                    elif_exprs.push(match self.conditional_suite_generator() {
-                        Ok(n) => n,
-                        Err(e) => return Result::Err(e)
-                    })
-                }
-                children.extend(elif_exprs);
-            }
-            let value = Some(format!("{}", children.len()));
-
-            self.skip_newlines();
-
-            if self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.4") {
-                self.next();
-                if self.current_tok.is_none() {
-                    return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
-                }
-                if self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
-                    return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
-                }
-                self.next();
-                let mut out = vec![];
-                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
-                    out.push(match self.expr() {
-                        Ok(n) => n,
-                        Err(e) => return Result::Err(e)
-                    });
-                    self.skip_newlines();
-                }
-                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
-                    return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
-                }
-                self.next();
-                children.extend(out);
-            }
-
-            pos_end = children.clone().pop().unwrap().pos_end;
-            self.next();
-            return Result::Ok(ASTNode::new(ASTNodeType::If, children, pos_start, pos_end, value));
-        }
-
-        // while(0.13)
-        if tok.matches(TT_KEYWORD, "0.13") {
-            self.next();
-            let expr = match self.conditional_suite_generator() {
-                Ok(n) => n,
-                Err(e) => return Result::Err(e)
-            };
-            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
-                return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
-            }
-            self.next();
-            return Result::Ok(ASTNode::new(ASTNodeType::While, vec![expr.clone()], pos_start, expr.pos_end, None))
-        }
-
         let node = match self.comp_expr() {
             Ok(n) => n,
             Err(e) => return Result::Err(e)
@@ -906,50 +828,154 @@ impl Parser {
                 TT_PLUS => ASTNodeType::UnaryPlus,
                 TT_MINUS => ASTNodeType::UnaryMinus,
                 TT_NOT => ASTNodeType::UnaryNot,
-                _ => {panic!("why are here?!")}
+                _ => { panic!("why are here?!") }
             };
             self.next();
             let out = match self.factor() {
                 Ok(n) => n,
                 Err(e) => return Result::Err(e)
             };
-            return Result::Ok(ASTNode::new(node_type, vec![out.clone()], pos_start, out.pos_end, None))
+            return Result::Ok(ASTNode::new(node_type, vec![out.clone()], pos_start, out.pos_end, None));
         }
 
         self.call()
     }
 
     fn call(&mut self) -> Result<ASTNode, Error> {
+        let mut out: ASTNode;
         if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TT_LPAREN {
             let pos_start = self.current_tok.clone().unwrap().pos_start;
             self.next();
             if self.current_tok.is_none() {
                 return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
             }
-            let mut expr = match self.expr() {
+            out = match self.expr() {
                 Ok(n) => n,
                 Err(e) => return Result::Err(e)
             };
             if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN {
                 return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
             }
-            expr.pos_start = pos_start;
-            expr.pos_end = self.current_tok.clone().unwrap().pos_end;
+            out.pos_start = pos_start;
+            out.pos_end = self.current_tok.clone().unwrap().pos_end;
             self.next();
-            return Result::Ok(expr)
+        } else {
+            out = match self.atom() {
+                Ok(n) => n,
+                Err(e) => return Result::Err(e)
+            };
         }
-        let node = match self.atom() {
-            Ok(n) => n,
-            Err(e) => return Result::Err(e)
+
+        return if self.current_tok.is_none() {
+            Result::Ok(out)
+        } else {
+            // as(0.19)
+            if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.19") {
+                self.next();
+                return if self.current_tok.is_none() {
+                    Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, "".to_string()))
+                } else if self.current_tok.clone().unwrap().type_ == TT_KEYWORD && self.current_tok.clone().unwrap().value.chars().nth(0).unwrap() == '1' {
+                    let value = self.current_tok.clone().unwrap().value.get(2..).unwrap().to_string();
+                    let pos_end = self.current_tok.clone().unwrap().pos_end;
+                    self.next();
+                    Result::Ok(ASTNode::new(ASTNodeType::As, vec![out.clone()], out.pos_start, pos_end, Some(value)))
+                } else {
+                    Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, "".to_string()))
+                };
+            } else {
+                Result::Ok(out)
+            }
         };
-        Result::Ok(node)
     }
 
     fn atom(&mut self) -> Result<ASTNode, Error> {
         let tok = self.current_tok.clone().unwrap().clone();
         let pos_start = tok.pos_start.clone();
 
-        let mut out: Option<ASTNode> = None;
+
+
+        // if(0.3) elif(0.5) else(0.4)
+        if tok.matches(TT_KEYWORD, "0.3") {
+            let mut children = vec![];
+
+            // if(0.3) statement
+            self.next();
+            if self.current_tok.is_none() {
+                return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
+            }
+            children.push(match self.conditional_suite_generator() {
+                Ok(n) => n,
+                Err(e) => return Result::Err(e)
+            });
+            if !(self.current_tok.clone().is_some() && self.current_tok.clone().unwrap().type_ == TT_RPAREN_CURLY) {
+                return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
+            }
+            self.next();
+
+            self.skip_newlines();
+
+            // Check for elif(0.5) statements
+            if self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.5") {
+                let mut elif_exprs = vec![];
+                while self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.5") {
+                    self.next();
+                    if self.current_tok.is_none() {
+                        return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
+                    }
+                    elif_exprs.push(match self.conditional_suite_generator() {
+                        Ok(n) => n,
+                        Err(e) => return Result::Err(e)
+                    })
+                }
+                children.extend(elif_exprs);
+            }
+            let value = Some(format!("{}", children.len()));
+
+            self.skip_newlines();
+
+            // else(0.4)
+            if self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.4") {
+                self.next();
+                if self.current_tok.is_none() {
+                    return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
+                }
+                if self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+                    return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
+                }
+                self.next();
+                let mut out = vec![];
+                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                    out.push(match self.expr() {
+                        Ok(n) => n,
+                        Err(e) => return Result::Err(e)
+                    });
+                    self.skip_newlines();
+                }
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                    return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
+                }
+                // self.next();
+                children.extend(out);
+            }
+
+            let pos_end = children.clone().pop().unwrap().pos_end;
+            self.next();
+            return Result::Ok(ASTNode::new(ASTNodeType::If, children, pos_start, pos_end, value));
+        }
+
+        // while(0.13)
+        if tok.matches(TT_KEYWORD, "0.13") {
+            self.next();
+            let expr = match self.conditional_suite_generator() {
+                Ok(n) => n,
+                Err(e) => return Result::Err(e)
+            };
+            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
+            }
+            self.next();
+            return Result::Ok(ASTNode::new(ASTNodeType::While, vec![expr.clone()], pos_start, expr.pos_end, None));
+        }
 
         let out = match tok.type_ {
             TT_INT => ASTNode::new_v(ASTNodeType::Int, pos_start, tok.pos_end, Some(tok.value)),
