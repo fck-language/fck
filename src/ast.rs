@@ -594,6 +594,7 @@ impl Parser {
             }
         }
 
+        // if(0.3) elif(0.5) else(0.4)
         if tok.matches(TT_KEYWORD, "0.3") {
             let mut children = vec![];
 
@@ -655,6 +656,20 @@ impl Parser {
             pos_end = children.clone().pop().unwrap().pos_end;
             self.next();
             return Result::Ok(ASTNode::new(ASTNodeType::If, children, pos_start, pos_end, value));
+        }
+
+        // while(0.13)
+        if tok.matches(TT_KEYWORD, "0.13") {
+            self.next();
+            let expr = match self.conditional_suite_generator() {
+                Ok(n) => n,
+                Err(e) => return Result::Err(e)
+            };
+            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                return Result::Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()));
+            }
+            self.next();
+            return Result::Ok(ASTNode::new(ASTNodeType::While, vec![expr.clone()], pos_start, expr.pos_end, None))
         }
 
         let node = match self.comp_expr() {
