@@ -89,6 +89,7 @@ impl Lexer {
                         ';' => TT_NEWLINE,
                         '?' => TT_QUESTION_MARK,
                         '.' => TT_DOT,
+                        ':' => TT_COLON,
                         _ => 0
                     };
                     if tok_type > 0 {
@@ -628,6 +629,56 @@ impl Parser {
                                            Some(operators)));
         }
 
+        if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TT_QUESTION_MARK {
+            self.next();
+            if self.current_tok.is_none() {
+                return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
+            }
+            let mut children = vec![node.clone()];
+            if self.current_tok.clone().unwrap().type_ == TT_COLON {
+                // Only the false option given
+                self.next();
+                if self.current_tok.is_none() {
+                    return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
+                } else if self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+                    let tok = self.current_tok.clone().unwrap();
+                    return Result::Err(Error::new(tok.pos_start, tok.pos_end, line!() as u16, String::new()));
+                }
+
+                children.push(match self.expr() {
+                    Ok(n) => n,
+                    Err(e) => return Result::Err(e)
+                });
+
+                pos_end = children.clone().pop().unwrap().pos_end;
+                return Result::Ok(ASTNode::new(ASTNodeType::Ternary, children, node.pos_start, pos_end, Some("f".to_string())));
+            } else {
+                // true option definitely given
+                children.push(match self.expr() {
+                    Ok(n) => n,
+                    Err(e) => return Result::Err(e)
+                });
+                pos_end = children.clone().pop().unwrap().pos_end;
+                if self.current_tok.is_none() {
+                    return Result::Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
+                } else if self.current_tok.clone().unwrap().type_ != TT_COLON {
+                    let tok = self.current_tok.clone().unwrap();
+                    return Result::Err(Error::new(tok.pos_start, tok.pos_end, line!() as u16, String::new()));
+                }
+                self.next();
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+                    // Only the true option given
+                    return Result::Ok(ASTNode::new(ASTNodeType::Ternary, children, pos_start, pos_end, Some("t".to_string())));
+                }
+                children.push(match self.expr() {
+                    Ok(n) => n,
+                    Err(e) => return Result::Err(e)
+                });
+                pos_end = children.clone().pop().unwrap().pos_end;
+                return Result::Ok(ASTNode::new(ASTNodeType::Ternary, children, pos_start, pos_end, None));
+            }
+        }
+
         Result::Ok(node)
     }
 
@@ -891,8 +942,6 @@ impl Parser {
     fn atom(&mut self) -> Result<ASTNode, Error> {
         let tok = self.current_tok.clone().unwrap().clone();
         let pos_start = tok.pos_start.clone();
-
-
 
         // if(0.3) elif(0.5) else(0.4)
         if tok.matches(TT_KEYWORD, "0.3") {
