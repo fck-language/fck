@@ -3,10 +3,6 @@
 version = 3
 
 [[package]]
-name = "ErrWrn"
-version = "0.1.0"
-
-[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -51,7 +47,6 @@ dependencies = [
 name = "fck_pure"
 version = "0.1.0"
 dependencies = [
- "ErrWrn",
  "clap",
  "lang",
 ]
