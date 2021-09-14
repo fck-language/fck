@@ -15,8 +15,8 @@ pub enum ASTNodeType {
     VarReassign,     //
     VarSubFunc,      //
     MethodCall,      //
-    TrueFalse,       //
-    AsErrorCatch,   //
+    Ternary,         //
+    AsErrorCatch,    //
     ArithOp,         // {single character operator identifier}*
                      // Double character operators like ** are turned into characters, ** = p (power) for example
     CompOp,          // Same as ArithOp {and:& or:| not:!}
