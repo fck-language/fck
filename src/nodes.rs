@@ -26,6 +26,7 @@ pub enum ASTNodeType {
     Static,          //
     As,              //
     If,              // Number of elif statements
+    Else,            // Else or default node
     AtName,          //
     Case,            //
     Option,          //
