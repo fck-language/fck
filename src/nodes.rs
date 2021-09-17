@@ -1,7 +1,7 @@
 use crate::bases::Position;
 use std::fmt::Formatter;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ASTNodeType {
     Int,             // {value as a String}
     Float,           // {value as a String}
@@ -25,6 +25,7 @@ pub enum ASTNodeType {
     UnaryMinus,      // None
     Static,          //
     As,              //
+    Range,           // None
     If,              // Number of elif statements
     Else,            // Else or default node
     AtName,          //
