@@ -89,7 +89,6 @@ impl Lexer {
                         ';' => TT_NEWLINE,
                         '?' => TT_QUESTION_MARK,
                         '.' => TT_DOT,
-                        ':' => TT_COLON,
                         _ => 0
                     };
                     if tok_type > 0 {
@@ -283,7 +282,7 @@ impl Lexer {
                         _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), line!() as u16, String::new()))
                     }
                 }
-                _ => return Result::Err(Error::new(pos_start, self.current_pos.clone(), line!() as u16, String::new()))
+                _ => return Result::Ok(Token::new(TT_COLON, "".into(), pos_start, self.current_pos.clone()))
             } - 2;
         }
         tok_type += match self.current_char {
