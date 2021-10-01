@@ -1,7 +1,10 @@
 use crate::tokens::TT_KEYWORD;
-use std::str::Chars;
+use crate::types::*;
 
-#[derive(Copy, Clone)]
+use std::collections::HashMap;
+use std::any::Any;
+
+#[derive(Copy, Clone, Debug)]
 pub struct Position {
     ln: usize,
     pub col: usize
@@ -40,7 +43,7 @@ impl Token {
         return Token{type_, value, pos_start, pos_end};
     }
     pub fn matches(&self, type_: u8, value: &str) -> bool {
-        return self.type_ == type_ && self.value == String::from(value);
+        return self.type_ == type_ && self.value == value;
     }
     pub fn matches_list(&self, list: u8) -> bool {
         self.type_ == TT_KEYWORD && self.value.clone().get(0..1).unwrap() == format!("{}", list)
@@ -71,4 +74,11 @@ impl Context<'_> {
     pub fn new<'a>(display_name: String, full_text: String, parent: Option<&'a Context>) -> Context<'a> {
         Context{display_name, full_text, parent}
     }
+}
+
+pub struct SymbolTable {
+    display_name: String,
+    parent: Box<Option<SymbolTable>>,
+    variables: HashMap<String, Type>,
+    names_loops: Vec<String>,
 }

@@ -4,7 +4,7 @@ pub const KEYWORDS: Keywords = Keywords{
     keywords:
     ["and", "or", "not", "if", "else", "elif", "case", "option", "default",
         "iterate", "to", "import", "step", "while", "def", "return", "continue", "break",
-        "silent", "as"],
+        "silent", "as", "true", "false"],
     var_keywords:
     ["int", "float", "bool", "list", "str"],
     config_keys:
@@ -35,3 +35,5 @@ pub const MESSAGES: Messages = Messages{
 // 17 "break"
 // 18 "silent"
 // 19 "as"
+// 20 "true"
+// 21 "false"

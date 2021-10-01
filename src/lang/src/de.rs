@@ -4,7 +4,9 @@ pub const KEYWORDS: Keywords = Keywords{
     keywords:
     ["und", "oder", "nicht", "wenn", "sonst", "sonn", "falls", "option", "standard",
         "iterieren", "bis", "importieren/verwenden", /* import/use */
-        "stufe", "während", "def", "zurückschicken", "fortsetzen", "ausbrechen", "still", "als"],
+        "stufe", "während", "def", "zurückschicken", "fortsetzen", "ausbrechen", "still", "als",
+        "wahr", "falsch"
+    ],
     var_keywords:
     // TODO: Work out the actual words
     ["int", "float", "bool", "list", "str"],

@@ -1,6 +1,6 @@
 #[derive(Clone, Copy)]
 pub struct Keywords<'a> {
-    pub keywords: [&'a str; 20],
+    pub keywords: [&'a str; 22],
     pub var_keywords: [&'a str; 5],
     pub config_keys: [&'a str; 3]
 }
