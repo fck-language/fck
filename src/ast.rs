@@ -40,7 +40,7 @@ impl Lexer {
     // TODO: Change the return type to either an error or token
     // TODO: Change the return types of referenced functions to be (ErrorOrNot, Option<Token>, Option<Error>)
     pub fn make_tokens(&mut self) -> Result<Vec<Token>, Error> {
-        let mut tokens: Vec<Token> = Vec::new();
+        let mut tokens: Vec<Token> = vec![];
         while self.char_index < self.split_text.len() {
             if " \t".contains(self.current_char) {
                 self.advance();
@@ -328,7 +328,7 @@ impl Parser {
         let current_tok = tokens.clone().pop().unwrap();
         return Parser {
             to_process: tokens,
-            intermediate: Vec::new(),
+            intermediate: vec![],
             current_tok: Some(current_tok.clone()),
             previous_end: current_tok.pos_start,
             safe: false,
@@ -344,6 +344,7 @@ impl Parser {
         } else if self.safe {
             self.intermediate.push(self.current_tok.clone().unwrap());
         }
+        self.previous_end = self.current_tok.clone().unwrap().pos_end;
         self.current_tok = self.to_process.pop();
     }
 
@@ -377,7 +378,7 @@ impl Parser {
 
     // Parsing tokens
     pub fn parse(&mut self) -> Result<Vec<ASTNode>, Error> {
-        let mut out: Vec<ASTNode> = Vec::new();
+        let mut out: Vec<ASTNode> = vec![];
 
         // Loop through tokens to create an ast
         loop {
@@ -412,8 +413,7 @@ impl Parser {
         if tok.matches(TT_KEYWORD, "0.15") {
             self.next();
             if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
-                return Ok(ASTNode::new(ASTNodeType::Return(false),
-                                       Vec::new(),
+                return Ok(ASTNode::new_v(ASTNodeType::Return(false),
                                        pos_start,
                                        pos_end));
             } else if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.3") {
@@ -581,8 +581,7 @@ impl Parser {
 
             self.next();
             if self.current_tok.is_none() {
-                expr = ASTNode::new(default_values(var_type),
-                                    Vec::new(),
+                expr = ASTNode::new_v(default_values(var_type),
                                     Position::new(),
                                     Position::new());
                 return Ok(ASTNode::new(ASTNodeType::VarAssign(false, var_type, var_name),
@@ -611,8 +610,7 @@ impl Parser {
                     pos_end = self.current_tok.clone().unwrap().pos_end.clone();
                     self.next();
                     if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
-                        expr = ASTNode::new(default_values(var_type),
-                                            Vec::new(),
+                        expr = ASTNode::new_v(default_values(var_type),
                                             Position::new(),
                                             Position::new());
                         if self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
@@ -627,8 +625,10 @@ impl Parser {
                     }
                 }
                 TT_NEWLINE => {
-                    todo!();
-                    panic!()
+                    // pos_end = self.current_tok.clone().unwrap().pos_end;
+                    expr = ASTNode::new_v(default_values(var_type),
+                                        Position::new(),
+                                        Position::new());
                 }
                 _ => return Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_start, line!() as u16, String::new()))
             }
@@ -647,8 +647,7 @@ impl Parser {
             self.next();
             if self.current_tok.is_none() {
                 self.safe = false;
-                return Ok(ASTNode::new(ASTNodeType::VarAccess(var_name),
-                                       Vec::new(),
+                return Ok(ASTNode::new_v(ASTNodeType::VarAccess(var_name),
                                        pos_start,
                                        pos_end));
             } else {
@@ -695,7 +694,7 @@ impl Parser {
                 return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), line!() as u16, String::new()));
             }
             let mut children = vec![node.clone()];
-            if self.current_tok.clone().unwrap().type_ == TT_COLON {
+            return if self.current_tok.clone().unwrap().type_ == TT_COLON {
                 // Only the false option given
                 self.next();
                 if self.current_tok.is_none() {
@@ -711,7 +710,7 @@ impl Parser {
                 });
 
                 pos_end = children.clone().pop().unwrap().pos_end;
-                return Ok(ASTNode::new(ASTNodeType::Ternary(false, true), children, node.pos_start, pos_end));
+                Ok(ASTNode::new(ASTNodeType::Ternary(false, true), children, node.pos_start, pos_end))
             } else {
                 // true option definitely given
                 children.push(match self.expr() {
@@ -735,8 +734,8 @@ impl Parser {
                     Err(e) => return Err(e)
                 });
                 pos_end = children.clone().pop().unwrap().pos_end;
-                return Ok(ASTNode::new(ASTNodeType::Ternary(true, true), children, pos_start, pos_end));
-            }
+                Ok(ASTNode::new(ASTNodeType::Ternary(true, true), children, pos_start, pos_end))
+            };
         }
 
         Ok(node)
@@ -757,7 +756,7 @@ impl Parser {
             return Ok(ASTNode::new(ASTNodeType::UnaryNot,
                                    vec![node.clone()],
                                    pos_start,
-                                   node.pos_end
+                                   node.pos_end,
             ));
         }
 
@@ -781,7 +780,7 @@ impl Parser {
                     27 => "g", // >
                     28 => "L", // <=
                     29 => "G", // >=
-                    _ => panic!("Why are here!")
+                    _ => unreachable!()
                 };
                 self.next();
                 if self.current_tok.is_none() {
@@ -884,7 +883,7 @@ impl Parser {
                     TT_DIV => "/",
                     TT_FDIV => "f",
                     TT_MOD => "%",
-                    _ => panic!("Why are you here")
+                    _ => unreachable!()
                 };
                 self.next();
                 if self.current_tok.is_none() {
@@ -957,7 +956,7 @@ impl Parser {
                 TT_PLUS => ASTNodeType::UnaryPlus,
                 TT_MINUS => ASTNodeType::UnaryMinus,
                 TT_NOT => ASTNodeType::UnaryNot,
-                _ => { panic!("why are here?!") }
+                _ => unreachable!()
             };
             self.next();
             let out = match self.factor() {
@@ -1189,7 +1188,75 @@ impl Parser {
         // case(0.6)
         if tok.matches(TT_KEYWORD, "0.6") {
             self.next();
-            //TODO: keep going
+            let mut children = vec![match self.expr() {
+                Ok(n) => n,
+                Err(e) => return Err(e)
+            }];
+            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()))
+            }
+            self.next();
+            self.skip_newlines();
+            while self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.7") {
+                let condition_pos_start = self.current_tok.clone().unwrap().pos_start;
+                self.next();
+                let mut condition = match self.atom() {
+                    Ok(n) => n,
+                    Err(e) => return Err(e)
+                };
+                condition.pos_start = condition_pos_start;
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()))
+                }
+                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                    self.next();
+                    self.skip_newlines();
+                    condition.child_nodes.push(match self.statement() {
+                        Ok(n) => n,
+                        Err(e) => return Err(e)
+                    });
+                }
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()))
+                }
+                self.next();
+                self.skip_newlines();
+                children.push(condition);
+            }
+            if self.current_tok.is_none() {
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()))
+            }
+            if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.8") {
+                let mut default = ASTNode::new_v(ASTNodeType::Else, self.current_tok.clone().unwrap().pos_start, Position::new());
+                self.next();
+                self.skip_newlines();
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()))
+                }
+                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                    self.next();
+                    self.skip_newlines();
+                    default.child_nodes.push(match self.statement() {
+                        Ok(n) => n,
+                        Err(e) => return Err(e)
+                    });
+                }
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()))
+                }
+                default.pos_end = self.current_tok.clone().unwrap().pos_end;
+                self.next();
+                self.skip_newlines();
+                children.push(default);
+            }
+            if self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), line!() as u16, String::new()))
+            } else if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.8") {
+
+            }
+            let pos_end = self.current_tok.clone().unwrap().pos_end;
+            self.next();
+            return Ok(ASTNode::new(ASTNodeType::Case(loop_value), children, pos_start, pos_end))
         }
 
         Err(Error::new(pos_start, tok.pos_end, line!() as u16, String::new()))

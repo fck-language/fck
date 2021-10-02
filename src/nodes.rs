@@ -29,7 +29,7 @@ pub enum ASTNodeType {
     If(Option<String>),              // Number of elif statements
     Else,            // Else or default node
     AtName,          //
-    Case,            //
+    Case(Option<String>),            //
     Option,          //
     Iterate(Option<String>),         //
     While(Option<String>),           // None
@@ -67,7 +67,7 @@ impl ASTNode {
 impl std::fmt::Debug for ASTNode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut out = String::new();
-        out.push_str(&*format!("{}{:?} [{}-{}]\n", match self.child_nodes.len() {
+        out.push_str(&*format!("{}{:?} [{} {}]\n", match self.child_nodes.len() {
             0 => '|',
             _ => '-'
         }, self.node_type, self.pos_start, self.pos_end));
