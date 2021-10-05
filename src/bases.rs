@@ -1,5 +1,5 @@
 use crate::tokens::TT_KEYWORD;
-use crate::types::*;
+// use crate::types::*;
 
 use std::collections::HashMap;
 use std::any::Any;
@@ -79,6 +79,6 @@ impl Context<'_> {
 pub struct SymbolTable {
     display_name: String,
     parent: Box<Option<SymbolTable>>,
-    variables: HashMap<String, Type>,
+    // variables: HashMap<String, Type>,
     names_loops: Vec<String>,
 }
