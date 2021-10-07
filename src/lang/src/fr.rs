@@ -1,4 +1,4 @@
-use crate::keywords::{Keywords, Messages};
+use crate::keywords::*;
 
 pub const KEYWORDS: Keywords = Keywords{
     keywords:
@@ -13,5 +13,26 @@ pub const KEYWORDS: Keywords = Keywords{
 };
 
 pub const MESSAGES: Messages = Messages{
-    generic: ["La langue du shell a été changée en français"]
+    generic: ["La langue du shell a été changée en français"],
+    errors: ErrorHolder{
+        language_errors: [
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" }
+        ],
+        unknown_errors: [
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" }
+        ],
+        expected_errors: [
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "", desc: "" }
+        ]
+    }
 };

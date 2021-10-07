@@ -20,5 +20,30 @@ impl Keywords<'_> {
 }
 
 pub struct Messages<'a> {
-    pub generic: [&'a str; 1]
+    pub generic: [&'a str; 1],
+    pub errors: ErrorHolder<'a>
+}
+
+pub struct ErrorHolder<'a> {
+    pub language_errors: [ErrorMessages<'a>; 2],
+    pub unknown_errors: [ErrorMessages<'a>; 2],
+    pub expected_errors: [ErrorMessages<'a>; 9]
+}
+
+impl ErrorHolder<'_> {
+    fn get_name(&self, code: u16) -> &'_ str {
+        let index = (code / 100)  as usize;
+        match code % 100u16 {
+            1u16 => self.language_errors.get(index).unwrap(),
+            2u16 => self.unknown_errors.get(index).unwrap(),
+            3u16 => self.expected_errors.get(index).unwrap(),
+            _ => unreachable!()
+        }.name
+    }
+}
+
+pub struct ErrorMessages<'a> {
+    pub name: &'a str,
+    pub desc: &'a str,
+    // pub long_desc: String
 }

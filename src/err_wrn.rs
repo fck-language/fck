@@ -5,19 +5,18 @@ use crate::bases::Position;
 pub struct Error {
     pos_start: Position,
     pos_end: Position,
-    error_index: u16,
-    details: String
+    error_index: u16
 }
 
 impl Error {
-    pub fn new(pos_start: Position, pos_end: Position, error_index: u16, details: String) -> Error {
-        Error{pos_start,pos_end,error_index,details}
+    pub fn new(pos_start: Position, pos_end: Position, error_index: u16) -> Error {
+        Error{pos_start, pos_end, error_index}
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}(E{:04}) [{} -> {}]", self.details, self.error_index, self.pos_start, self.pos_end)
+        write!(f, "(E{:04}) [{} -> {}]", self.error_index, self.pos_start, self.pos_end)
     }
 }
 
