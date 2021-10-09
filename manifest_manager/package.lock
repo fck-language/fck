@@ -1,0 +1,10 @@
+[package]
+name = ExamplePackage
+version = 1.2.9
+authors = ["Rosie Bartlett"]
+edition = 0.1.0
+flavour = pure
+
+[dependencies]
+fck-counting = 0.1.1
+itertools = 2.9.0
