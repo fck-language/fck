@@ -2,7 +2,9 @@
 pub struct Keywords<'a> {
     pub keywords: [&'a str; 22],
     pub var_keywords: [&'a str; 5],
-    pub config_keys: [&'a str; 3]
+    pub config_keys: [&'a str; 3],
+    pub manifest_keys: [&'a str; 7],
+    pub flavours: [&'a str; 2]
 }
 
 impl Keywords<'_> {
