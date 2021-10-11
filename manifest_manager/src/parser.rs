@@ -2,6 +2,8 @@ use std::fmt::{Display, Formatter};
 use std::fs::read_to_string;
 use regex::Regex;
 
+use lang::{get_associated_keywords, keywords::Keywords};
+
 #[derive(Debug)]
 pub struct ManifestFile {
     package: Package,
@@ -14,7 +16,7 @@ pub struct Package {
     version: [u8; 3],
     authors: Vec<String>,
     edition: [u8; 3],
-    flavour: String,
+    flavour: u8,
 }
 
 #[derive(Debug)]
@@ -52,7 +54,7 @@ impl ManifestFile {
                 version: [0u8, 0u8, 0u8],
                 authors: vec![],
                 edition: [0u8, 0u8, 0u8],
-                flavour: "".to_string(),
+                flavour: 0u8,
             },
             dependencies: vec![],
         }
@@ -61,15 +63,19 @@ impl ManifestFile {
     pub fn parse(&mut self, path_to_file: &str) -> &mut ManifestFile {
         let file_contents = read_to_string(path_to_file).unwrap();
         let mut file = file_contents.split("\n").collect::<Vec<&str>>();
-        let mut current_mode = "";
-        let match_re = Regex::new(r"([^\s]+)\s*=\s*([^\r\n]+)").unwrap();
+        file.reverse();
+        let language = get_associated_keywords(file.pop().unwrap()).unwrap();
+        file.reverse();
+        let mut current_mode = 0u8;
+        let match_re = Regex::new(r"([^=]+)=\s*([^\r\n]+)").unwrap();
         let mut captures: regex::Captures;
         for i in file {
             if i.is_empty() {
                 continue;
             }
             if i.chars().nth(0).unwrap() == '[' {
-                current_mode = i;
+                let i = i.trim();
+                current_mode = language.manifest_keys.iter().position(|&r| r == i).unwrap() as u8;
                 continue;
             }
             captures = match match_re.captures_iter(i).nth(0) {
@@ -77,27 +83,28 @@ impl ManifestFile {
                 None => continue
             };
             match current_mode {
-                "[package]" => {
-                    match &captures[1] {
-                        "name" => self.package.name = captures[2].to_string(),
-                        "version" => {
+                0 => {
+                    let key = language.manifest_keys.iter().position(|&r| &r == &captures[1].trim()).unwrap();
+                    match key {
+                        1 => self.package.name = captures[2].to_string(),
+                        2 => {
                             let version_match = Regex::new(r"(\d+).(\d+).(\d+)").unwrap().captures_iter(&captures[2]).nth(0).unwrap();
                             self.package.version = [*&version_match[1].parse::<u8>().unwrap(), *&version_match[2].parse::<u8>().unwrap(), *&version_match[3].parse::<u8>().unwrap()]
                         }
-                        "authors" => {
+                        3 => {
                             for cap in Regex::new("['\"]([^'\"]*)['\"]").unwrap().captures_iter(&captures[2]) {
                                 self.package.authors.push(cap.get(1).unwrap().as_str().to_string());
                             }
                         }
-                        "edition" => {
+                        4 => {
                             let version_match = Regex::new(r"(\d+).(\d+).(\d+)").unwrap().captures_iter(&captures[2]).nth(0).unwrap();
                             self.package.edition = [*&version_match[1].parse::<u8>().unwrap(), *&version_match[2].parse::<u8>().unwrap(), *&version_match[3].parse::<u8>().unwrap()]
                         }
-                        "flavour" => self.package.flavour = captures[2].to_string(),
+                        5 => self.package.flavour = language.flavours.iter().position(|&r| r == &captures[2]).unwrap() as u8,
                         _ => {}
                     }
                 }
-                "[dependencies]" => {
+                6 => {
                     let version = if &captures[2] == "*" {
                         DependencyVersion::MostRecent
                     } else {
@@ -111,7 +118,7 @@ impl ManifestFile {
                     };
                     self.dependencies.push(Dependency { name: captures[1].to_string(), version })
                 }
-                _ => {}
+                _ => unreachable!()
             }
         }
         self
