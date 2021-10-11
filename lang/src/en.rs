@@ -8,7 +8,11 @@ pub const KEYWORDS: Keywords = Keywords{
     var_keywords:
     ["int", "float", "bool", "list", "str"],
     config_keys:
-    ["wrapLength", "shellLanguageInfo", "historyLength"]
+    ["wrapLength", "shellLanguageInfo", "historyLength"],
+    manifest_keys:
+    ["[package]", "name", "version", "authors", "edition", "flavour", "[dependencies]"],
+    flavours:
+    ["pure", "counting"]
 };
 
 pub const MESSAGES: Messages = Messages{

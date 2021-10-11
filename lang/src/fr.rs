@@ -2,21 +2,22 @@ use crate::keywords::*;
 
 pub const KEYWORDS: Keywords = Keywords{
     keywords:
-    ["und", "oder", "nicht", "wenn", "sonst", "sonn", "falls", "option", "standard",
-        "iterieren", "bis", "importieren/verwenden", /* import/use */
-        "stufe", "während", "def", "zurückschicken", "fortsetzen", "ausbrechen", "still", "als",
-        "wahr", "falsch"
-    ],
+    ["et", "ou", "non", "si", "autre", "auti", "cas", "option", "défaut",
+        "répéter", "à", "import", "pas", "pendant", "déf", "rendre", "continuer", "interruption",
+        "muet", "comme", "vrai", "faux"],
     var_keywords:
-    // TODO: Work out the actual words
-    ["int", "float", "bool", "list", "str"],
+    ["ent", "flottante", "bool", "liste", "chaîne"],
     config_keys:
     // TODO: Work out the actual words
-    ["wrapLength", "shellLanguageChange", "historyLength"]
+    ["wrapLength", "shellLanguageChange", "historyLength"],
+    manifest_keys:
+    ["package", "name", "version", "authors", "edition", "flavour", "dependencies"],
+    flavours:
+    ["pure", "counting"]
 };
 
 pub const MESSAGES: Messages = Messages{
-    generic: ["Die Shell-Sprache wurde auf Deutsch geändert"],
+    generic: ["La langue du shell a été changée en français"],
     errors: ErrorHolder{
         language_errors: [
             ErrorMessages{ name: "", desc: "" },
