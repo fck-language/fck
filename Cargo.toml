@@ -4,8 +4,8 @@ description = "The source code for the fck coding language"
 version = "0.1.0"
 authors = ["RosiePuddles <rosiegbartlett@gmail.om>"]
 edition = "2018"
-repository = "https://github.com/RosiePuddles/fck"
-homepage = "https://RosiePuddles.github.io/fck"
+repository = "https://github.com/fck-language/fck"
+homepage = "https://fck-language.github.io/fck"
 readme = "README.md"
 license = "GPL-3.0"
 
@@ -14,5 +14,5 @@ maintenance = {status = "actively-developed"}
 
 [dependencies]
 clap = "2.33.3"
-#llvm-sys = "120.0.1"
-lang = {path = "lang" }
+llvm-sys = "130"
+lang = { path = "lang" }

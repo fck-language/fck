@@ -4,19 +4,30 @@ use crate::bases::{Context, Position};
 use crate::types::*;
 use std::any::Any;
 use std::ops::Deref;
-use std::hint::unreachable_unchecked;
+
+// LLVM
+use llvm_sys as llvm;
+use llvm::core::*;
+use llvm::execution_engine::*;
+use llvm::target::*;
+use std::mem;
+use llvm_sys::prelude::*;
+
+const LLVM_FALSE: LLVMBool = 0;
+const LLVM_TRUE: LLVMBool = 1;
 
 pub struct Interpreter {
     ast_vec: Vec<ASTNode>,
     current_node: Option<ASTNode>,
+    context: LLVMContextRef,
 }
 
 impl Interpreter {
-    pub fn new(ast_vec: Vec<ASTNode>) -> Interpreter {
-        Interpreter { ast_vec, current_node: None }
+    pub unsafe fn new(ast_vec: Vec<ASTNode>) -> Interpreter {
+        Interpreter { ast_vec, current_node: None , context: LLVMContextCreate()}
     }
 
-    pub fn interpret(&mut self) {
+    pub unsafe fn interpret(&mut self) {
         self.current_node = self.ast_vec.pop();
         while self.current_node.is_some() {
             let a = match self.find_func() {
@@ -26,18 +37,14 @@ impl Interpreter {
                     break;
                 }
             };
-            match a {
-                Type::Primitive(p) => println!("{:?}", p)
-            }
             self.current_node = self.ast_vec.pop();
         }
     }
 
-    fn find_func(&mut self) -> Result<Type, Error> {
+    unsafe fn find_func(&mut self) -> Result<Type, Error> {
         match self.current_node.clone().unwrap().node_type {
             ASTNodeType::Int(_) | ASTNodeType::Float(_) | ASTNodeType::String(_) | ASTNodeType::Bool(_) => self.primitive(),
-            // Bool => {}
-            // String => {}
+            // ASTNodeType::ArithOp(_) => self.arith_op(),
             // List => {}
             // VarAccess => {}
             // VarGetRange => {}
@@ -73,33 +80,37 @@ impl Interpreter {
         }
     }
 
-    fn primitive(&mut self) -> Result<Type, Error> {
+    unsafe fn primitive(&mut self) -> Result<Type, Error> {
         let node = self.current_node.clone().unwrap();
-        Ok(Type::Primitive(match node.node_type {
-            ASTNodeType::Int(v) => PrimitiveType::Int(Int{
-                pos_start: self.current_node.clone().unwrap().pos_start,
-                pos_end: self.current_node.clone().unwrap().pos_end,
-                value: v
-            }),
-            ASTNodeType::Float(v) => PrimitiveType::Float(Float{
-                pos_start: self.current_node.clone().unwrap().pos_start,
-                pos_end: self.current_node.clone().unwrap().pos_end,
-                value: v
-            }),
-            ASTNodeType::String(v) => PrimitiveType::String(String_{
-                pos_start: self.current_node.clone().unwrap().pos_start,
-                pos_end: self.current_node.clone().unwrap().pos_end,
-                value: v
-            }),
-            ASTNodeType::Bool(v) => PrimitiveType::Bool(Bool{
-                pos_start: self.current_node.clone().unwrap().pos_start,
-                pos_end: self.current_node.clone().unwrap().pos_end,
-                value: v
-            }),
+        Ok(Type::new(match node.node_type {
+            ASTNodeType::Int(v) => LLVMConstInt(LLVMInt64Type(), v.unsigned_abs(), LLVM_TRUE),
+            // ASTNodeType::Float(v) => LLVMFlo(LLVMFloatType(), v, LLVM_TRUE),
             _ => unreachable!()
-        }))
+        }, node.pos_start, node.pos_end))
     }
 
+    // unsafe fn arith_op(&mut self) -> Result<Type, Error> {
+    //     let node = self.current_node.clone().unwrap();
+    //     let module = LLVMModuleCreateWithNameInContext(b"sum\0".as_ptr() as *const _, self.context);
+    //     let builder = LLVMCreateBuilderInContext(self.context);
+    //     let mut child_node_final: Vec<Type> = vec![];
+    //     for i in node.child_nodes {
+    //         self.current_node = Some(i);
+    //         child_node_final.push(self.find_func()?)
+    //     }
+    //     let pos_start = child_node_final.get(0).unwrap().pos_start;
+    //     let sum = child_node_final.pop().unwrap();
+    //     let pos_end = sum.pos_end;
+    //     let mut sum = sum.value;
+    //     for i in child_node_final {
+    //         sum = LLVMBuildAdd(builder, sum, i.value, b"sum\0".as_ptr() as *const _)
+    //     }
+    //     LLVMBuildRet(builder, sum);
+    //     module.
+    //     // LLVMDumpModule(builder);
+    //
+    //     Result::Ok(Type::new(sum, pos_start, pos_end))
+    // }
     // fn arith_op_node(&mut self) -> Result<Type, Error> {
     //     let mut parent_node = self.current_node.clone().unwrap();
     //     let mut ops = parent_node.value.unwrap().chars().rev().collect::<String>();

@@ -1,3 +1,5 @@
+//! Contains the lexer and parser for fck. There are language agnostic and as such cannot use regex.
+
 use crate::tokens::*;
 use crate::bases::*;
 use crate::err_wrn::*;
@@ -6,16 +8,27 @@ use crate::nodes::{ASTNode, ASTNodeType};
 use lang::get_associated_keywords;
 use std::collections::HashMap;
 
+/// Lexer for fck
+///
+/// This works on a (8-bit) character by character basis. 16-bit characters are still in production
+/// so be patient
 pub struct Lexer {
+    /// Input text split into a vector of characters
     split_text: Vec<char>,
+    /// Current position of the "pointer"
     current_pos: Position,
+    /// The current index of the current character in `split_text`
     char_index: usize,
+    /// the current character the pointer is pointing to
     current_char: char,
+    /// The current keyword struct words are being checked against
     pub(crate) keywords: Keywords<'static>,
+    /// The string associated with the current keywords
     pub(crate) keyword_code: String,
 }
 
 impl Lexer {
+    /// Returns a new lexer with all fields completed appropriately
     pub fn new(full_text: String, keywords: Keywords<'static>, keyword_code: String) -> Lexer {
         return Lexer {
             split_text: full_text.chars().collect(),
@@ -27,18 +40,15 @@ impl Lexer {
         };
     }
 
+    /// Advances the `self.current_pos` by 1 and updates the character it points to
     fn advance(&mut self) {
         self.current_pos = self.current_pos.advance();
         self.char_index += 1;
-        if self.char_index >= self.split_text.len() {
-            self.current_char = char::from(0);
-        } else {
-            self.current_char = self.split_text[self.char_index]
-        }
+        self.current_char = *self.split_text.get(self.char_index).unwrap_or(&char::from(0));
     }
 
-    // TODO: Change the return type to either an error or token
-    // TODO: Change the return types of referenced functions to be (ErrorOrNot, Option<Token>, Option<Error>)
+    /// Primary function of the lexer. Iterates over the input text and attempts to turn it into a
+    /// vector of tokens. If an error occurs, an `Err(Error)` is returned
     pub fn make_tokens(&mut self) -> Result<Vec<Token>, Error> {
         let mut tokens: Vec<Token> = vec![];
         while self.char_index < self.split_text.len() {
@@ -119,7 +129,9 @@ impl Lexer {
         Ok(tokens)
     }
 
-    // Character parsing functions
+    /// Called by `self.make_tokens` when a number is found. Iterates over characters until a
+    /// second '.' or non-numeric character is found, at which point the function returns the
+    /// appropriate token
     fn make_number(&mut self) -> Token {
         let mut has_dot = false;
         let pos_start = self.current_pos.clone();
@@ -141,26 +153,31 @@ impl Lexer {
         return Token::new(has_dot as u8, value, pos_start,
                           self.current_pos.clone());
     }
-
+    
+    /// Called by `self.make_tokens` when a alphabetic character is found. This function either
+    /// returns a `TT_KEYWORD` or `TT_IDENTIFIER` token depending on the string and current keywords
     fn make_identifier(&mut self) -> Token {
         let pos_start = self.current_pos.clone();
         let mut keyword = self.current_char.to_string();
         self.advance();
-
+        
         while (self.current_char.is_alphanumeric() || self.current_char == '_') &&
             self.char_index < self.split_text.len() {
             keyword.push(self.current_char);
             self.advance();
         }
-
+        
         let (value, tok_type) = match self.keywords.contains(&keyword) {
             Some(val) => (val, TT_KEYWORD),
             None => (keyword, TT_IDENTIFIER)
         };
-
+        
         return Token::new(tok_type, value, pos_start, self.current_pos.clone());
     }
-
+    
+    /// Called by `self.make_tokens` when a '@' character is found. This advances and calls
+    /// `self.make_identifier`, taking the value of the token returned and placing it into a new
+    /// `TT_AT` token
     fn make_loop_identifier(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         self.advance();
@@ -168,6 +185,9 @@ impl Lexer {
                       self.current_pos.clone()))
     }
 
+    /// Called by `self.make_tokens` when an opening string delimiter is found. Parses the string
+    /// and returns a `TT_STRING` token containing the string literal in an `Ok(Token)`. Returns an
+    /// `Err(Error)` if no closing delimiter is found.
     fn make_string(&mut self, starting_character: char) -> Result<Token, Error> {
         let mut out = String::new();
         let pos_start = self.current_pos.clone().clone();
@@ -196,6 +216,8 @@ impl Lexer {
         Ok(Token::new(TT_STRING, out, pos_start, self.current_pos.clone()))
     }
 
+    /// Called by `self.make_tokens` when a '!' is found. Will check for a "!=", "!!", or character
+    /// after it otherwise an `Err(Error)` is returned.
     fn make_not_equals(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         self.advance();
@@ -210,6 +232,8 @@ impl Lexer {
         return Err(Error::new(pos_start, self.current_pos.clone(), 0202u16));
     }
 
+    /// Called by `self.make_tokens` when a '=' is found. Will check for a "==" otherwise an
+    /// `Err(Error)` is returned
     fn make_equals(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         self.advance();
@@ -225,6 +249,9 @@ impl Lexer {
         return Err(Error::new(pos_start, self.current_pos.clone(), 0202u16));
     }
 
+    /// General function called by `self.make_tokens` when we want to check for one of two tokens
+    /// that start with the same character with the second token being followed by another character
+    /// such as `//` or `<=`
     fn single_double_token(&mut self, second_char: char, single_type: u8, double_type: u8) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         self.advance();
@@ -239,6 +266,9 @@ impl Lexer {
                              self.current_pos.clone()));
     }
 
+    /// Called by `self.make_tokens` when a ':' is found. This parses one or two more characters to
+    /// decide what kind of assignment operation is being performed. It makes use of the ordering of
+    /// token type values to make the code simpler
     fn make_set(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         self.advance();
@@ -298,6 +328,7 @@ impl Lexer {
                              self.current_pos.clone()));
     }
 
+    /// Called by `self.make_tokens` when a comment is found. This skips the comment. Big surprise
     fn skip_comment(&mut self) {
         if self.current_char == '#' {
             while self.current_char != '\n' || self.char_index + 1 != self.split_text.len() {
@@ -312,15 +343,27 @@ impl Lexer {
     }
 }
 
+/// Parser for fck
+///
+/// Parses a `Vec<Token>` from the lexer and produces an AST (technically it produces an annotated
+/// AST but there we go)
 pub struct Parser {
+    /// Vector of tokens current un-processed
     to_process: Vec<Token>,
+    /// An intermediate storage for tokens essentially functioning as a back-up
     intermediate: Vec<Token>,
+    /// Current token being processed
     current_tok: Option<Token>,
+    /// Used to store the previous end of the last processed token
     previous_end: Position,
+    /// Represents if the current token can be discarded after processing or if it needs to be added
+    /// to `self.intermediate` in case the parser needs to back-track
     safe: bool,
 }
 
 impl Parser {
+    /// Makes a new parser from a `Vec<Token>`. Reverses the token vector so that the popped token
+    /// from the vector is the first token in the original vector
     pub fn new(tokens: Vec<Token>) -> Parser {
         let mut tokens = tokens;
         tokens.reverse();
@@ -335,9 +378,9 @@ impl Parser {
     }
 
     // Navigating tokens functions
+    /// Advances the current token to the next token. Puts the previous token into
+    /// `self.intermediate` if `self.safe` is `true`. Also updates `self.previous_end`
     fn next(&mut self) {
-        // Goes to the next token and adds the previous one to the intermediate vector
-        // Returns true if more tokens are left and false otherwise
         if self.current_tok.is_none() {
             return;
         } else if self.safe {
@@ -347,13 +390,16 @@ impl Parser {
         self.current_tok = self.to_process.pop();
     }
 
+    /// Called when the `self.safe` can be changed to `false`. Clears the intermediate and sets
+    /// `self.safe` to `false`
     fn finalise(&mut self) {
-        // Called when the previously processed tokens can safely be moved into the processed
-        // vector and the intermediate vector can be cleared
         self.intermediate.clear();
         self.safe = false;
     }
 
+    /// Called when the parser needs to back-track. Places the current token into the intermediate
+    /// then places the intermediate into `self.to_process` and then clears the intermediate. Also
+    /// resets `self.safe` to `false`
     fn put_back(&mut self) {
         self.intermediate.push(self.current_tok.clone().unwrap());
 
@@ -365,6 +411,7 @@ impl Parser {
     }
 
     // General useful functions
+    /// Skips new lines. Don't care about them
     fn skip_newlines(&mut self) {
         while self.current_tok.is_some() {
             if self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
@@ -376,6 +423,16 @@ impl Parser {
     }
 
     // Parsing tokens
+    /// Main function. Parses the tokens and returns an `Ok(Vec<ASTNode>)` if no errors were found.
+    /// Otherwise returns a `Err(Error)`.
+    ///
+    /// The reason it returns a `Vec<ASTNode>` not just an `ASTNode` is because one piece of code
+    /// cannot be placed into a single AST. The ASTs are ordered. For example
+    /// ```
+    /// int a := 5
+    /// float b := 12
+    /// ```
+    /// is two ASTs, both performing variable assignments
     pub fn parse(&mut self) -> Result<Vec<ASTNode>, Error> {
         let mut out: Vec<ASTNode> = vec![];
 
@@ -402,6 +459,10 @@ impl Parser {
         return Ok(out);
     }
 
+    /// First grammar rule
+    /// ```
+    /// [return|continue|break|(expr)]
+    /// ```
     fn statement(&mut self) -> Result<ASTNode, Error> {
         let pos_start = self.current_tok.clone().unwrap().pos_start.clone();
         let mut pos_end = self.current_tok.clone().unwrap().pos_end.clone();
@@ -547,16 +608,14 @@ impl Parser {
 
     fn expr(&mut self) -> Result<ASTNode, Error> {
         let mut tok = self.current_tok.clone().unwrap();
-        fn default_values(index: u8) -> ASTNodeType {
-            match index {
-                0 => ASTNodeType::Int(0),
-                1 => ASTNodeType::Float(0.),
-                2 => ASTNodeType::Bool(false),
-                3 => ASTNodeType::String(String::new()),
-                4 => ASTNodeType::List,
-                _ => unreachable!()
-            }
-        }
+        let default_values = |x: u8| match x {
+            0 => ASTNodeType::Int(0),
+            1 => ASTNodeType::Float(0.),
+            2 => ASTNodeType::Bool(false),
+            3 => ASTNodeType::String(String::new()),
+            4 => ASTNodeType::List,
+            _ => unreachable!()
+        };
 
         let pos_start = tok.pos_start.clone();
         let mut pos_end = tok.pos_end.clone();
@@ -873,11 +932,17 @@ impl Parser {
             return Ok(node);
         }
 
-        if self.current_tok.clone().unwrap().type_ == TT_MULT || self.current_tok.clone().unwrap().type_ == TT_DIV || self.current_tok.clone().unwrap().type_ == TT_FDIV || self.current_tok.clone().unwrap().type_ == TT_MOD {
+        let test = || {
+            self.current_tok.clone().unwrap().type_ == TT_MULT ||
+                self.current_tok.clone().unwrap().type_ == TT_DIV ||
+                self.current_tok.clone().unwrap().type_ == TT_FDIV ||
+                self.current_tok.clone().unwrap().type_ == TT_MOD
+        };
+        if test() {
             let mut operators = String::new();
             let pos_start = node.pos_start.clone();
             let mut children = vec![node];
-            while self.current_tok.clone().unwrap().type_ == TT_MULT || self.current_tok.clone().unwrap().type_ == TT_DIV || self.current_tok.clone().unwrap().type_ == TT_FDIV || self.current_tok.clone().unwrap().type_ == TT_MOD {
+            while test() {
                 operators += match self.current_tok.clone().unwrap().type_ {
                     TT_MULT => "*",
                     TT_DIV => "/",

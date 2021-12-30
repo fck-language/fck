@@ -1,11 +1,28 @@
+use llvm_sys::prelude::LLVMValueRef;
+
 use std::any::Any;
 use std::ops::*;
-use std::fmt::Formatter;
+use std::fmt::{Debug, Formatter};
+use std::path::Display;
 use crate::bases::Position;
 use crate::err_wrn::Error;
 
-pub enum Type {
-    Primitive(PrimitiveType),
+pub struct Type {
+    pub value: LLVMValueRef,
+    pub pos_start: Position,
+    pub pos_end: Position,
+}
+
+impl Type {
+    pub fn new(value: LLVMValueRef, pos_start: Position, pos_end: Position) -> Type {
+        Type{ value, pos_start, pos_end }
+    }
+}
+
+impl Debug for Type {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} ({}, {})", self.value, self.pos_start, self.pos_end)
+    }
 }
 
 #[derive(Debug)]

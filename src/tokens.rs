@@ -1,3 +1,7 @@
+//! Token constants
+//!
+//! All in a specific order allowing for manipulation of them to be made easier
+
 pub const TT_INT: u8 =               0;
 pub const TT_FLOAT: u8 =             1;
 pub const TT_STRING: u8 =            2;

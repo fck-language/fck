@@ -1,3 +1,6 @@
+//! Config file handling
+//!
+//! Parses the config file and determines appropriate languages and options for the user
 use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -6,15 +9,22 @@ use std::fmt::{Debug, Formatter};
 use std::ptr::write;
 use clap::Format;
 
+/// Config file struct that holds all the configurable options
 #[derive(Clone)]
 pub struct ConfigFile {
+    /// The language to use if no language is specified. Also determines the language to parse the
+    /// config file in
     pub(crate) default_lang: String,
+    /// Wrap length of errors and warnings
     pub(crate) wrap_length: ConfigU8,
+    //TODO: the fuck is this for?
     pub(crate) shell_language_info: bool,
+    /// Number of previous lines to save when using the shell
     pub(crate) history_length: ConfigU8,
 }
 
 impl ConfigFile {
+    /// Creates a new ConfigFile strict from a given initial language code with default values
     pub fn new(default_language: String) -> ConfigFile {
         ConfigFile {
             default_lang: default_language,
@@ -24,6 +34,10 @@ impl ConfigFile {
         }
     }
 
+    /// Set a certain config option, indexed by value:
+    /// 0. wrap length
+    /// 1. shell language info
+    /// 2. shell history length
     pub fn new_value(&mut self, key_index: usize, int_value: Option<u8>, _string_value: Option<String>) {
         match key_index {
             0 => self.wrap_length.set(int_value.unwrap()),
@@ -33,6 +47,7 @@ impl ConfigFile {
         };
     }
 
+    /// Function to determine what type of value each configurable option takes
     pub fn value_type(&mut self, key_index: usize) -> u8 {
         // 0 => just what the fuck
         // 1 => u8
@@ -57,6 +72,8 @@ impl Debug for ConfigFile {
     }
 }
 
+/// Special type of u8 with a minimum and maximum value. Used for numerical values in the config
+/// file that have specific ranges
 #[derive(Clone)]
 pub struct ConfigU8 {
     pub(crate) value: u8,
@@ -65,10 +82,13 @@ pub struct ConfigU8 {
 }
 
 impl ConfigU8 {
+    /// Creates a new ConfigU8 from a current, min, and max value
     pub fn new(value: u8, min_value: u8, max_value: u8) -> ConfigU8 {
         ConfigU8 { value, min_value, max_value }
     }
 
+    /// Sets a new value. If this new value is outside of the range for the struct it's set to the
+    /// min or max depending on which way the value is outside the range
     pub fn set(&mut self, mut value: u8) {
         if value < self.min_value {
             value = self.min_value.clone()
@@ -85,6 +105,7 @@ impl Debug for ConfigU8 {
     }
 }
 
+/// Parses the config file and returns a `ConfigFile` struct
 pub fn read_config_file<'a>() -> ConfigFile {
     // don't you dare comment on how messy this is. please
     let config_file_path = format!("{}/.fck", std::env::var("HOME").unwrap());
