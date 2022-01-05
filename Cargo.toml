@@ -13,6 +13,6 @@ license = "GPL-3.0"
 maintenance = {status = "actively-developed"}
 
 [dependencies]
-clap = "2.33.3"
+clap = "3.0.4"
 llvm-sys = "130"
 lang = { path = "lang" }

@@ -7,7 +7,6 @@ use std::path::Path;
 use lang::get_associated_keywords;
 use std::fmt::{Debug, Formatter};
 use std::ptr::write;
-use clap::Format;
 
 /// Config file struct that holds all the configurable options
 #[derive(Clone)]
