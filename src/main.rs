@@ -4,7 +4,7 @@ extern crate lang;
 extern crate clap;
 
 use crate::shell::shell;
-use clap::{Arg, App, crate_version, SubCommand};
+use clap::{Arg, App};
 use std::{env::current_dir, io::Write, fs::read_to_string};
 use std::path::Path;
 
@@ -42,15 +42,24 @@ fn main() {
             .short('V')
             .long("info")
             .takes_value(false)
-            .help("Returns info about the current installation of fck")).get_matches();
+            .help("Returns info about the current installation of fck"))
+        .arg(Arg::new("dump tokens")
+            .long("dt")
+            .takes_value(false)
+            .help("Dumps the tokens after lexing"))
+        .arg(Arg::new("dump ASTs")
+            .long("dast")
+            .takes_value(false)
+            .help("Dump the ASTs after parsing"))
+        .get_matches();
 
     if app.is_present("version") {
 
     } else if app.is_present("info") {
 
     } else if app.is_present("file") {
-
+    
     } else {
-        shell(config_file);
+        shell(config_file, app.is_present("dump tokens"), app.is_present("dump ASTs"));
     }
 }

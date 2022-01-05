@@ -8,7 +8,7 @@ use lang::{get_associated_keywords, get_associated_messages};
 use crate::config_file::ConfigFile;
 use crate::interpreter::Interpreter;
 
-pub fn shell(config_file: ConfigFile) {
+pub fn shell(config_file: ConfigFile, dt: bool, dast: bool) {
     let mut current_language = get_associated_keywords(&*config_file.default_lang).unwrap();
     let mut keyword_code = config_file.default_lang;
 
@@ -45,6 +45,11 @@ pub fn shell(config_file: ConfigFile) {
                 continue
             }
         };
+        if dt {
+            for t in tokens.iter() {
+                println!("{}", t)
+            }
+        }
         current_language = lexer.keywords.clone();
         keyword_code = match keyword_code == lexer.keyword_code {
             true => keyword_code,
@@ -72,8 +77,10 @@ pub fn shell(config_file: ConfigFile) {
                 continue;
             }
         };
-        for (i, ast) in ast_list.iter().enumerate() {
-            println!("** {} **\n{:?}", i + 1, ast)
+        if dast {
+            for (i, ast) in ast_list.iter().enumerate() {
+                println!("** {} **\n{:?}", i + 1, ast)
+            }
         }
         unsafe {
             let mut interpreter = Interpreter::new(ast_list);
