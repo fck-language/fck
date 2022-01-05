@@ -2,7 +2,7 @@
 name = "fck_pure"
 description = "The source code for the fck coding language"
 version = "0.1.0"
-authors = ["RosiePuddles <rosiegbartlett@gmail.om>"]
+authors = ["RosiePuddles <rosiegbartlett@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/fck-language/fck"
 homepage = "https://fck-language.github.io/fck"
