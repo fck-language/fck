@@ -445,7 +445,7 @@ impl Parser {
             if self.current_tok.is_none() { break; }
 
             match self.statement() {
-                Ok(AST) => out.push(AST),
+                Ok(ast) => out.push(ast),
                 Err(error) => return Err(error)
             }
             if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_NEWLINE {
@@ -932,17 +932,17 @@ impl Parser {
             return Ok(node);
         }
 
-        let test = || {
-            self.current_tok.clone().unwrap().type_ == TT_MULT ||
-                self.current_tok.clone().unwrap().type_ == TT_DIV ||
-                self.current_tok.clone().unwrap().type_ == TT_FDIV ||
-                self.current_tok.clone().unwrap().type_ == TT_MOD
-        };
-        if test() {
+        if self.current_tok.clone().unwrap().type_ == TT_MULT ||
+            self.current_tok.clone().unwrap().type_ == TT_DIV ||
+            self.current_tok.clone().unwrap().type_ == TT_FDIV ||
+            self.current_tok.clone().unwrap().type_ == TT_MOD {
             let mut operators = String::new();
             let pos_start = node.pos_start.clone();
             let mut children = vec![node];
-            while test() {
+            while self.current_tok.clone().unwrap().type_ == TT_MULT ||
+                self.current_tok.clone().unwrap().type_ == TT_DIV ||
+                self.current_tok.clone().unwrap().type_ == TT_FDIV ||
+                self.current_tok.clone().unwrap().type_ == TT_MOD {
                 operators += match self.current_tok.clone().unwrap().type_ {
                     TT_MULT => "*",
                     TT_DIV => "/",
