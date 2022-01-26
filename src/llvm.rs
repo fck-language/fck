@@ -7,18 +7,19 @@ use llvm_sys::core::*;
 use llvm_sys::prelude::*;
 use llvm_sys::target::*;
 use llvm_sys::target_machine::*;
-use llvm_sys::transforms::pass_manager_builder::*;
-use llvm_sys::{ LLVMBuilder, LLVMIntPredicate, LLVMModule, LLVMOpcode };
+use llvm_sys::{LLVMIntPredicate, LLVMModule};
 
 use std::ffi::{ CStr, CString };
 use std::fmt::Formatter;
-use std::os::raw::{ c_char, c_uint, c_ulonglong };
+use std::os::raw::{ c_char, c_ulonglong };
 use std::ptr::null_mut;
 use std::str;
 
 use crate::nodes::{ ASTNode, ASTNodeType };
 
+/// False constant of type `LLVMBool`
 const LLVM_FALSE: LLVMBool = 0;
+/// True constant of type `LLVMBool`
 const LLVM_TRUE: LLVMBool = 1;
 
 /// Holder for LLVMModule
@@ -28,19 +29,31 @@ const LLVM_TRUE: LLVMBool = 1;
 #[derive(Debug)]
 pub struct Module {
 	pub module: *mut LLVMModule,
-	pub strings: Vec<CString>
+	strings: Vec<CString>,
+	current_fn: LLVMValueRef
 }
 
 impl Module {
+	/// Make a new CString and return it as a `*const i8`
+	///
+	/// This is a short-hand function for quality of life improvements, as well as required to
+	/// ensure the CString is added to the module, ensuring the same lifetime as the module
 	pub fn new_ptr_i8(&mut self, s: &str) -> *const i8 {
 		let out = CString::new(s).unwrap();
 		let ptr = out.as_ptr();
 		self.strings.push(out);
 		ptr as *const i8
 	}
+	/// Blank name that's not added to the saved names
+	pub fn blank_name(&self) -> *const i8 {
+		let out = CString::new("").unwrap();
+		let ptr = out.as_ptr();
+		ptr as *const i8
+	}
 }
 
 impl std::fmt::Display for Module {
+	/// Returns the LLVM IR code
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		let module_string;
 		unsafe {
@@ -68,21 +81,24 @@ unsafe fn init() {
 pub fn ir_to_module(module_name: &str, asts: Vec<ASTNode>) -> Module {
 	let mut module: Module;
 	unsafe {
+		init();
 		let llvm_module = LLVMModuleCreateWithName(CString::new(module_name).unwrap().as_bytes_with_nul().as_ptr() as *const c_char);
 		LLVMSetTarget(llvm_module, get_default_target_triple().as_ptr() as *const _);
-		module = Module { module: llvm_module, strings: vec![] };
+		module = Module { module: llvm_module, strings: vec![], current_fn: llvm_int(0, LLVMInt32Type()) };
 	}
 	
 	// Create the main function that returns an i32 and make a block within that
 	let main_fn;
 	let mut bb;
+	let mut val;
     unsafe {
         let main_type = LLVMFunctionType(LLVMInt32Type(), vec![].as_mut_ptr(), 0, LLVM_FALSE);
         main_fn = LLVMAddFunction(module.module, module.new_ptr_i8("main"), main_type);
-		bb = LLVMAppendBasicBlock(main_fn, module.new_ptr_i8("body"));
+		bb = LLVMAppendBasicBlock(main_fn, module.new_ptr_i8("init"));
+		val = llvm_int(0, LLVMInt32Type());
     }
+	module.current_fn = main_fn;
 	
-	let mut val = int32(0);
 	for ast in asts {
 		let out = build_ast(&mut module, bb, val, ast);
 		bb = out.0;
@@ -93,14 +109,15 @@ pub fn ir_to_module(module_name: &str, asts: Vec<ASTNode>) -> Module {
 	unsafe {
 		let builder = LLVMCreateBuilder();
         LLVMPositionBuilderAtEnd(builder, bb);
-		LLVMBuildRet(builder, int32(0));
+		LLVMBuildRet(builder, llvm_int(0, LLVMInt32Type()));
 	}
 	
 	module
 }
 
-fn int32(val: c_ulonglong) -> LLVMValueRef {
-    unsafe { LLVMConstInt(LLVMInt32Type(), val, LLVM_FALSE) }
+/// Useful function to make an integer
+unsafe fn llvm_int(val: c_ulonglong, t: LLVMTypeRef) -> LLVMValueRef {
+	LLVMConstInt(t, val, LLVM_FALSE)
 }
 
 /// Gets the default target string
@@ -115,15 +132,16 @@ pub fn get_default_target_triple() -> CString {
     target_triple
 }
 
-///
-fn build_ast(module: &mut Module, bb: LLVMBasicBlockRef, val: LLVMValueRef, ast: ASTNode) -> (LLVMBasicBlockRef, LLVMValueRef) {
-	let mut bb = bb;
-	let mut val = val;
+/// Builds the ASTs to the module
+fn build_ast(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, ast: ASTNode) -> (LLVMBasicBlockRef, LLVMValueRef) {
 	unsafe {
 		let out = match ast.node_type {
 			// Terminal values
-			ASTNodeType::VarAssign(ret, var_type, name) => build_var_assign(module, bb, val, ret, var_type, name, ast.child_nodes),
+			ASTNodeType::VarAssign(ret, var_type, name) => build_var_assign(module, bb, val, ret, var_type, name, ast.child_nodes.get(0).unwrap().clone()),
 			ASTNodeType::ArithOp(v) => build_arith_op(module, bb, val, v, ast.child_nodes),
+			ASTNodeType::Int(v) => (bb, llvm_int(v as c_ulonglong, LLVMInt32Type())),
+			ASTNodeType::CompOp(v) => build_comp_op(module, bb, val, v, ast.child_nodes),
+			ASTNodeType::If(_) => build_if(module, bb, val, ast.child_nodes),
 			_ => (bb, val)
 		};
 		bb = out.0;
@@ -132,7 +150,8 @@ fn build_ast(module: &mut Module, bb: LLVMBasicBlockRef, val: LLVMValueRef, ast:
 	(bb, val)
 }
 
-unsafe fn build_var_assign(module: &mut Module, bb: LLVMBasicBlockRef, val: LLVMValueRef, ret: bool, var_type: u8, name: String, children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
+/// Builds a `ASTNodeType::VarAssign` AST node to the module
+unsafe fn build_var_assign(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, ret: bool, _var_type: u8, name: String, value: ASTNode) -> (LLVMBasicBlockRef, LLVMValueRef) {
 	let builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, bb);
 	let var = LLVMBuildAlloca(
@@ -140,17 +159,167 @@ unsafe fn build_var_assign(module: &mut Module, bb: LLVMBasicBlockRef, val: LLVM
 		LLVMInt32Type(),
 		module.new_ptr_i8(&*name) as *const c_char
 	);
+	let child_out = build_ast(module, bb, llvm_int(0, LLVMInt32Type()), value);
+	bb = child_out.0;
 	LLVMBuildStore(
 		builder,
-		int32(69),
+		child_out.1,
 		var
+	);
+	if ret {
+		val = child_out.1.clone()
+	}
+	(bb, val)
+}
+
+/// Builds a `ASTNodeType::ArithOp` AST node to the module
+unsafe fn build_arith_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, v: Vec<char>, children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
+	let builder = LLVMCreateBuilder();
+	LLVMPositionBuilderAtEnd(builder, bb);
+	let mut children = children.iter();
+	let build_out = build_ast(module, bb, val, children.next().unwrap().clone());
+	bb = build_out.0;
+	val = build_out.1;
+	for c in v {
+		let build_out = build_ast(module, bb, val, children.next().unwrap().clone());
+		bb = build_out.0;
+		let f = match c {
+			'+' => LLVMBuildAdd,
+			'-' => LLVMBuildSub,
+			'*' => LLVMBuildMul,
+			'/' => LLVMBuildUDiv,
+			_ => unreachable!()
+		};
+		val = f(builder, val, build_out.1, module.blank_name());
+	}
+	(bb, val)
+}
+
+unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, mut children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
+	let mut builder = LLVMCreateBuilder();
+	LLVMPositionBuilderAtEnd(builder, bb);
+	children.reverse();
+	
+	// Build condition
+	let res = build_ast(module, bb, val, children.pop().unwrap());
+	bb = res.0;
+	let if_val = res.1;
+	// Make if true block
+	let mut bb_true = LLVMAppendBasicBlock(module.current_fn, module.new_ptr_i8(""));
+	// Make post block to exit to after everything
+	let post = LLVMAppendBasicBlock(module.current_fn, module.new_ptr_i8("post"));
+	for ast in children.pop().unwrap().child_nodes {
+		let val = LLVMConstNull(LLVMInt32Type());
+		let res = build_ast(module, bb_true, val, ast);
+		bb_true = res.0;
+	}
+	LLVMBuildCondBr(builder, if_val, bb_true, post);
+	
+	// Branch to post
+	LLVMPositionBuilderAtEnd(builder, bb_true);
+	LLVMBuildBr(builder, post);
+	
+	(post, val)
+}
+
+unsafe fn build_comp_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, mut cmp_ops: Vec<char>, mut children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
+	let mut builder = LLVMCreateBuilder();
+	LLVMPositionBuilderAtEnd(builder, bb);
+	// Build first pair of comparisons
+	let mut rhs = llvm_int(0, LLVMInt32Type());
+	let res = build_ast(module, bb, rhs, children.pop().unwrap());
+	bb = res.0;
+	rhs = res.1;
+	let mut lhs = llvm_int(0, LLVMInt32Type());
+	let res = build_ast(module, bb, lhs, children.pop().unwrap());
+	bb = res.0;
+	lhs = res.1;
+	val = LLVMBuildICmp(
+		builder,
+		match cmp_ops.pop().unwrap() {
+			'l' => LLVMIntPredicate::LLVMIntULT,
+			'L' => LLVMIntPredicate::LLVMIntULE,
+			'g' => LLVMIntPredicate::LLVMIntUGT,
+			'G' => LLVMIntPredicate::LLVMIntUGE,
+			_ => unreachable!()
+		},
+		lhs, rhs, module.new_ptr_i8("")
 	);
 	(bb, val)
 }
 
-unsafe fn build_arith_op(module: &mut Module, bb: LLVMBasicBlockRef, val: LLVMValueRef, v: Vec<char>, children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
-	let builder = LLVMCreateBuilder();
-	LLVMPositionBuilderAtEnd(builder, bb);
-	
-	(bb, val)
+/// Builds a module to an object file
+///
+/// Takes an LLVMModule (`module: *mut LLVMModule`) and writes this module to an object file at the
+/// given path
+pub fn to_object_file(module: *mut LLVMModule, object_path: String) {
+    let mut target = null_mut();
+    let mut err_msg_ptr = null_mut();
+    unsafe {
+        let target_triple = LLVMGetTarget(module);
+        LLVMGetTargetFromTriple(
+			target_triple,
+			&mut target,
+			&mut err_msg_ptr
+		);
+        let cpu = CString::new("generic").unwrap();
+        let features = CString::new("").unwrap();
+        let target_machine = LLVMCreateTargetMachine(
+			target,
+			target_triple,
+			cpu.as_ptr() as *const _,
+			features.as_ptr() as *const _,
+			LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+			LLVMRelocMode::LLVMRelocPIC,
+			LLVMCodeModel::LLVMCodeModelDefault,
+        );
+        let file = CString::new(&*object_path).unwrap();
+        let obj_err_raw = CString::new("").unwrap();
+        let mut obj_error = obj_err_raw.as_ptr() as *mut i8;
+        let res = LLVMTargetMachineEmitToFile(
+            target_machine,
+            module,
+            file.as_ptr() as *mut i8,
+            LLVMCodeGenFileType::LLVMObjectFile,
+            &mut obj_error,
+        );
+        
+        if res != 0 {
+            println!("{}", CStr::from_ptr(obj_error as *const _).to_str().unwrap());
+            std::process::exit(1);
+        }
+    }
+}
+
+/// convert the object file into an executable using clang
+pub fn object_to_executable(path: String) {
+    match std::process::Command::new("clang")
+        .arg(format!("{}.o", &path))
+        .arg("-o")
+        .arg(&*path)
+        .output() {
+        Ok(res) => {
+            if res.status.success() {
+                let t = String::from_utf8_lossy(&res.stdout).to_string();
+                if t.is_empty() {
+                    println!("Ok")
+                } else {
+                    println!("Ok: {}", t);
+                }
+            } else {
+                let t = String::from_utf8_lossy(&res.stderr).to_string();
+                if t.is_empty() {
+                    println!("Err")
+                } else {
+                    println!("Err: {}", t);
+                }
+            }
+        }
+        Err(e) => {
+            println!("Oops... it didn't work sorry\n{}", e)
+        }
+    };
+    
+    // Delete object file
+    std::fs::remove_file(format!("{}.o", path)).unwrap();
 }

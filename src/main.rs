@@ -7,14 +7,11 @@ use crate::shell::shell;
 use clap::{Arg, App};
 use std::{
     env::current_dir,
-    io::{ Write, Read },
-    fs::read_to_string,
+    io::Read,
     path::Path,
     process::exit
 };
-use colored::{
-    *
-};
+use colored::*;
 use lang::get_associated_keywords;
 use crate::config_file::ConfigFile;
 
@@ -25,7 +22,6 @@ mod nodes;
 mod shell;
 mod config_file;
 mod err_wrn;
-mod interpreter;
 mod types;
 mod chars;
 mod llvm;
@@ -95,6 +91,7 @@ fn main() {
 
 fn run_file(path: &str, config_file: ConfigFile, dump_tok: bool, dump_ast: bool, dump_llvm: bool) {
     let file_name = get_file_name(path);
+    let full_file_path = format!("{}/{}", current_dir().unwrap().to_str().unwrap(), path.get(..path.len() - 4).unwrap().to_string());
     let mut file = String::new();
     if let Ok(mut file_container) = std::fs::File::open(path) {
         if file_container.read_to_string(&mut file).is_err() {
@@ -135,11 +132,14 @@ fn run_file(path: &str, config_file: ConfigFile, dump_tok: bool, dump_ast: bool,
     }
     let module = llvm::ir_to_module(&*file_name, ast_vec);
     if dump_llvm {
-        let ll_path = format!("{}/{}ll", current_dir().unwrap().to_str().unwrap(), path.get(..path.len() - 3).unwrap().to_string());
+        let ll_path = format!("{}.ll", full_file_path);
         let here = Path::new(&ll_path);
-        std::fs::write(here, format!("{}", module));
+        if let Err(e) = std::fs::write(here, format!("{}", module)) {
+            println!("Unable to write to file `{}.ll`:\n{}", full_file_path, e)
+        };
     }
-    
+    llvm::to_object_file(module.module.to_owned(), format!("{}.o", full_file_path));
+    llvm::object_to_executable(full_file_path);
 }
 
 fn get_file_name(path: &str) -> String {

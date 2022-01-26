@@ -1,10 +1,9 @@
 //! Base file with all the "building blocks" of everything else in
 
-use crate::tokens::TT_KEYWORD;
-// use crate::types::*;
-
 use std::collections::HashMap;
-use std::any::Any;
+use llvm_sys::prelude::LLVMValueRef;
+
+use crate::tokens::TT_KEYWORD;
 
 /// Position container. Is the basis for positions of tokens and nodes.
 ///
@@ -34,8 +33,8 @@ impl Position {
     }
 }
 
-/// Display for position of the form `[ln:{ln:02}, col:{col:02}]`
 impl std::fmt::Display for Position {
+    /// Writes the line and column in that order with a width of two characters
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "[ln:{:02}, col:{:02}]", self.ln, self.col)
     }
@@ -71,6 +70,7 @@ impl Token {
 }
 
 impl std::fmt::Display for Token {
+    /// Writes the type, value, and starting and ending positions
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Type: {:<3} (Value: {})\n\tpos_start: {}\n\tpos_end  : {}",
                self.type_, self.value, self.pos_start, self.pos_end)
@@ -78,27 +78,31 @@ impl std::fmt::Display for Token {
 }
 
 impl std::fmt::Debug for Token {
+    /// Writes the type, value, and starting and ending positions with shortened prefixes
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "T:{:<3} V:{} ps:{} pe:{}", self.type_, self.value, self.pos_start, self.pos_end)
     }
 }
 
 
-pub struct Context<'a> {
-    display_name: String,
-    full_text: String,
-    parent: Option<&'a Context<'a>>
+/// Contained for all the local variable names
+///
+/// Contains the variable names, aliases for variables, and an optional name for the lifetime
+pub struct Lifetime {
+    /// Variables stored as the original language keyed name for the key and variable as the value
+    variables: HashMap<String, Variable>,
+    /// Aliases for the current local variables
+    aliases: HashMap<String, String>,
+    /// Optional lifetime name. Used when loops have identifier allowing you to break specific loops
+    name: Option<String>
 }
 
-impl Context<'_> {
-    pub fn new<'a>(display_name: String, full_text: String, parent: Option<&'a Context>) -> Context<'a> {
-        Context{display_name, full_text, parent}
-    }
-}
-
-pub struct SymbolTable {
-    display_name: String,
-    parent: Box<Option<SymbolTable>>,
-    // variables: HashMap<String, Type>,
-    names_loops: Vec<String>,
+/// Container for variables
+///
+/// Contains the variable type ID and LLVM value
+pub struct Variable {
+    /// Type ID unique to the variable type
+    var_type: u16,
+    /// LLVM value ref
+    value: LLVMValueRef
 }

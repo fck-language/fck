@@ -1,13 +1,16 @@
+//! Shell file using JIT compilation
+//!
+//! This file only holds the shell function which is a JIT compiler
 extern crate lang;
 
 use crate::ast;
-use crate::interpreter;
 
-use lang::keywords::Keywords;
 use lang::{get_associated_keywords, get_associated_messages};
 use crate::config_file::ConfigFile;
-use crate::interpreter::Interpreter;
 
+/// JIT shell
+///
+/// Shell that uses JIT compilation with options to dump tokens and ASTs for each input
 pub fn shell(config_file: ConfigFile, dt: bool, dast: bool) {
     let mut current_language = get_associated_keywords(&*config_file.default_lang).unwrap();
     let mut keyword_code = config_file.default_lang;
@@ -16,7 +19,7 @@ pub fn shell(config_file: ConfigFile, dt: bool, dast: bool) {
     let mut history: Vec<String> = Vec::new();
     let mut history_not_full = true;
     let mut current_index = 0u8;
-    let mut cursor_index = current_index;
+    // let mut cursor_index = current_index;
 
     loop {
         let mut given = String::new();
@@ -35,7 +38,7 @@ pub fn shell(config_file: ConfigFile, dt: bool, dast: bool) {
         }
         current_index += 1;
         current_index %= config_file.history_length.value;
-        cursor_index = current_index;
+        // cursor_index = current_index;
 
         let mut lexer = ast::Lexer::new(given, current_language.clone(), keyword_code.clone());
         let tokens = match lexer.make_tokens() {
@@ -81,10 +84,6 @@ pub fn shell(config_file: ConfigFile, dt: bool, dast: bool) {
             for (i, ast) in ast_list.iter().enumerate() {
                 println!("** {} **\n{:?}", i + 1, ast)
             }
-        }
-        unsafe {
-            let mut interpreter = Interpreter::new(ast_list);
-            interpreter.interpret();
         }
     }
 }
