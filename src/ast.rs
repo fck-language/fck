@@ -65,8 +65,11 @@ impl Lexer {
                         tokens.push(Token::new(TT_NEWLINE, "".into(), pos_start,
                                                self.current_pos.clone()));
                         self.current_pos.advance_ln();
+                        self.advance();
+                        self.current_pos.col = 0
+                    } else {
+                        self.advance();
                     }
-                    self.advance();
                 } else if self.current_char == '#' {
                     self.advance();
                     if self.current_char == '!' {
@@ -367,12 +370,12 @@ impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
         let mut tokens = tokens;
         tokens.reverse();
-        let current_tok = tokens.clone().pop().unwrap();
+        let current_tok = tokens.pop();
         return Parser {
             to_process: tokens,
             intermediate: vec![],
-            current_tok: Some(current_tok.clone()),
-            previous_end: current_tok.pos_start,
+            current_tok: current_tok.clone(),
+            previous_end: current_tok.unwrap().pos_start,
             safe: false,
         };
     }
