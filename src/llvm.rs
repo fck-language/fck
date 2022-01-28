@@ -24,16 +24,27 @@ const LLVM_TRUE: LLVMBool = 1;
 
 /// Holder for LLVMModule
 ///
-/// Used so that all the CStrings have the same lifetime as the module
-/// Code from [Wilfred/bfc](https://github.com/Wilfred/bfc). Thank you very much
+/// Modified from [Wilfred/bfc](https://github.com/Wilfred/bfc). Thank you very much
+/// Folds the current function, LLVMModule, named blocks (as CString) to ensure concurrent
+/// lifetimes, as well as a blank CString (pub) to be used as the default block name
 #[derive(Debug)]
 pub struct Module {
+	/// LLVMModule that things get build to
 	pub module: *mut LLVMModule,
+	/// Blank CString used as the default block name
+	pub blank: CString,
+	/// Vector holding all the named block names
 	strings: Vec<CString>,
+	/// Current function to make sure that any new blocks are added to the right function
 	current_fn: LLVMValueRef
 }
 
 impl Module {
+	/// Initialise a new Module
+	pub unsafe fn new(module: *mut LLVMModule) -> Self {
+		let blank = CString::new("").unwrap();
+		Module { module, blank, strings: vec![], current_fn: LLVMConstNull(LLVMInt32Type()) }
+	}
 	/// Make a new CString and return it as a `*const i8`
 	///
 	/// This is a short-hand function for quality of life improvements, as well as required to
@@ -42,12 +53,6 @@ impl Module {
 		let out = CString::new(s).unwrap();
 		let ptr = out.as_ptr();
 		self.strings.push(out);
-		ptr as *const i8
-	}
-	/// Blank name that's not added to the saved names
-	pub fn blank_name(&self) -> *const i8 {
-		let out = CString::new("").unwrap();
-		let ptr = out.as_ptr();
 		ptr as *const i8
 	}
 }
@@ -84,7 +89,7 @@ pub fn ir_to_module(module_name: &str, asts: Vec<ASTNode>) -> Module {
 		init();
 		let llvm_module = LLVMModuleCreateWithName(CString::new(module_name).unwrap().as_bytes_with_nul().as_ptr() as *const c_char);
 		LLVMSetTarget(llvm_module, get_default_target_triple().as_ptr() as *const _);
-		module = Module { module: llvm_module, strings: vec![], current_fn: llvm_int(0, LLVMInt32Type()) };
+		module = Module::new(llvm_module);
 	}
 	
 	// Create the main function that returns an i32 and make a block within that
@@ -94,7 +99,7 @@ pub fn ir_to_module(module_name: &str, asts: Vec<ASTNode>) -> Module {
     unsafe {
         let main_type = LLVMFunctionType(LLVMInt32Type(), vec![].as_mut_ptr(), 0, LLVM_FALSE);
         main_fn = LLVMAddFunction(module.module, module.new_ptr_i8("main"), main_type);
-		bb = LLVMAppendBasicBlock(main_fn, module.new_ptr_i8("init"));
+		bb = LLVMAppendBasicBlock(main_fn, module.blank.as_ptr());
 		val = llvm_int(0, LLVMInt32Type());
     }
 	module.current_fn = main_fn;
@@ -190,7 +195,7 @@ unsafe fn build_arith_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val
 			'/' => LLVMBuildUDiv,
 			_ => unreachable!()
 		};
-		val = f(builder, val, build_out.1, module.blank_name());
+		val = f(builder, val, build_out.1, module.blank.as_ptr());
 	}
 	(bb, val)
 }
@@ -205,9 +210,9 @@ unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVM
 	bb = res.0;
 	let if_val = res.1;
 	// Make if true block
-	let mut bb_true = LLVMAppendBasicBlock(module.current_fn, module.new_ptr_i8(""));
+	let mut bb_true = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
 	// Make post block to exit to after everything
-	let post = LLVMAppendBasicBlock(module.current_fn, module.new_ptr_i8("post"));
+	let post = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
 	for ast in children.pop().unwrap().child_nodes {
 		let val = LLVMConstNull(LLVMInt32Type());
 		let res = build_ast(module, bb_true, val, ast);

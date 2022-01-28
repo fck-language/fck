@@ -1,5 +1,5 @@
 [package]
-name = "fck_pure"
+name = "fck"
 description = "The source code for the fck coding language"
 version = "0.1.0"
 authors = ["RosiePuddles <rosiegbartlett@gmail.com>"]
@@ -8,6 +8,8 @@ repository = "https://github.com/fck-language/fck"
 homepage = "https://fck-language.github.io/fck"
 readme = "README.md"
 license = "GPL-3.0"
+keywords = ["fck", "coding language", "coding language"]
+categories = ["internationalization"]
 
 [badges]
 maintenance = {status = "actively-developed"}
@@ -15,4 +17,5 @@ maintenance = {status = "actively-developed"}
 [dependencies]
 clap = "3.0.4"
 llvm-sys = "130"
-lang = { path = "lang" }
+colored = "2.0.0"
+lang = { path = "lang", version = "0.1.0" }
