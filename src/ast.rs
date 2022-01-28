@@ -413,7 +413,7 @@ impl Parser {
         self.next();
     }
 
-    // General useful functions
+    // Quality of life functions
     /// Skips new lines. Don't care about them
     fn skip_newlines(&mut self) {
         while self.current_tok.is_some() {
@@ -441,8 +441,8 @@ impl Parser {
 
         // Loop through tokens to create an ast
         loop {
-            self.next();
-            if self.current_tok.is_none() { break; }
+            // self.next();
+            // if self.current_tok.is_none() { break; }
 
             self.skip_newlines();
             if self.current_tok.is_none() { break; }
@@ -451,7 +451,8 @@ impl Parser {
                 Ok(AST) => out.push(AST),
                 Err(error) => return Err(error)
             }
-            if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_NEWLINE {
+            self.skip_newlines();
+            if self.current_tok.is_some() && self.current_tok.clone().unwrap().pos_start.col != 0 {
                 let tok = self.current_tok.clone().unwrap();
                 return Err(Error::new(tok.pos_start,
                                       tok.pos_end,
@@ -1101,10 +1102,26 @@ impl Parser {
                         Err(e) => return Err(e)
                     }
                 }
-                TT_INT => ASTNode::new_v(ASTNodeType::Int(tok.value.parse::<i64>().unwrap()), pos_start, tok.pos_end),
-                TT_FLOAT => ASTNode::new_v(ASTNodeType::Float(tok.value.parse::<f64>().unwrap()), pos_start, tok.pos_end),
-                TT_STRING => ASTNode::new_v(ASTNodeType::String(tok.value), pos_start, tok.pos_end),
-                TT_IDENTIFIER => ASTNode::new_v(ASTNodeType::VarAccess(tok.value), pos_start, tok.pos_end),
+                TT_INT => {
+                    let a = ASTNode::new_v(ASTNodeType::Int(tok.value.parse::<i64>().unwrap()), pos_start, tok.pos_end);
+                    self.next();
+                    a
+                }
+                TT_FLOAT => {
+                    let a = ASTNode::new_v(ASTNodeType::Float(tok.value.parse::<f64>().unwrap()), pos_start, tok.pos_end);
+                    self.next();
+                    a
+                }
+                TT_STRING => {
+                    let a = ASTNode::new_v(ASTNodeType::String(tok.value), pos_start, tok.pos_end);
+                    self.next();
+                    a
+                }
+                TT_IDENTIFIER => {
+                    let a = ASTNode::new_v(ASTNodeType::VarAccess(tok.value), pos_start, tok.pos_end);
+                    self.next();
+                    a
+                }
                 _ => {
                     match self.nameable_methods(None) {
                         Ok(n) => n,
@@ -1113,7 +1130,6 @@ impl Parser {
                 }
             }
         };
-        self.next();
         Ok(out)
     }
 
@@ -1137,10 +1153,11 @@ impl Parser {
                 },
                 Err(e) => return Err(e)
             };
-            if !(self.current_tok.clone().is_some() && self.current_tok.clone().unwrap().type_ == TT_RPAREN_CURLY) {
+            if self.current_tok.clone().is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16));
             }
 
+            self.next();
             self.skip_newlines();
 
             // Check for elif(0.5) statements
