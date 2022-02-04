@@ -203,28 +203,46 @@ unsafe fn build_arith_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val
 unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, mut children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
 	let mut builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, bb);
-	children.reverse();
-	
-	// Build condition
-	let res = build_ast(module, bb, val, children.pop().unwrap());
-	bb = res.0;
-	let if_val = res.1;
-	// Make if true block
-	let mut bb_true = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
-	// Make post block to exit to after everything
-	let post = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
-	for ast in children.pop().unwrap().child_nodes {
-		let val = LLVMConstNull(LLVMInt32Type());
-		let res = build_ast(module, bb_true, val, ast);
-		bb_true = res.0;
+	let mut else_node: Option<ASTNode> = None;
+	if (children.len() % 2) != 0 {
+		// Else present
+		else_node = Some(children.pop().unwrap());
 	}
-	LLVMBuildCondBr(builder, if_val, bb_true, post);
 	
-	// Branch to post
-	LLVMPositionBuilderAtEnd(builder, bb_true);
-	LLVMBuildBr(builder, post);
+	// Make the new block that'll be the end of the statement
+	let final_block = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
 	
-	(post, val)
+	let mut children_iter = children.iter();
+	while let Some(node) = children_iter.next() {
+		val = LLVMConstNull(LLVMInt1Type());
+		let res = build_ast(module, bb, val, node.clone());
+		bb = res.0;
+		let mut if_true = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
+		let mut if_false = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
+		LLVMBuildCondBr(builder, res.1, if_true, if_false);
+		let body = children_iter.next().unwrap().clone();
+		for ast in body.child_nodes {
+			let res = build_ast(module, if_true, val, ast);
+			if_true = res.0;
+		}
+		bb = if_false;
+		LLVMPositionBuilderAtEnd(builder, if_true);
+		LLVMBuildBr(builder, final_block);
+		LLVMPositionBuilderAtEnd(builder, bb);
+	}
+	
+	if let Some(node) = else_node {
+		for ast in node.child_nodes {
+			let res = build_ast(module, bb, LLVMConstNull(LLVMInt1Type()), ast);
+			bb = res.0;
+		}
+	}
+	
+	LLVMPositionBuilderAtEnd(builder, bb);
+	LLVMBuildBr(builder, final_block);
+	
+	
+	(final_block, val)
 }
 
 unsafe fn build_comp_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, mut cmp_ops: Vec<char>, mut children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
@@ -246,6 +264,8 @@ unsafe fn build_comp_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val:
 			'L' => LLVMIntPredicate::LLVMIntULE,
 			'g' => LLVMIntPredicate::LLVMIntUGT,
 			'G' => LLVMIntPredicate::LLVMIntUGE,
+			'e' => LLVMIntPredicate::LLVMIntEQ,
+			'n' => LLVMIntPredicate::LLVMIntNE,
 			_ => unreachable!()
 		},
 		lhs, rhs, module.new_ptr_i8("")

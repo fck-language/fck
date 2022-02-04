@@ -131,11 +131,15 @@ fn run_file(path: &str, config_file: ConfigFile, dump_tok: bool, dump_ast: bool,
         }
     }
     let module = llvm::ir_to_module(&*file_name, ast_vec);
+    println!("LLVM IR generated");
     if dump_llvm {
+        print!("Writing to file...\r");
         let ll_path = format!("{}.ll", full_file_path);
         let here = Path::new(&ll_path);
         if let Err(e) = std::fs::write(here, format!("{}", module)) {
             println!("Unable to write to file `{}.ll`:\n{}", full_file_path, e)
+        } else {
+            println!("Written LLVM IR to file {}.ll", full_file_path);
         };
     }
     llvm::to_object_file(module.module.to_owned(), format!("{}.o", full_file_path));
