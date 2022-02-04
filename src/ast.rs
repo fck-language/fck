@@ -1175,6 +1175,12 @@ impl Parser {
                         },
                         Err(e) => return Err(e)
                     }
+                    if self.current_tok.clone().is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                        return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16));
+                    }
+        
+                    self.next();
+                    self.skip_newlines();
                 }
                 children.extend(elif_exprs);
                 self.skip_newlines();
@@ -1192,6 +1198,7 @@ impl Parser {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302u16));
                 }
                 self.next();
+                self.skip_newlines();
                 let mut out = vec![];
                 while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
                     out.push(match self.expr() {
@@ -1203,6 +1210,7 @@ impl Parser {
                 if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
                 }
+                self.next();
                 children.push(ASTNode::new(ASTNodeType::Else, out, else_pos_start, self.current_tok.clone().unwrap().pos_end));
             }
 
