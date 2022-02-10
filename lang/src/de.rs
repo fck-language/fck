@@ -9,7 +9,7 @@ pub const KEYWORDS: Keywords = Keywords{
     ],
     var_keywords:
     // TODO: Work out the actual words
-    ["int", "float", "bool", "list", "str"],
+    ["ganze", "fließkomma", "bool", "liste", "zeich"],
     config_keys:
     // TODO: Work out the actual words
     ["wrapLength", "shellLanguageChange", "historyLength"],
