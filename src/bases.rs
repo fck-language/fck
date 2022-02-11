@@ -1,9 +1,10 @@
 //! Base file with all the "building blocks" of everything else in
 
-use std::collections::HashMap;
-use llvm_sys::prelude::LLVMValueRef;
+use crate::tokens::TokType;
+// use crate::types::*;
 
-use crate::tokens::TT_KEYWORD;
+use std::collections::HashMap;
+use std::any::Any;
 
 /// Position container. Is the basis for positions of tokens and nodes.
 ///
@@ -33,8 +34,8 @@ impl Position {
     }
 }
 
+/// Display for position of the form `[ln:{ln:02}, col:{col:02}]`
 impl std::fmt::Display for Position {
-    /// Writes the line and column in that order with a width of two characters
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "[ln:{:02}, col:{:02}]", self.ln, self.col)
     }
@@ -44,9 +45,7 @@ impl std::fmt::Display for Position {
 #[derive(Clone)]
 pub struct Token {
     /// The token type from `tokens.rs`
-    pub type_: u8,
-    /// Value stored in a string
-    pub value: String,
+    pub type_: TokType,
     /// Starting position
     pub pos_start: Position,
     /// Ending position. This is really one after the ending position so `test` would start at (0,0)
@@ -56,53 +55,52 @@ pub struct Token {
 
 impl Token {
     /// Generates a new token from a given token type, value, and starting and ending positions
-    pub fn new(type_: u8, value: String, pos_start: Position, pos_end: Position) -> Token {
-        return Token{type_, value, pos_start, pos_end};
+    pub fn new(type_: TokType, pos_start: Position, pos_end: Position) -> Token {
+        return Token{type_, pos_start, pos_end};
     }
     /// Checks is a token matches a specific type and value
-    pub fn matches(&self, type_: u8, value: &str) -> bool {
-        return self.type_ == type_ && self.value == value;
+    pub fn matches(&self, other: TokType) -> bool {
+        self.type_ == other
     }
     /// Checks if a token is a keyword in a specific keyword list
     pub fn matches_list(&self, list: u8) -> bool {
-        self.type_ == TT_KEYWORD && self.value.clone().get(0..1).unwrap() == format!("{}", list)
+        if let TokType::Keyword(v, _) = self.type_ {
+            v == list
+        } else {
+            false
+        }
     }
 }
 
 impl std::fmt::Display for Token {
-    /// Writes the type, value, and starting and ending positions
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Type: {:<3} (Value: {})\n\tpos_start: {}\n\tpos_end  : {}",
-               self.type_, self.value, self.pos_start, self.pos_end)
+        write!(f, "Type: {:<3?} \n\tpos_start: {}\n\tpos_end  : {}",
+               self.type_, self.pos_start, self.pos_end)
     }
 }
 
 impl std::fmt::Debug for Token {
-    /// Writes the type, value, and starting and ending positions with shortened prefixes
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "T:{:<3} V:{} ps:{} pe:{}", self.type_, self.value, self.pos_start, self.pos_end)
+        write!(f, "T:{:<3?}  ps:{} pe:{}", self.type_, self.pos_start, self.pos_end)
     }
 }
 
 
-/// Contained for all the local variable names
-///
-/// Contains the variable names, aliases for variables, and an optional name for the lifetime
-pub struct Lifetime {
-    /// Variables stored as the original language keyed name for the key and variable as the value
-    variables: HashMap<String, Variable>,
-    /// Aliases for the current local variables
-    aliases: HashMap<String, String>,
-    /// Optional lifetime name. Used when loops have identifier allowing you to break specific loops
-    name: Option<String>
+pub struct Context<'a> {
+    display_name: String,
+    full_text: String,
+    parent: Option<&'a Context<'a>>
 }
 
-/// Container for variables
-///
-/// Contains the variable type ID and LLVM value
-pub struct Variable {
-    /// Type ID unique to the variable type
-    var_type: u16,
-    /// LLVM value ref
-    value: LLVMValueRef
+impl Context<'_> {
+    pub fn new<'a>(display_name: String, full_text: String, parent: Option<&'a Context>) -> Context<'a> {
+        Context{display_name, full_text, parent}
+    }
+}
+
+pub struct SymbolTable {
+    display_name: String,
+    parent: Box<Option<SymbolTable>>,
+    // variables: HashMap<String, Type>,
+    names_loops: Vec<String>,
 }
