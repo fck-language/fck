@@ -1,8 +1,13 @@
+﻿//! Language file for Korean
+//!
+//! Encoding: UTF-16
+//! Development version
+
 use crate::keywords::*;
 
 pub const KEYWORDS: Keywords = Keywords{
     keywords:
-    ["and", "or", "not", "if", "else", "elif", "case", "option", "default",
+    ["그리고", "or", "not", "면", "else", "elif", "case", "option", "default",
         "iterate", "to", "import", "step", "while", "def", "return", "continue", "break",
         "silent", "as", "true", "false"],
     var_keywords:
@@ -16,7 +21,7 @@ pub const KEYWORDS: Keywords = Keywords{
 };
 
 pub const MESSAGES: Messages = Messages{
-    generic: ["The shell language has been changed to English"],
+    generic: ["The shell language has been changed to Korean"],
     errors: ErrorHolder{
         language_errors: [
             ErrorMessages{ name: "Unknown language code", desc: "Returned when an unknown language code is specified" },
@@ -38,30 +43,7 @@ pub const MESSAGES: Messages = Messages{
             ErrorMessages{ name: "Expected type identifier", desc: "" }
         ],
         not_here_errors: [
-            ErrorMessages{ name: "Cannot use a keyword here", desc: "Need to use an identifier that's not a keyword" }
+            ErrorMessages{ name: "", desc: "" }
         ]
     }
 };
-
-//  0 "and"
-//  1 "or"
-//  2 "not"
-//  3 "if"
-//  4 "else"
-//  5 "elif"
-//  6 "case"
-//  7 "option"
-//  8 "default"
-//  9 "iterate"
-// 10 "to"
-// 11 "import"
-// 12 "step"
-// 13 "while"
-// 14 "def"
-// 15 "return"
-// 16 "continue"
-// 17 "break"
-// 18 "silent"
-// 19 "as"
-// 20 "true"
-// 21 "false"

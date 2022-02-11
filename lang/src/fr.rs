@@ -37,6 +37,9 @@ pub const MESSAGES: Messages = Messages{
             ErrorMessages{ name: "", desc: "" },
             ErrorMessages{ name: "", desc: "" },
             ErrorMessages{ name: "", desc: "" }
+        ],
+        not_here_errors: [
+            ErrorMessages{ name: "", desc: "" }
         ]
     }
 };
