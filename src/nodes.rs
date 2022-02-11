@@ -1,17 +1,31 @@
+//! AST Nodes
+//!
+//! This file contains everything to do with AST nodes, including the different types of node
 use crate::bases::Position;
 use std::fmt::Formatter;
 
+/// AST node types
+///
+/// These are all all the types an AST node can be, and contain type specific values
 #[derive(Debug, Clone, PartialEq)]
 pub enum ASTNodeType {
-    Int(i64),             // {value as a String}
-    Float(f64),           // {value as a String}
-    Bool(bool),            // {value as a String (0 = false, 1 = true)}
-    String(String),          // {value as a String}
-    List,            // None
-    VarAccess(String),       // Variable identifier
+    /// Integer type
+    Int(i64),
+    /// Float type
+    Float(f64),
+    /// Boolean type
+    Bool(bool),
+    /// String type
+    String(String),
+    /// List type
+    List,
+    /// Variable access. Holds the variable name(language formatted)
+    VarAccess(String),
     VarGetRange,     //
     VarGetItem,      //
-    VarAssign(bool, u8, String),       // {return as int}{variable type from token excluding '1.'}{variable name}
+    /// Variable assignment. Holds if the variable should be returned, the variable type, and
+    /// identifier(language formatted)
+    VarAssign(bool, u8, String),
     VarReassign,     //
     VarSubFunc,      //
     MethodCall,      //
@@ -38,25 +52,37 @@ pub enum ASTNodeType {
     Call,            //
     Return(bool),          // None
     Continue(Option<String>),        // None
-    Break(Option<String>)            // None
+    Break(Option<String>),
+    /// Node to contain the body of a conditional or function
+    Body
 }
 
+/// AST node
+///
+/// This is the intermediate between tokens and LLVM IR. We don't use the traditional left and right
+/// node, but instead a `Vec<ASTNode>`, giving a unique way to work with ASTs
 #[derive(Clone)]
 pub struct ASTNode {
+    /// AST node type
     pub(crate) node_type: ASTNodeType,
+    /// Child nodes
     pub(crate) child_nodes: Vec<ASTNode>,
+    /// Starting position of the AST
     pub(crate) pos_start: Position,
+    /// Ending position of the AST
     pub(crate) pos_end: Position,
 }
 
 
 impl ASTNode {
+    /// Create a new AST node
     pub fn new(node_type: ASTNodeType,
                child_nodes: Vec<ASTNode>,
                pos_start: Position,
                pos_end: Position) -> ASTNode {
         return ASTNode{node_type, child_nodes, pos_start, pos_end}
     }
+    /// Create a new AST node with no children. Quality of life function
     pub fn new_v(node_type: ASTNodeType,
                pos_start: Position,
                pos_end: Position,) -> ASTNode {

@@ -1,12 +1,10 @@
 //! Config file handling
 //!
 //! Parses the config file and determines appropriate languages and options for the user
-use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::path::Path;
 use lang::get_associated_keywords;
 use std::fmt::{Debug, Formatter};
-use std::ptr::write;
 
 /// Config file struct that holds all the configurable options
 #[derive(Clone)]
@@ -128,7 +126,7 @@ pub fn read_config_file<'a>() -> ConfigFile {
         std::process::exit(1)
     }
     let config_keys = keyword_match.unwrap();
-    let mut config_keys = config_keys.config_keys.iter();
+    let config_keys = config_keys.config_keys.iter();
     read_file.reverse();
 
     let mut out = ConfigFile::new(read_file.pop().unwrap().to_string());
