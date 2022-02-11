@@ -1,4 +1,6 @@
 und,oder,nicht,wenn,sonst,sonn,falls,option,standard,iterieren,bis,importieren/verwenden,stufe,während,def,zurückschicken,fortsetzen,ausbrechen,still,als,wahr,falsch
-int,float,bool,list,str
+ganze,fließkomma,bool,liste,zeich
 wrapLength,shellLanguageChange,historyLength
+package,name,version,authors,edition,flavour,dependencies
+pure,counting
 Die Shell-Sprache wurde auf Deutsch geändert

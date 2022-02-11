@@ -1,4 +1,6 @@
 and,or,not,if,else,elif,case,option,default,iterate,to,import,step,while,def,return,continue,break,silent,as,true,false
 int,float,bool,list,str
 wrapLength,shellLanguageInfo,historyLength
-The shell language has been changed to english
+[package],name,version,authors,edition,flavour,[dependencies]
+pure,counting
+The shell language has been changed to English

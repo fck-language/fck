@@ -8,13 +8,13 @@ pub struct Keywords<'a> {
 }
 
 impl Keywords<'_> {
-    pub fn contains(&self, identifier: &str) -> Option<String> {
+    pub fn contains(&self, identifier: &str) -> Option<(u8, u8)> {
         match self.keywords.iter().position(|&x| x == identifier) {
-            Some(position) => return Some(format!("0.{}", position)),
+            Some(position) => return Some((0, position as u8)),
             _ => {}
         }
         match self.var_keywords.iter().position(|&x| x == identifier) {
-            Some(position) => return Some(format!("1.{}", position)),
+            Some(position) => return Some((1, position as u8)),
             _ => {}
         }
         None
@@ -29,7 +29,8 @@ pub struct Messages<'a> {
 pub struct ErrorHolder<'a> {
     pub language_errors: [ErrorMessages<'a>; 2],
     pub unknown_errors: [ErrorMessages<'a>; 2],
-    pub expected_errors: [ErrorMessages<'a>; 9]
+    pub expected_errors: [ErrorMessages<'a>; 9],
+    pub not_here_errors: [ErrorMessages<'a>; 1]
 }
 
 impl ErrorHolder<'_> {
