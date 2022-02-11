@@ -79,7 +79,7 @@ impl Lexer {
                             Some(k) => self.keywords = k,
                             None => return Err(Error::new(pos_start,
                                                           self.current_pos.clone(),
-                                                          0101u16))
+                                                          0101))
                         }
                         self.keyword_code = lang_code;
                         self.advance();
@@ -120,7 +120,7 @@ impl Lexer {
                         '=' => self.make_equals(),
                         '@' => self.make_loop_identifier(),
                         '\'' | '"' => self.make_string(self.current_char),
-                        _ => Err(Error::new(pos_start, pos_start.clone().advance(), 0201u16))
+                        _ => Err(Error::new(pos_start, pos_start.clone().advance(), 0201))
                     } {
                         Ok(tok) => tok,
                         Err(e) => return Err(e)
@@ -249,7 +249,7 @@ impl Lexer {
             return Ok(Token::new(TokType::Not, pos_start,
                                  self.current_pos.clone()));
         }
-        return Err(Error::new(pos_start, self.current_pos.clone(), 0202u16));
+        return Err(Error::new(pos_start, self.current_pos.clone(), 0202));
     }
 
     /// Called by `self.make_tokens` when a '=' is found. Will check for a "==" otherwise an
@@ -315,7 +315,7 @@ impl Lexer {
                             4
                         }
                         ':'|'>' => 5,
-                        _ => return Err(Error::new(pos_start, self.current_pos.clone(), 0202u16))
+                        _ => return Err(Error::new(pos_start, self.current_pos.clone(), 0202))
                     }
                 }
                 '/' => {
@@ -326,7 +326,7 @@ impl Lexer {
                             6
                         }
                         ':'|'>' => 7,
-                        _ => return Err(Error::new(pos_start, self.current_pos.clone(), 0202u16))
+                        _ => return Err(Error::new(pos_start, self.current_pos.clone(), 0202))
                     }
                 }
                 _ => return Ok(Token::new(TokType::Colon, pos_start, self.current_pos.clone()))
@@ -482,7 +482,7 @@ impl Parser {
                 let tok = self.current_tok.clone().unwrap();
                 return Err(Error::new(tok.pos_start,
                                       tok.pos_end,
-                                      0301u16,
+                                      0301,
                 ));
             }
         }
@@ -510,7 +510,7 @@ impl Parser {
                 self.next();
                 println!("{:?}", self.intermediate);
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302u16));
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302));
                 }
                 let conditional = match self.comp_expr() {
                     Ok(n) => n,
@@ -524,7 +524,7 @@ impl Parser {
                                     pos_start,
                                     pos_end))
                 } else if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
-                    Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0303u16))
+                    Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0303))
                 } else {
                     println!("{:?}", self.intermediate);
                     self.put_back();
@@ -551,7 +551,7 @@ impl Parser {
                                         pos_start,
                                         pos_end))
                     } else {
-                        Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0301u16))
+                        Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0301))
                     }
                 };
             }
@@ -578,7 +578,7 @@ impl Parser {
                                 pos_start,
                                 pos_end))
             } else {
-                Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0301u16))
+                Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0301))
             };
         }
 
@@ -625,7 +625,7 @@ impl Parser {
         }
         if self.current_tok.is_some() {
             if !self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 3)) {
-                return Err(Error::new(pos_start, self.current_tok.clone().unwrap().pos_end, 0302u16));
+                return Err(Error::new(pos_start, self.current_tok.clone().unwrap().pos_end, 0302));
             }
             self.next();
             out.child_nodes = vec![match self.comp_expr() {
@@ -633,13 +633,13 @@ impl Parser {
                 Err(e) => return Err(e)
             }];
             if self.current_tok.is_some() {
-                return Err(Error::new(pos_start, self.current_tok.clone().unwrap().pos_end, 0301u16));
+                return Err(Error::new(pos_start, self.current_tok.clone().unwrap().pos_end, 0301));
             }
         }
         if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
             Ok(out)
         } else {
-            Err(Error::new(pos_start, pos_end, 0301u16))
+            Err(Error::new(pos_start, pos_end, 0301))
         }
     }
 
@@ -665,14 +665,14 @@ impl Parser {
             };
             self.next();
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end, self.previous_end.advance().clone(), 0304u16));
+                return Err(Error::new(self.previous_end, self.previous_end.advance().clone(), 0304));
             };
             tok = self.current_tok.clone().unwrap();
             let var_name;
             if let TokType::Identifier(_, v) = tok.type_ {
                 var_name = v;
             } else {
-                return Err(Error::new(tok.pos_start, tok.pos_end, 0304u16));
+                return Err(Error::new(tok.pos_start, tok.pos_end, 0304));
             }
             pos_end = tok.pos_end.clone();
             let expr: ASTNode;
@@ -714,7 +714,7 @@ impl Parser {
                                         Position::new(),
                                         Position::new());
                 }
-                _ => return Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_start, 0306u16))
+                _ => return Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_start, 0306))
             }
             return Ok(ASTNode::new(ASTNodeType::VarAssign(ret, var_type, var_name),
                                    Vec::from([expr]),
@@ -754,7 +754,7 @@ impl Parser {
                 operators += if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 0)) { "&" } else { "|" };
                 self.next();
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
                 }
                 children.push(match self.comp_expr() {
                     Ok(n) => n,
@@ -774,17 +774,17 @@ impl Parser {
         if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TokType::QuestionMark {
             self.next();
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
             }
             let mut children = vec![node.clone()];
             return if self.current_tok.clone().unwrap().type_ == TokType::Colon {
                 // Only the false option given
                 self.next();
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
                 } else if self.current_tok.clone().unwrap().type_ == TokType::Newline {
                     let tok = self.current_tok.clone().unwrap();
-                    return Err(Error::new(tok.pos_start, tok.pos_end, 0305u16));
+                    return Err(Error::new(tok.pos_start, tok.pos_end, 0305));
                 }
 
                 children.push(match self.expr() {
@@ -802,10 +802,10 @@ impl Parser {
                 });
                 pos_end = children.clone().pop().unwrap().pos_end;
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0307u16));
+                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0307));
                 } else if self.current_tok.clone().unwrap().type_ != TokType::Colon {
                     let tok = self.current_tok.clone().unwrap();
-                    return Err(Error::new(tok.pos_start, tok.pos_end, 0307u16));
+                    return Err(Error::new(tok.pos_start, tok.pos_end, 0307));
                 }
                 self.next();
                 if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
@@ -830,7 +830,7 @@ impl Parser {
             let pos_start = self.current_tok.clone().unwrap().pos_start;
             self.next();
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0305u16));
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0305));
             }
             let node = match self.expr() {
                 Ok(n) => n,
@@ -877,7 +877,7 @@ impl Parser {
                 };
                 self.next();
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
                 }
                 children.push(match self.arith_expr() {
                     Ok(n) => n,
@@ -898,7 +898,7 @@ impl Parser {
             self.next();
             // End value of the range statement
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
             }
             let end_node = match self.arith_expr() {
                 Ok(n) => n,
@@ -911,7 +911,7 @@ impl Parser {
             self.next();
             // Getting the step value
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
             }
             let step = match self.arith_expr() {
                 Ok(n) => n,
@@ -940,7 +940,7 @@ impl Parser {
                 operators += if self.current_tok.clone().unwrap().type_ == TokType::Plus { "+" } else { "-" };
                 self.next();
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
                 }
                 children.push(match self.term() {
                     Ok(n) => n,
@@ -989,7 +989,7 @@ impl Parser {
                 };
                 self.next();
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
                 }
                 children.push(match self.power() {
                     Ok(n) => n,
@@ -1026,7 +1026,7 @@ impl Parser {
                 operators += "p";
                 self.next();
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+                    return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
                 }
                 children.push(match self.factor() {
                     Ok(n) => n,
@@ -1048,7 +1048,7 @@ impl Parser {
 
     fn factor(&mut self) -> Result<ASTNode, Error> {
         if self.current_tok.is_none() {
-            return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
+            return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305));
         }
         let tok = self.current_tok.clone().unwrap();
         let tok_type = tok.type_;
@@ -1077,14 +1077,14 @@ impl Parser {
             let pos_start = self.current_tok.clone().unwrap().pos_start;
             self.next();
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0308u16));
+                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0308));
             }
             out = match self.expr() {
                 Ok(n) => n,
                 Err(e) => return Err(e)
             };
             if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParen {
-                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0308u16));
+                return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0308));
             }
             out.pos_start = pos_start;
             out.pos_end = self.current_tok.clone().unwrap().pos_end;
@@ -1103,13 +1103,13 @@ impl Parser {
             if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 19)) {
                 self.next();
                 return if self.current_tok.is_none() {
-                    Err(Error::new(self.previous_end, self.previous_end.advance(), 0309u16))
+                    Err(Error::new(self.previous_end, self.previous_end.advance(), 0309))
                 } else if let TokType::Keyword(1, value) = self.current_tok.clone().unwrap().type_ {
                     let pos_end = self.current_tok.clone().unwrap().pos_end;
                     self.next();
                     Ok(ASTNode::new(ASTNodeType::As(value), vec![out.clone()], out.pos_start, pos_end))
                 } else {
-                    Err(Error::new(self.previous_end, self.previous_end.advance(), 0309u16))
+                    Err(Error::new(self.previous_end, self.previous_end.advance(), 0309))
                 };
             } else {
                 Ok(out)
@@ -1161,14 +1161,14 @@ impl Parser {
             // if(0.3) statement
             self.next();
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302u16));
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302));
             }
             children.push(match self.conditional_suite_generator() {
                 Ok(n) => n,
                 Err(e) => return Err(e)
             });
             if !(self.current_tok.clone().is_some() && self.current_tok.clone().unwrap().type_ == TokType::RParenCurly) {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16));
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303));
             }
             self.next();
 
@@ -1180,7 +1180,7 @@ impl Parser {
                 while self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 5)) {
                     self.next();
                     if self.current_tok.is_none() {
-                        return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16));
+                        return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303));
                     }
                     elif_exprs.push(match self.conditional_suite_generator() {
                         Ok(n) => n,
@@ -1197,10 +1197,10 @@ impl Parser {
                 let else_pos_start = self.current_tok.clone().unwrap().pos_start;
                 self.next();
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302u16));
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302));
                 }
                 if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
-                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302u16));
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302));
                 }
                 self.next();
                 let mut out = vec![];
@@ -1212,7 +1212,7 @@ impl Parser {
                     self.skip_newlines();
                 }
                 if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
-                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
                 }
                 children.push(ASTNode::new(ASTNodeType::Else, out, else_pos_start, self.current_tok.clone().unwrap().pos_end));
             }
@@ -1230,7 +1230,7 @@ impl Parser {
                 Err(e) => return Err(e)
             };
             if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
             }
             self.next();
             return Ok(ASTNode::new(ASTNodeType::While(loop_value), vec![expr.clone()], pos_start, expr.pos_end));
@@ -1249,22 +1249,22 @@ impl Parser {
                 Err(e) => return Err(e)
             };
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
             } else if self.current_tok.clone().unwrap().type_ == TokType::Set(false) {
                 self.next();
                 if self.current_tok.is_none() {
-                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0304u16));
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0304));
                 }
                 let tok = self.current_tok.clone().unwrap();
                 if let TokType::Identifier(_, v) = tok.type_ {
                     child_nodes.push(ASTNode::new(ASTNodeType::VarAssign(false, 0, v), vec![], tok.pos_start, tok.pos_end));
                     self.next();
                 } else {
-                    return Err(Error::new(tok.pos_start, tok.pos_end, 0304u16));
+                    return Err(Error::new(tok.pos_start, tok.pos_end, 0304));
                 }
             } else if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
                 let tok = self.current_tok.clone().unwrap();
-                return Err(Error::new(tok.pos_start, tok.pos_end, 0303u16));
+                return Err(Error::new(tok.pos_start, tok.pos_end, 0303));
             }
             self.next();
             child_nodes.push(range);
@@ -1276,10 +1276,10 @@ impl Parser {
                 self.skip_newlines();
             }
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
             } else if self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                 let tok = self.current_tok.clone().unwrap();
-                return Err(Error::new(tok.pos_start, tok.pos_end, 0308u16));
+                return Err(Error::new(tok.pos_start, tok.pos_end, 0308));
             }
             let pos_end = self.current_tok.clone().unwrap().pos_end;
             self.next();
@@ -1294,7 +1294,7 @@ impl Parser {
                 Err(e) => return Err(e)
             }];
             if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16))
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303))
             }
             self.next();
             self.skip_newlines();
@@ -1307,7 +1307,7 @@ impl Parser {
                 };
                 condition.pos_start = condition_pos_start;
                 if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
-                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16))
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303))
                 }
                 while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                     self.next();
@@ -1318,21 +1318,21 @@ impl Parser {
                     });
                 }
                 if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
-                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16))
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308))
                 }
                 self.next();
                 self.skip_newlines();
                 children.push(condition);
             }
             if self.current_tok.is_none() {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16))
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308))
             }
             if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 8)) {
                 let mut default = ASTNode::new_v(ASTNodeType::Else, self.current_tok.clone().unwrap().pos_start, Position::new());
                 self.next();
                 self.skip_newlines();
                 if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
-                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16))
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303))
                 }
                 while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                     self.next();
@@ -1343,7 +1343,7 @@ impl Parser {
                     });
                 }
                 if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
-                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16))
+                    return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308))
                 }
                 default.pos_end = self.current_tok.clone().unwrap().pos_end;
                 self.next();
@@ -1351,7 +1351,7 @@ impl Parser {
                 children.push(default);
             }
             if self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16))
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308))
             } else if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 8)) {
 
             }
@@ -1360,7 +1360,7 @@ impl Parser {
             return Ok(ASTNode::new(ASTNodeType::Case(loop_value), children, pos_start, pos_end))
         }
 
-        Err(Error::new(pos_start, tok.pos_end, 0305u16))
+        Err(Error::new(pos_start, tok.pos_end, 0305))
     }
 
     fn conditional_suite_generator(&mut self) -> Result<ASTNode, Error> {
@@ -1369,13 +1369,13 @@ impl Parser {
             Err(e) => return Err(e)
         };
         if self.current_tok.is_none() {
-            return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16));
+            return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303));
         } else if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
-            return Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0303u16));
+            return Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0303));
         }
         self.next();
         if self.current_tok.is_none() {
-            return Err(Error::new(self.previous_end, self.previous_end.advance(), 0305u16));
+            return Err(Error::new(self.previous_end, self.previous_end.advance(), 0305));
         }
 
         let mut out: Vec<ASTNode> = vec![];
@@ -1387,7 +1387,7 @@ impl Parser {
             self.skip_newlines();
         }
         if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
-            return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
+            return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
         }
         expr.child_nodes.extend(out);
         self.skip_newlines();
