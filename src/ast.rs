@@ -1,6 +1,6 @@
 //! Contains the lexer and parser for fck. There are language agnostic and as such cannot use regex.
 
-use crate::tokens::*;
+use crate::tokens::TokType;
 use crate::bases::*;
 use crate::err_wrn::*;
 use lang::keywords::Keywords;
@@ -62,7 +62,7 @@ impl Lexer {
                 let pos_start = self.current_pos.clone();
                 if self.current_char == '\n' {
                     if !(self.char_index == self.split_text.len() - 1) {
-                        tokens.push(Token::new(TT_NEWLINE, "".into(), pos_start,
+                        tokens.push(Token::new(TokType::Newline, pos_start,
                                                self.current_pos.clone()));
                         self.current_pos.advance_ln();
                     }
@@ -71,7 +71,10 @@ impl Lexer {
                     self.advance();
                     if self.current_char == '!' {
                         self.advance();
-                        let mut lang_code = self.make_identifier().value;
+                        let mut  lang_code = match self.make_identifier().type_ {
+                            TokType::Identifier(_, v) => v,
+                            _ => unreachable!()
+                        };
                         match get_associated_keywords(lang_code.as_str()) {
                             Some(k) => self.keywords = k,
                             None => return Err(Error::new(pos_start,
@@ -84,35 +87,35 @@ impl Lexer {
                         self.skip_comment();
                     }
                 } else {
-                    let tok_type: u8 = match self.current_char {
-                        '+' => TT_PLUS,
-                        '-' => TT_MINUS,
-                        '%' => TT_MOD,
-                        '(' => TT_LPAREN,
-                        ')' => TT_RPAREN,
-                        '{' => TT_LPAREN_CURLY,
-                        '}' => TT_RPAREN_CURLY,
-                        ',' => TT_COMMA,
-                        '[' => TT_LPAREN_SQUARE,
-                        ']' => TT_RPAREN_SQUARE,
-                        ';' => TT_NEWLINE,
-                        '?' => TT_QUESTION_MARK,
-                        '.' => TT_DOT,
-                        _ => 0
+                    let tok_type_opt = match self.current_char {
+                        '+' => Some(TokType::Plus),
+                        '-' => Some(TokType::Minus),
+                        '%' => Some(TokType::Mod),
+                        '(' => Some(TokType::LParen),
+                        ')' => Some(TokType::RParen),
+                        '{' => Some(TokType::LParenCurly),
+                        '}' => Some(TokType::RParenCurly),
+                        ',' => Some(TokType::Comma),
+                        '[' => Some(TokType::LParenSquare),
+                        ']' => Some(TokType::RParenSquare),
+                        ';' => Some(TokType::Newline),
+                        '?' => Some(TokType::QuestionMark),
+                        '.' => Some(TokType::Dot),
+                        _ => None
                     };
-                    if tok_type > 0 {
+                    if let Some(tok_type) = tok_type_opt {
                         self.advance();
-                        tokens.push(Token::new(tok_type, "".into(), pos_start,
+                        tokens.push(Token::new(tok_type, pos_start,
                                                self.current_pos.clone()));
                         continue;
                     }
 
                     let tok = match match self.current_char {
                         '!' => self.make_not_equals(),
-                        '<' => self.single_double_token('=', TT_LT, TT_LTE),
-                        '>' => self.single_double_token('=', TT_GT, TT_GTE),
-                        '*' => self.single_double_token('*', TT_MULT, TT_POW),
-                        '/' => self.single_double_token('/', TT_DIV, TT_FDIV),
+                        '<' => self.single_double_token('=', TokType::LT, TokType::LTE),
+                        '>' => self.single_double_token('=', TokType::GT, TokType::GTE),
+                        '*' => self.single_double_token('*', TokType::Mult, TokType::Pow),
+                        '/' => self.single_double_token('/', TokType::Div, TokType::FDiv),
                         ':' => self.make_set(),
                         '=' => self.make_equals(),
                         '@' => self.make_loop_identifier(),
@@ -150,8 +153,15 @@ impl Lexer {
             self.advance()
         }
 
-        return Token::new(has_dot as u8, value, pos_start,
-                          self.current_pos.clone());
+        return Token::new(
+            if has_dot {
+                TokType::Float(value.parse::<f64>().unwrap())
+            } else {
+                TokType::Int(value.parse::<u64>().unwrap())
+            },
+            pos_start,
+            self.current_pos.clone()
+        );
     }
     
     /// Called by `self.make_tokens` when a alphabetic character is found. This function either
@@ -167,12 +177,12 @@ impl Lexer {
             self.advance();
         }
         
-        let (value, tok_type) = match self.keywords.contains(&keyword) {
-            Some(val) => (val, TT_KEYWORD),
-            None => (keyword, TT_IDENTIFIER)
+        let tok_type = match self.keywords.contains(&keyword) {
+            Some((list, pos)) => TokType::Keyword(list, pos),
+            None => TokType::Identifier(self.keyword_code.clone(), keyword)
         };
         
-        return Token::new(tok_type, value, pos_start, self.current_pos.clone());
+        return Token::new(tok_type, pos_start, self.current_pos.clone());
     }
     
     /// Called by `self.make_tokens` when a '@' character is found. This advances and calls
@@ -181,8 +191,18 @@ impl Lexer {
     fn make_loop_identifier(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         self.advance();
-        Ok(Token::new(TT_AT, self.make_identifier().value, pos_start,
-                      self.current_pos.clone()))
+        let id = self.make_identifier();
+        match id.type_ {
+            TokType::Identifier(_, v) => Ok(
+                Token::new(TokType::At(v),
+                           pos_start,
+                           self.current_pos.clone())
+            ),
+            TokType::Keyword(_, _) => Err(
+                Error::new(id.pos_start, id.pos_end, 0401)
+            ),
+            _ => unreachable!()
+        }
     }
 
     /// Called by `self.make_tokens` when an opening string delimiter is found. Parses the string
@@ -213,7 +233,7 @@ impl Lexer {
             self.advance()
         }
         self.advance();
-        Ok(Token::new(TT_STRING, out, pos_start, self.current_pos.clone()))
+        Ok(Token::new(TokType::String(out), pos_start, self.current_pos.clone()))
     }
 
     /// Called by `self.make_tokens` when a '!' is found. Will check for a "!=", "!!", or character
@@ -223,10 +243,10 @@ impl Lexer {
         self.advance();
         if self.current_char == '=' {
             self.advance();
-            return Ok(Token::new(TT_NE, "".into(), pos_start,
+            return Ok(Token::new(TokType::NE, pos_start,
                                  self.current_pos.clone()));
         } else if self.current_char.is_alphabetic() || "_!".contains(self.current_char) {
-            return Ok(Token::new(TT_NOT, "".into(), pos_start,
+            return Ok(Token::new(TokType::Not, pos_start,
                                  self.current_pos.clone()));
         }
         return Err(Error::new(pos_start, self.current_pos.clone(), 0202u16));
@@ -241,28 +261,28 @@ impl Lexer {
         if self.current_char == '=' {
             self.advance();
             return Ok(
-                Token::new(TT_EQ, "".into(),
+                Token::new(TokType::Eq,
                            pos_start,
                            self.current_pos.clone()));
         }
         // self.advance();
-        return Err(Error::new(pos_start, self.current_pos.clone(), 0202u16));
+        return Err(Error::new(pos_start, self.current_pos.clone(), 0202));
     }
 
     /// General function called by `self.make_tokens` when we want to check for one of two tokens
     /// that start with the same character with the second token being followed by another character
     /// such as `//` or `<=`
-    fn single_double_token(&mut self, second_char: char, single_type: u8, double_type: u8) -> Result<Token, Error> {
+    fn single_double_token(&mut self, second_char: char, single_type: TokType, double_type: TokType) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         self.advance();
-        let mut tok_type = 0;
+        let mut tok_type;
         if self.current_char == second_char {
             self.advance();
             tok_type = double_type;
         } else {
             tok_type = single_type;
         }
-        return Ok(Token::new(tok_type, "".into(), pos_start,
+        return Ok(Token::new(tok_type, pos_start,
                              self.current_pos.clone()));
     }
 
@@ -274,28 +294,27 @@ impl Lexer {
         self.advance();
         let mut tok_type = 0u8;
         if !":>".contains(self.current_char) {
-            tok_type += match self.current_char {
+            tok_type = match self.current_char {
                 '+' => {
                     self.advance();
-                    TT_PLUS
+                    1
                 }
                 '-' => {
                     self.advance();
-                    TT_MINUS
+                    2
                 }
                 '%' => {
                     self.advance();
-                    TT_MOD
+                    3
                 }
                 '*' => {
                     self.advance();
                     match self.current_char {
                         '*' => {
                             self.advance();
-                            TT_POW
+                            4
                         }
-                        ':' => TT_MULT,
-                        '>' => TT_MULT,
+                        ':'|'>' => 5,
                         _ => return Err(Error::new(pos_start, self.current_pos.clone(), 0202u16))
                     }
                 }
@@ -304,28 +323,39 @@ impl Lexer {
                     match self.current_char {
                         '/' => {
                             self.advance();
-                            TT_FDIV
+                            6
                         }
-                        ':' => TT_DIV,
-                        '>' => TT_DIV,
+                        ':'|'>' => 7,
                         _ => return Err(Error::new(pos_start, self.current_pos.clone(), 0202u16))
                     }
                 }
-                _ => return Ok(Token::new(TT_COLON, "".into(), pos_start, self.current_pos.clone()))
-            } - 2;
+                _ => return Ok(Token::new(TokType::Colon, pos_start, self.current_pos.clone()))
+            };
         }
-        tok_type += match self.current_char {
-            ':' => 32,
-            '>' => 40,
+        let ret = match self.current_char {
+            ':' => false,
+            '>' => true,
             _ => {
                 self.advance();
-                return Ok(Token::new(TT_COLON, "".into(), pos_start,
+                return Ok(Token::new(TokType::Colon, pos_start,
                                      self.current_pos.clone()));
             }
         };
         self.advance();
-        return Ok(Token::new(tok_type, "".into(), pos_start,
-                             self.current_pos.clone()));
+        return Ok(Token::new(
+            match tok_type {
+                0 => TokType::Set(ret),
+                1 => TokType::SetPlus(ret),
+                2 => TokType::SetMinus(ret),
+                3 => TokType::SetMod(ret),
+                4 => TokType::SetPow(ret),
+                5 => TokType::SetMult(ret),
+                6 => TokType::SetFDiv(ret),
+                7 => TokType::SetDiv(ret),
+                _ => unreachable!()
+            },
+            pos_start,
+            self.current_pos.clone()));
     }
 
     /// Called by `self.make_tokens` when a comment is found. This skips the comment. Big surprise
@@ -414,7 +444,7 @@ impl Parser {
     /// Skips new lines. Don't care about them
     fn skip_newlines(&mut self) {
         while self.current_tok.is_some() {
-            if self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+            if self.current_tok.clone().unwrap().type_ == TokType::Newline {
                 self.next()
             } else {
                 return;
@@ -448,7 +478,7 @@ impl Parser {
                 Ok(ast) => out.push(ast),
                 Err(error) => return Err(error)
             }
-            if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_NEWLINE {
+            if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::Newline {
                 let tok = self.current_tok.clone().unwrap();
                 return Err(Error::new(tok.pos_start,
                                       tok.pos_end,
@@ -469,13 +499,13 @@ impl Parser {
         let tok = self.current_tok.clone().unwrap();
 
         // return keyword
-        if tok.matches(TT_KEYWORD, "0.15") {
+        if tok.matches(TokType::Keyword(0, 15)) {
             self.next();
-            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
                 return Ok(ASTNode::new_v(ASTNodeType::Return(false),
                                        pos_start,
                                        pos_end));
-            } else if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.3" /* if */) {
+            } else if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 3) /* if */) {
                 self.safe = true;
                 self.next();
                 println!("{:?}", self.intermediate);
@@ -486,14 +516,14 @@ impl Parser {
                     Ok(n) => n,
                     Err(e) => return Err(e)
                 };
-                return if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+                return if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
                     self.safe = false;
                     self.finalise();
                     Ok(ASTNode::new(ASTNodeType::Return(true),
                                     vec![conditional],
                                     pos_start,
                                     pos_end))
-                } else if self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+                } else if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
                     Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0303u16))
                 } else {
                     println!("{:?}", self.intermediate);
@@ -504,12 +534,12 @@ impl Parser {
                         Err(e) => return Err(e)
                     };
                     pos_end = ret_value.clone().pos_end;
-                    if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+                    if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
                         Ok(ASTNode::new(ASTNodeType::Return(false),
                                         vec![ret_value],
                                         pos_start,
                                         pos_end))
-                    } else if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.3") {
+                    } else if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 3)) {
                         self.next();
                         let conditional = match self.comp_expr() {
                             Ok(n) => n,
@@ -530,13 +560,13 @@ impl Parser {
                 Err(e) => return Err(e)
             };
 
-            return if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+            return if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
                 pos_end = expr.pos_end.clone();
                 Ok(ASTNode::new(ASTNodeType::Return(false),
                                 Vec::from([expr]),
                                 pos_start,
                                 pos_end))
-            } else if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.3") {
+            } else if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 3)) {
                 self.next();
                 let conditional = match self.comp_expr() {
                     Ok(n) => n,
@@ -553,57 +583,64 @@ impl Parser {
         }
 
         // continue(0.16) and break(0.17) keywords
-        if tok.matches(TT_KEYWORD, "0.16") || tok.matches(TT_KEYWORD, "0.17") {
-            let pos_start = self.current_tok.clone().unwrap().pos_start;
-            let mut pos_end = self.current_tok.clone().unwrap().pos_end;
-            let mut out: ASTNode;
-
+        // TODO: The fuck is this?
+        let mut out;
+        if let TokType::At(v) = tok.type_ {
+            self.safe = true;
             self.next();
-            if self.current_tok.is_some() {
-                if self.current_tok.clone().unwrap().type_ == TT_AT {
-                    out = ASTNode::new_v(match &self.current_tok.clone().unwrap().value as &str {
-                        "0.16" => ASTNodeType::Continue,
-                        "0.17" => ASTNodeType::Break,
+            if self.current_tok.is_none() {
+                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0310))
+            }
+            let op = self.current_tok.clone().unwrap();
+            if let TokType::Keyword(0, index) = op.type_ {
+                if index == 16 || index == 17 {
+                    self.finalise();
+                    out = ASTNode::new_v(match index {
+                        16 => ASTNodeType::Continue(Some(v)),
+                        17 => ASTNodeType::Break(Some(v)),
                         _ => unreachable!()
-                    }(Some(self.current_tok.clone().unwrap().value)), pos_start, self.current_tok.clone().unwrap().pos_end,
-                    );
+                    }, tok.pos_start, op.pos_end);
+                    self.next();
                 } else {
-                    out = ASTNode::new_v(match &self.current_tok.clone().unwrap().value as &str {
-                        "0.16" => ASTNodeType::Continue,
-                        "0.17" => ASTNodeType::Break,
-                        _ => unreachable!()
-                    }(None), pos_start, pos_end,
-                    );
+                    self.put_back();
+                    return self.expr()
                 }
             } else {
-                out = ASTNode::new_v(match &self.current_tok.clone().unwrap().value as &str {
-                    "0.16" => ASTNodeType::Continue,
-                    "0.17" => ASTNodeType::Break,
+                self.put_back();
+                return self.expr()
+            }
+        } else if let TokType::Keyword(0, index) = tok.type_ {
+            if index == 16 || index == 17 {
+                out = ASTNode::new_v(match index {
+                    16 => ASTNodeType::Continue(None),
+                    17 => ASTNodeType::Break(None),
                     _ => unreachable!()
-                }(None), pos_start, pos_end,
-                );
-            }
-            if self.current_tok.is_some() {
-                if !self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.3") {
-                    return Err(Error::new(pos_start, self.current_tok.clone().unwrap().pos_end, 0302u16));
-                }
+                }, tok.pos_start, tok.pos_end);
                 self.next();
-                out.child_nodes = vec![match self.comp_expr() {
-                    Ok(n) => n,
-                    Err(e) => return Err(e)
-                }];
-                if self.current_tok.is_some() {
-                    return Err(Error::new(pos_start, self.current_tok.clone().unwrap().pos_end, 0301u16));
-                }
-            }
-            return if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
-                Ok(out)
             } else {
-                Err(Error::new(pos_start, pos_end, 0301u16))
+                return self.expr()
+            }
+        } else {
+            return self.expr()
+        }
+        if self.current_tok.is_some() {
+            if !self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 3)) {
+                return Err(Error::new(pos_start, self.current_tok.clone().unwrap().pos_end, 0302u16));
+            }
+            self.next();
+            out.child_nodes = vec![match self.comp_expr() {
+                Ok(n) => n,
+                Err(e) => return Err(e)
+            }];
+            if self.current_tok.is_some() {
+                return Err(Error::new(pos_start, self.current_tok.clone().unwrap().pos_end, 0301u16));
             }
         }
-
-        self.expr()
+        if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
+            Ok(out)
+        } else {
+            Err(Error::new(pos_start, pos_end, 0301u16))
+        }
     }
 
     fn expr(&mut self) -> Result<ASTNode, Error> {
@@ -622,16 +659,21 @@ impl Parser {
 
         // check for new variable assignments
         if tok.matches_list(1) {
-            let var_type = tok.value.get(2..).unwrap().parse::<u8>().unwrap();
+            let var_type = match tok.type_ {
+                TokType::Keyword(_, v) => v,
+                _ => unreachable!()
+            };
             self.next();
             if self.current_tok.is_none() {
                 return Err(Error::new(self.previous_end, self.previous_end.advance().clone(), 0304u16));
             };
             tok = self.current_tok.clone().unwrap();
-            if tok.type_ != TT_IDENTIFIER {
+            let var_name;
+            if let TokType::Identifier(_, v) = tok.type_ {
+                var_name = v;
+            } else {
                 return Err(Error::new(tok.pos_start, tok.pos_end, 0304u16));
             }
-            let var_name = tok.value.clone();
             pos_end = tok.pos_end.clone();
             let expr: ASTNode;
 
@@ -649,27 +691,14 @@ impl Parser {
             let mut ret = false;
             let mut pos_end = self.current_tok.clone().unwrap().pos_end;
             match self.current_tok.clone().unwrap().type_ {
-                TT_SET => {
+                TokType::Set(r) => {
+                    ret = r;
                     self.next();
-                    if self.current_tok.is_none() {
-                        return Err(Error::new(self.previous_end, self.previous_end.advance().clone(), 0305u16));
-                    } else {
-                        expr = match self.expr() {
-                            Ok(ast) => ast,
-                            Err(e) => return Err(e)
-                        };
-                        pos_end = expr.pos_end;
-                    }
-                }
-                TT_SET_RET => {
-                    ret = true;
-                    pos_end = self.current_tok.clone().unwrap().pos_end.clone();
-                    self.next();
-                    if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+                    if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
                         expr = ASTNode::new_v(default_values(var_type),
                                             Position::new(),
                                             Position::new());
-                        if self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+                        if self.current_tok.clone().unwrap().type_ == TokType::Newline {
                             self.next();
                         }
                     } else {
@@ -680,8 +709,7 @@ impl Parser {
                         pos_end = expr.pos_end;
                     }
                 }
-                TT_NEWLINE => {
-                    // pos_end = self.current_tok.clone().unwrap().pos_end;
+                TokType::Newline => {
                     expr = ASTNode::new_v(default_values(var_type),
                                         Position::new(),
                                         Position::new());
@@ -697,8 +725,7 @@ impl Parser {
         // TODO: static(previously silent) variable assignments
 
         // Variable access and reassignment
-        if tok.type_ == TT_IDENTIFIER {
-            let var_name = tok.value.clone();
+        if let TokType::Identifier(_, var_name) = tok.type_ {
             self.safe = true;
             self.next();
             if self.current_tok.is_none() {
@@ -720,11 +747,11 @@ impl Parser {
         }
 
         // 0.0 is 'and', 0.1 is 'or'
-        if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.0") || self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.1") {
+        if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 0)) || self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 1)) {
             let mut children = vec![node];
             let mut operators = String::new();
-            while self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.0") || self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.1") {
-                operators += if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.0") { "&" } else { "|" };
+            while self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 0)) || self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 1)) {
+                operators += if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 0)) { "&" } else { "|" };
                 self.next();
                 if self.current_tok.is_none() {
                     return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
@@ -744,18 +771,18 @@ impl Parser {
                                    pos_end));
         }
 
-        if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TT_QUESTION_MARK {
+        if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TokType::QuestionMark {
             self.next();
             if self.current_tok.is_none() {
                 return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
             }
             let mut children = vec![node.clone()];
-            return if self.current_tok.clone().unwrap().type_ == TT_COLON {
+            return if self.current_tok.clone().unwrap().type_ == TokType::Colon {
                 // Only the false option given
                 self.next();
                 if self.current_tok.is_none() {
                     return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
-                } else if self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+                } else if self.current_tok.clone().unwrap().type_ == TokType::Newline {
                     let tok = self.current_tok.clone().unwrap();
                     return Err(Error::new(tok.pos_start, tok.pos_end, 0305u16));
                 }
@@ -776,12 +803,12 @@ impl Parser {
                 pos_end = children.clone().pop().unwrap().pos_end;
                 if self.current_tok.is_none() {
                     return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0307u16));
-                } else if self.current_tok.clone().unwrap().type_ != TT_COLON {
+                } else if self.current_tok.clone().unwrap().type_ != TokType::Colon {
                     let tok = self.current_tok.clone().unwrap();
                     return Err(Error::new(tok.pos_start, tok.pos_end, 0307u16));
                 }
                 self.next();
-                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TT_NEWLINE {
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
                     // Only the true option given
                     return Ok(ASTNode::new(ASTNodeType::Ternary(true, false), children, pos_start, pos_end));
                 }
@@ -799,7 +826,7 @@ impl Parser {
 
     fn comp_expr(&mut self) -> Result<ASTNode, Error> {
         // 0.2 is 'not'
-        if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.2") {
+        if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 2)) {
             let pos_start = self.current_tok.clone().unwrap().pos_start;
             self.next();
             if self.current_tok.is_none() {
@@ -824,18 +851,28 @@ impl Parser {
             return Ok(node);
         }
 
-        if 23 < self.current_tok.clone().unwrap().type_ && self.current_tok.clone().unwrap().type_ < 30 {
+        if self.current_tok.clone().unwrap().type_ == TokType::Eq ||
+                self.current_tok.clone().unwrap().type_ == TokType::NE ||
+                self.current_tok.clone().unwrap().type_ == TokType::LT ||
+                self.current_tok.clone().unwrap().type_ == TokType::GT ||
+                self.current_tok.clone().unwrap().type_ == TokType::LTE ||
+                self.current_tok.clone().unwrap().type_ == TokType::GTE {
             let mut operators = String::new();
             let pos_start = node.pos_start.clone();
             let mut children = vec![node];
-            while 23 < self.current_tok.clone().unwrap().type_ && self.current_tok.clone().unwrap().type_ < 30 {
+            while self.current_tok.clone().unwrap().type_ == TokType::Eq ||
+                self.current_tok.clone().unwrap().type_ == TokType::NE ||
+                self.current_tok.clone().unwrap().type_ == TokType::LT ||
+                self.current_tok.clone().unwrap().type_ == TokType::GT ||
+                self.current_tok.clone().unwrap().type_ == TokType::LTE ||
+                self.current_tok.clone().unwrap().type_ == TokType::GTE {
                 operators += match self.current_tok.clone().unwrap().type_ {
-                    24 => "e", // ==
-                    25 => "n", // !=
-                    26 => "l", // <
-                    27 => "g", // >
-                    28 => "L", // <=
-                    29 => "G", // >=
+                    TokType::Eq => "e", // ==
+                    TokType::NE => "n", // !=
+                    TokType::LT => "l", // <
+                    TokType::GT => "g", // >
+                    TokType::LTE => "L", // <=
+                    TokType::GTE => "G", // >=
                     _ => unreachable!()
                 };
                 self.next();
@@ -855,7 +892,7 @@ impl Parser {
                                    children,
                                    pos_start,
                                    pos_end));
-        } else if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.10") {
+        } else if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 10)) {
             let start_node = node;
             let pos_start = start_node.clone().pos_start;
             self.next();
@@ -868,7 +905,7 @@ impl Parser {
                 Err(e) => return Err(e)
             };
             // Checking for the end of the range statement
-            if self.current_tok.is_none() || !self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.12") {
+            if self.current_tok.is_none() || !self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 12)) {
                 return Ok(ASTNode::new(ASTNodeType::Range, vec![start_node, end_node.clone()], pos_start, end_node.pos_end));
             }
             self.next();
@@ -895,12 +932,12 @@ impl Parser {
             return Ok(node);
         }
 
-        if self.current_tok.clone().unwrap().type_ == TT_PLUS || self.current_tok.clone().unwrap().type_ == TT_MINUS {
+        if self.current_tok.clone().unwrap().type_ == TokType::Plus || self.current_tok.clone().unwrap().type_ == TokType::Minus {
             let mut operators = String::new();
             let pos_start = node.pos_start.clone();
             let mut children = vec![node];
-            while self.current_tok.clone().unwrap().type_ == TT_PLUS || self.current_tok.clone().unwrap().type_ == TT_MINUS {
-                operators += if self.current_tok.clone().unwrap().type_ == TT_PLUS { "+" } else { "-" };
+            while self.current_tok.clone().unwrap().type_ == TokType::Plus || self.current_tok.clone().unwrap().type_ == TokType::Minus {
+                operators += if self.current_tok.clone().unwrap().type_ == TokType::Plus { "+" } else { "-" };
                 self.next();
                 if self.current_tok.is_none() {
                     return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0305u16));
@@ -932,22 +969,22 @@ impl Parser {
             return Ok(node);
         }
 
-        if self.current_tok.clone().unwrap().type_ == TT_MULT ||
-            self.current_tok.clone().unwrap().type_ == TT_DIV ||
-            self.current_tok.clone().unwrap().type_ == TT_FDIV ||
-            self.current_tok.clone().unwrap().type_ == TT_MOD {
+        if self.current_tok.clone().unwrap().type_ == TokType::Mult ||
+            self.current_tok.clone().unwrap().type_ == TokType::Div ||
+            self.current_tok.clone().unwrap().type_ == TokType::FDiv ||
+            self.current_tok.clone().unwrap().type_ == TokType::Mod {
             let mut operators = String::new();
             let pos_start = node.pos_start.clone();
             let mut children = vec![node];
-            while self.current_tok.clone().unwrap().type_ == TT_MULT ||
-                self.current_tok.clone().unwrap().type_ == TT_DIV ||
-                self.current_tok.clone().unwrap().type_ == TT_FDIV ||
-                self.current_tok.clone().unwrap().type_ == TT_MOD {
+            while self.current_tok.clone().unwrap().type_ == TokType::Mult ||
+                self.current_tok.clone().unwrap().type_ == TokType::Div ||
+                self.current_tok.clone().unwrap().type_ == TokType::FDiv ||
+                self.current_tok.clone().unwrap().type_ == TokType::Mod {
                 operators += match self.current_tok.clone().unwrap().type_ {
-                    TT_MULT => "*",
-                    TT_DIV => "/",
-                    TT_FDIV => "f",
-                    TT_MOD => "%",
+                    TokType::Mult => "*",
+                    TokType::Div  => "/",
+                    TokType::FDiv => "f",
+                    TokType::Mod  => "%",
                     _ => unreachable!()
                 };
                 self.next();
@@ -981,11 +1018,11 @@ impl Parser {
             return Ok(node);
         }
 
-        if self.current_tok.clone().unwrap().type_ == TT_POW {
+        if self.current_tok.clone().unwrap().type_ == TokType::Pow {
             let mut operators = String::new();
             let pos_start = node.pos_start.clone();
             let mut children = vec![node];
-            while self.current_tok.clone().unwrap().type_ == TT_POW {
+            while self.current_tok.clone().unwrap().type_ == TokType::Pow {
                 operators += "p";
                 self.next();
                 if self.current_tok.is_none() {
@@ -1016,11 +1053,11 @@ impl Parser {
         let tok = self.current_tok.clone().unwrap();
         let tok_type = tok.type_;
         let pos_start = tok.pos_start;
-        if tok_type == TT_PLUS || tok_type == TT_MINUS || tok_type == TT_NOT {
+        if tok_type == TokType::Plus || tok_type == TokType::Minus || tok_type == TokType::Not {
             let node_type = match tok_type {
-                TT_PLUS => ASTNodeType::UnaryPlus,
-                TT_MINUS => ASTNodeType::UnaryMinus,
-                TT_NOT => ASTNodeType::UnaryNot,
+                TokType::Plus => ASTNodeType::UnaryPlus,
+                TokType::Minus => ASTNodeType::UnaryMinus,
+                TokType::Not => ASTNodeType::UnaryNot,
                 _ => unreachable!()
             };
             self.next();
@@ -1036,7 +1073,7 @@ impl Parser {
 
     fn call(&mut self) -> Result<ASTNode, Error> {
         let mut out: ASTNode;
-        if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TT_LPAREN {
+        if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TokType::LParen {
             let pos_start = self.current_tok.clone().unwrap().pos_start;
             self.next();
             if self.current_tok.is_none() {
@@ -1046,7 +1083,7 @@ impl Parser {
                 Ok(n) => n,
                 Err(e) => return Err(e)
             };
-            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN {
+            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParen {
                 return Err(Error::new(self.previous_end.clone(), self.previous_end.advance(), 0308u16));
             }
             out.pos_start = pos_start;
@@ -1063,12 +1100,11 @@ impl Parser {
             Ok(out)
         } else {
             // as(0.19)
-            if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.19") {
+            if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 19)) {
                 self.next();
                 return if self.current_tok.is_none() {
                     Err(Error::new(self.previous_end, self.previous_end.advance(), 0309u16))
-                } else if self.current_tok.clone().unwrap().type_ == TT_KEYWORD && self.current_tok.clone().unwrap().value.chars().nth(0).unwrap() == '1' {
-                    let value = self.current_tok.clone().unwrap().value.get(2..).unwrap().to_string().parse::<u8>().unwrap();
+                } else if let TokType::Keyword(1, value) = self.current_tok.clone().unwrap().type_ {
                     let pos_end = self.current_tok.clone().unwrap().pos_end;
                     self.next();
                     Ok(ASTNode::new(ASTNodeType::As(value), vec![out.clone()], out.pos_start, pos_end))
@@ -1085,23 +1121,23 @@ impl Parser {
         let tok = self.current_tok.clone().unwrap().clone();
         let pos_start = tok.pos_start.clone();
 
-        let out = if tok.matches(TT_KEYWORD, "0.20") {
+        let out = if tok.matches(TokType::Keyword(0, 20)) {
             ASTNode::new_v(ASTNodeType::Bool(true), pos_start, tok.pos_end)
-        } else if tok.matches(TT_KEYWORD, "0.21") {
+        } else if tok.matches(TokType::Keyword(0, 21)) {
             ASTNode::new_v(ASTNodeType::Bool(false), pos_start, tok.pos_end)
         } else {
             match tok.type_ {
-                TT_AT => {
+                TokType::At(v) => {
                     self.next();
-                    match self.nameable_methods(Some(tok.value)) {
+                    match self.nameable_methods(Some(v)) {
                         Ok(n) => n,
                         Err(e) => return Err(e)
                     }
                 }
-                TT_INT => ASTNode::new_v(ASTNodeType::Int(tok.value.parse::<i64>().unwrap()), pos_start, tok.pos_end),
-                TT_FLOAT => ASTNode::new_v(ASTNodeType::Float(tok.value.parse::<f64>().unwrap()), pos_start, tok.pos_end),
-                TT_STRING => ASTNode::new_v(ASTNodeType::String(tok.value), pos_start, tok.pos_end),
-                TT_IDENTIFIER => ASTNode::new_v(ASTNodeType::VarAccess(tok.value), pos_start, tok.pos_end),
+                TokType::Int(v) => ASTNode::new_v(ASTNodeType::Int(v as i64), pos_start, tok.pos_end),
+                TokType::Float(v) => ASTNode::new_v(ASTNodeType::Float(v), pos_start, tok.pos_end),
+                TokType::String(v) => ASTNode::new_v(ASTNodeType::String(v), pos_start, tok.pos_end),
+                TokType::Identifier(_, v) => ASTNode::new_v(ASTNodeType::VarAccess(v), pos_start, tok.pos_end),
                 _ => {
                     match self.nameable_methods(None) {
                         Ok(n) => n,
@@ -1119,7 +1155,7 @@ impl Parser {
         let pos_start = tok.pos_start.clone();
 
         // if(0.3) elif(0.5) else(0.4)
-        if tok.matches(TT_KEYWORD, "0.3") {
+        if tok.matches(TokType::Keyword(0, 3)) {
             let mut children = vec![];
 
             // if(0.3) statement
@@ -1131,7 +1167,7 @@ impl Parser {
                 Ok(n) => n,
                 Err(e) => return Err(e)
             });
-            if !(self.current_tok.clone().is_some() && self.current_tok.clone().unwrap().type_ == TT_RPAREN_CURLY) {
+            if !(self.current_tok.clone().is_some() && self.current_tok.clone().unwrap().type_ == TokType::RParenCurly) {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16));
             }
             self.next();
@@ -1139,9 +1175,9 @@ impl Parser {
             self.skip_newlines();
 
             // Check for elif(0.5) statements
-            if self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.5") {
+            if self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 5)) {
                 let mut elif_exprs = vec![];
-                while self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.5") {
+                while self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 5)) {
                     self.next();
                     if self.current_tok.is_none() {
                         return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16));
@@ -1157,25 +1193,25 @@ impl Parser {
             self.skip_newlines();
 
             // else(0.4)
-            if self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.4") {
+            if self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 4)) {
                 let else_pos_start = self.current_tok.clone().unwrap().pos_start;
                 self.next();
                 if self.current_tok.is_none() {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302u16));
                 }
-                if self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+                if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302u16));
                 }
                 self.next();
                 let mut out = vec![];
-                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                     out.push(match self.expr() {
                         Ok(n) => n,
                         Err(e) => return Err(e)
                     });
                     self.skip_newlines();
                 }
-                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
                 }
                 children.push(ASTNode::new(ASTNodeType::Else, out, else_pos_start, self.current_tok.clone().unwrap().pos_end));
@@ -1187,13 +1223,13 @@ impl Parser {
         }
 
         // while(0.13)
-        if tok.matches(TT_KEYWORD, "0.13") {
+        if tok.matches(TokType::Keyword(0, 13)) {
             self.next();
             let expr = match self.conditional_suite_generator() {
                 Ok(n) => n,
                 Err(e) => return Err(e)
             };
-            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
             }
             self.next();
@@ -1201,7 +1237,7 @@ impl Parser {
         }
 
         // iterate(0.9)
-        if tok.matches(TT_KEYWORD, "0.9") {
+        if tok.matches(TokType::Keyword(0, 9)) {
             let mut child_nodes = vec![];
             self.next();
             let range = match self.comp_expr() {
@@ -1214,24 +1250,25 @@ impl Parser {
             };
             if self.current_tok.is_none() {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
-            } else if self.current_tok.clone().unwrap().type_ == TT_SET {
+            } else if self.current_tok.clone().unwrap().type_ == TokType::Set(false) {
                 self.next();
                 if self.current_tok.is_none() {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0304u16));
                 }
                 let tok = self.current_tok.clone().unwrap();
-                if tok.type_ != TT_IDENTIFIER {
+                if let TokType::Identifier(_, v) = tok.type_ {
+                    child_nodes.push(ASTNode::new(ASTNodeType::VarAssign(false, 0, v), vec![], tok.pos_start, tok.pos_end));
+                    self.next();
+                } else {
                     return Err(Error::new(tok.pos_start, tok.pos_end, 0304u16));
                 }
-                child_nodes.push(ASTNode::new(ASTNodeType::VarAssign(false, 0, tok.value), vec![], tok.pos_start, tok.pos_end));
-                self.next();
-            } else if self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+            } else if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
                 let tok = self.current_tok.clone().unwrap();
                 return Err(Error::new(tok.pos_start, tok.pos_end, 0303u16));
             }
             self.next();
             child_nodes.push(range);
-            while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+            while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                 child_nodes.push(match self.expr() {
                     Ok(n) => n,
                     Err(e) => return Err(e)
@@ -1240,7 +1277,7 @@ impl Parser {
             }
             if self.current_tok.is_none() {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
-            } else if self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+            } else if self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                 let tok = self.current_tok.clone().unwrap();
                 return Err(Error::new(tok.pos_start, tok.pos_end, 0308u16));
             }
@@ -1250,18 +1287,18 @@ impl Parser {
         }
 
         // case(0.6)
-        if tok.matches(TT_KEYWORD, "0.6") {
+        if tok.matches(TokType::Keyword(0, 6)) {
             self.next();
             let mut children = vec![match self.expr() {
                 Ok(n) => n,
                 Err(e) => return Err(e)
             }];
-            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+            if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16))
             }
             self.next();
             self.skip_newlines();
-            while self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.7") {
+            while self.current_tok.is_some() && self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 7)) {
                 let condition_pos_start = self.current_tok.clone().unwrap().pos_start;
                 self.next();
                 let mut condition = match self.atom() {
@@ -1269,10 +1306,10 @@ impl Parser {
                     Err(e) => return Err(e)
                 };
                 condition.pos_start = condition_pos_start;
-                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16))
                 }
-                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                     self.next();
                     self.skip_newlines();
                     condition.child_nodes.push(match self.statement() {
@@ -1280,7 +1317,7 @@ impl Parser {
                         Err(e) => return Err(e)
                     });
                 }
-                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16))
                 }
                 self.next();
@@ -1290,14 +1327,14 @@ impl Parser {
             if self.current_tok.is_none() {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16))
             }
-            if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.8") {
+            if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 8)) {
                 let mut default = ASTNode::new_v(ASTNodeType::Else, self.current_tok.clone().unwrap().pos_start, Position::new());
                 self.next();
                 self.skip_newlines();
-                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16))
                 }
-                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                     self.next();
                     self.skip_newlines();
                     default.child_nodes.push(match self.statement() {
@@ -1305,7 +1342,7 @@ impl Parser {
                         Err(e) => return Err(e)
                     });
                 }
-                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+                if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16))
                 }
                 default.pos_end = self.current_tok.clone().unwrap().pos_end;
@@ -1313,9 +1350,9 @@ impl Parser {
                 self.skip_newlines();
                 children.push(default);
             }
-            if self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+            if self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16))
-            } else if self.current_tok.clone().unwrap().matches(TT_KEYWORD, "0.8") {
+            } else if self.current_tok.clone().unwrap().matches(TokType::Keyword(0, 8)) {
 
             }
             let pos_end = self.current_tok.clone().unwrap().pos_end;
@@ -1333,7 +1370,7 @@ impl Parser {
         };
         if self.current_tok.is_none() {
             return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303u16));
-        } else if self.current_tok.clone().unwrap().type_ != TT_LPAREN_CURLY {
+        } else if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
             return Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0303u16));
         }
         self.next();
@@ -1342,14 +1379,14 @@ impl Parser {
         }
 
         let mut out: Vec<ASTNode> = vec![];
-        while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+        while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
             out.push(match self.expr() {
                 Ok(n) => n,
                 Err(e) => return Err(e)
             });
             self.skip_newlines();
         }
-        if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TT_RPAREN_CURLY {
+        if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
             return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308u16));
         }
         expr.child_nodes.extend(out);

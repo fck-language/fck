@@ -1,6 +1,6 @@
 //! Base file with all the "building blocks" of everything else in
 
-use crate::tokens::TT_KEYWORD;
+use crate::tokens::TokType;
 // use crate::types::*;
 
 use std::collections::HashMap;
@@ -45,9 +45,7 @@ impl std::fmt::Display for Position {
 #[derive(Clone)]
 pub struct Token {
     /// The token type from `tokens.rs`
-    pub type_: u8,
-    /// Value stored in a string
-    pub value: String,
+    pub type_: TokType,
     /// Starting position
     pub pos_start: Position,
     /// Ending position. This is really one after the ending position so `test` would start at (0,0)
@@ -57,29 +55,33 @@ pub struct Token {
 
 impl Token {
     /// Generates a new token from a given token type, value, and starting and ending positions
-    pub fn new(type_: u8, value: String, pos_start: Position, pos_end: Position) -> Token {
-        return Token{type_, value, pos_start, pos_end};
+    pub fn new(type_: TokType, pos_start: Position, pos_end: Position) -> Token {
+        return Token{type_, pos_start, pos_end};
     }
     /// Checks is a token matches a specific type and value
-    pub fn matches(&self, type_: u8, value: &str) -> bool {
-        return self.type_ == type_ && self.value == value;
+    pub fn matches(&self, other: TokType) -> bool {
+        self.type_ == other
     }
     /// Checks if a token is a keyword in a specific keyword list
     pub fn matches_list(&self, list: u8) -> bool {
-        self.type_ == TT_KEYWORD && self.value.clone().get(0..1).unwrap() == format!("{}", list)
+        if let TokType::Keyword(v, _) = self.type_ {
+            v == list
+        } else {
+            false
+        }
     }
 }
 
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Type: {:<3} (Value: {})\n\tpos_start: {}\n\tpos_end  : {}",
-               self.type_, self.value, self.pos_start, self.pos_end)
+        write!(f, "Type: {:<3?} \n\tpos_start: {}\n\tpos_end  : {}",
+               self.type_, self.pos_start, self.pos_end)
     }
 }
 
 impl std::fmt::Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "T:{:<3} V:{} ps:{} pe:{}", self.type_, self.value, self.pos_start, self.pos_end)
+        write!(f, "T:{:<3?}  ps:{} pe:{}", self.type_, self.pos_start, self.pos_end)
     }
 }
 
