@@ -1,3 +1,8 @@
+//! Language file for French
+//!
+//! Encoding: UTF-8
+//! Development version
+
 use crate::keywords::*;
 
 pub const KEYWORDS: Keywords = Keywords{
@@ -39,6 +44,9 @@ pub const MESSAGES: Messages = Messages{
             ErrorMessages{ name: "", desc: "" }
         ],
         not_here_errors: [
+            ErrorMessages{ name: "", desc: "" }
+        ],
+        type_errors: [
             ErrorMessages{ name: "", desc: "" }
         ]
     }

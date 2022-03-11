@@ -1,3 +1,8 @@
+//! Language file for German
+//!
+//! Development version
+//! Encoding: UTF-8
+
 use crate::keywords::*;
 
 pub const KEYWORDS: Keywords = Keywords{
@@ -42,6 +47,9 @@ pub const MESSAGES: Messages = Messages{
             ErrorMessages{ name: "", desc: "" }
         ],
         not_here_errors: [
+            ErrorMessages{ name: "", desc: "" }
+        ],
+        type_errors: [
             ErrorMessages{ name: "", desc: "" }
         ]
     }

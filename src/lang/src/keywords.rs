@@ -30,7 +30,8 @@ pub struct ErrorHolder<'a> {
     pub language_errors: [ErrorMessages<'a>; 2],
     pub unknown_errors: [ErrorMessages<'a>; 2],
     pub expected_errors: [ErrorMessages<'a>; 9],
-    pub not_here_errors: [ErrorMessages<'a>; 1]
+    pub not_here_errors: [ErrorMessages<'a>; 1],
+    pub type_errors: [ErrorMessages<'a>; 1],
 }
 
 impl ErrorHolder<'_> {

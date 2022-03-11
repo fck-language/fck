@@ -8,14 +8,16 @@ repository = "https://github.com/fck-language/fck"
 homepage = "https://fck-language.github.io/fck"
 readme = "README.md"
 license = "GPL-3.0"
-keywords = ["fck", "coding language", "coding language"]
+keywords = ["fck", "coding language"]
 categories = ["internationalization"]
 
 [badges]
 maintenance = {status = "actively-developed"}
 
 [dependencies]
+# external
 clap = "3.0.4"
 llvm-sys = "130"
 colored = "2.0.0"
-lang = { path = "lang", version = "0.1.0" }
+# internal
+lang = { path = "src/lang", version = "0.1.0" }
