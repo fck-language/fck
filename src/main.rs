@@ -22,10 +22,7 @@ mod nodes;
 mod shell;
 mod config_file;
 mod err_wrn;
-mod types;
-mod chars;
 mod llvm;
-mod translator;
 
 /// Reads the local config file and parses arguments accordingly
 ///

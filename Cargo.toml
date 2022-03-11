@@ -21,3 +21,5 @@ llvm-sys = "130"
 colored = "2.0.0"
 # internal
 lang = { path = "src/lang", version = "0.1.0" }
+type_things = { path = "src/type_things", version = "0.1.0" }
+

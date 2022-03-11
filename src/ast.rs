@@ -71,7 +71,7 @@ impl Lexer {
                     self.advance();
                     if self.current_char == '!' {
                         self.advance();
-                        let mut  lang_code = match self.make_identifier().type_ {
+                        let lang_code = match self.make_identifier().type_ {
                             TokType::Identifier(_, v) => v,
                             _ => unreachable!()
                         };
@@ -275,7 +275,7 @@ impl Lexer {
     fn single_double_token(&mut self, second_char: char, single_type: TokType, double_type: TokType) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         self.advance();
-        let mut tok_type;
+        let tok_type;
         if self.current_char == second_char {
             self.advance();
             tok_type = double_type;

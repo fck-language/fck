@@ -4,7 +4,6 @@ use crate::tokens::TokType;
 // use crate::types::*;
 
 use std::collections::HashMap;
-use std::any::Any;
 
 /// Position container. Is the basis for positions of tokens and nodes.
 ///

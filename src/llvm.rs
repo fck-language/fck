@@ -3,73 +3,28 @@
 //! This generates LLVM IR code. This file does not contain code to handle compilation to
 //! executables, or JIT compilation. They're handled in compiling.rs and interpreter.rs
 
-use llvm_sys::core::*;
-use llvm_sys::prelude::*;
-use llvm_sys::target::*;
-use llvm_sys::target_machine::*;
-use llvm_sys::{LLVMIntPredicate, LLVMModule};
+use std::{
+	ffi::{ CStr, CString },
+	os::raw::{ c_char, c_ulonglong },
+	ptr::null_mut,
+	str
+};
 
-use std::ffi::{ CStr, CString };
-use std::fmt::Formatter;
-use std::os::raw::{ c_char, c_ulonglong };
-use std::ptr::null_mut;
-use std::str;
+use llvm_sys::{
+	LLVMIntPredicate, LLVMModule,
+	core::*,
+	prelude::*,
+	target::*,
+	target_machine::*
+};
 
+use type_things::*;
 use crate::nodes::{ ASTNode, ASTNodeType };
 
 /// False constant of type `LLVMBool`
 const LLVM_FALSE: LLVMBool = 0;
 /// True constant of type `LLVMBool`
 const LLVM_TRUE: LLVMBool = 1;
-
-/// Holder for LLVMModule
-///
-/// Modified from [Wilfred/bfc](https://github.com/Wilfred/bfc). Thank you very much
-/// Folds the current function, LLVMModule, named blocks (as CString) to ensure concurrent
-/// lifetimes, as well as a blank CString (pub) to be used as the default block name
-#[derive(Debug)]
-pub struct Module {
-	/// LLVMModule that things get build to
-	pub module: *mut LLVMModule,
-	/// Blank CString used as the default block name
-	pub blank: CString,
-	/// Vector holding all the named block names
-	strings: Vec<CString>,
-	/// Current function to make sure that any new blocks are added to the right function
-	current_fn: LLVMValueRef
-}
-
-impl Module {
-	/// Initialise a new Module
-	pub unsafe fn new(module: *mut LLVMModule) -> Self {
-		let blank = CString::new("").unwrap();
-		Module { module, blank, strings: vec![], current_fn: LLVMConstNull(LLVMInt32Type()) }
-	}
-	/// Make a new CString and return it as a `*const i8`
-	///
-	/// This is a short-hand function for quality of life improvements, as well as required to
-	/// ensure the CString is added to the module, ensuring the same lifetime as the module
-	pub fn new_ptr_i8(&mut self, s: &str) -> *const i8 {
-		let out = CString::new(s).unwrap();
-		let ptr = out.as_ptr();
-		self.strings.push(out);
-		ptr as *const i8
-	}
-}
-
-impl std::fmt::Display for Module {
-	/// Returns the LLVM IR code
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		let module_string;
-		unsafe {
-			let llvm_ir_ptr = LLVMPrintModuleToString(self.module);
-			let llvm_ir = CStr::from_ptr(llvm_ir_ptr as *const _);
-			module_string = CString::new(llvm_ir.to_bytes()).unwrap();
-			LLVMDisposeMessage(llvm_ir_ptr);
-		}
-		write!(f, "{}", String::from_utf8_lossy(module_string.as_bytes()).to_string())
-	}
-}
 
 /// Initialise LLVM
 ///
@@ -201,7 +156,7 @@ unsafe fn build_arith_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val
 }
 
 unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, mut children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
-	let mut builder = LLVMCreateBuilder();
+	let builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, bb);
 	let mut else_node: Option<ASTNode> = None;
 	if (children.len() % 2) != 0 {
@@ -216,9 +171,8 @@ unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVM
 	while let Some(node) = children_iter.next() {
 		val = LLVMConstNull(LLVMInt1Type());
 		let res = build_ast(module, bb, val, node.clone());
-		bb = res.0;
 		let mut if_true = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
-		let mut if_false = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
+		let if_false = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
 		LLVMBuildCondBr(builder, res.1, if_true, if_false);
 		let body = children_iter.next().unwrap().clone();
 		for ast in body.child_nodes {
@@ -245,8 +199,8 @@ unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVM
 	(final_block, val)
 }
 
-unsafe fn build_comp_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, mut cmp_ops: Vec<char>, mut children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
-	let mut builder = LLVMCreateBuilder();
+unsafe fn build_comp_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut _val: LLVMValueRef, mut cmp_ops: Vec<char>, mut children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
+	let builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, bb);
 	// Build first pair of comparisons
 	let mut rhs = llvm_int(0, LLVMInt32Type());
@@ -257,7 +211,7 @@ unsafe fn build_comp_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val:
 	let res = build_ast(module, bb, lhs, children.pop().unwrap());
 	bb = res.0;
 	lhs = res.1;
-	val = LLVMBuildICmp(
+	let val = LLVMBuildICmp(
 		builder,
 		match cmp_ops.pop().unwrap() {
 			'l' => LLVMIntPredicate::LLVMIntULT,
