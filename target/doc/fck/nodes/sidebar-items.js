@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ASTNodeType","AST node types"]],"struct":[["ASTNode","AST node"]]});

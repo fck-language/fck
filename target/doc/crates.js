@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["fck","lang","type_things"];
