@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Context",""],["Position","Position container. Is the basis for positions of tokens and nodes."],["SymbolTable",""],["Token","Token struct. Used by the lexer and parser"]]});

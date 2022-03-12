@@ -1,4 +1,0 @@
-(function() {var implementors = {};
-implementors["fck"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.58.1/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"fck/bases/struct.Position.html\" title=\"struct fck::bases::Position\">Position</a>","synthetic":false,"types":["fck::bases::Position"]}];
-implementors["lang"] = [{"text":"impl&lt;'a&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.58.1/core/marker/trait.Copy.html\" title=\"trait core::marker::Copy\">Copy</a> for <a class=\"struct\" href=\"lang/keywords/struct.Keywords.html\" title=\"struct lang::keywords::Keywords\">Keywords</a>&lt;'a&gt;","synthetic":false,"types":["lang::keywords::Keywords"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

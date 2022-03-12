@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["checker",""],["prelude","Main structs required by most otherthings"],["primitives",""]]});
