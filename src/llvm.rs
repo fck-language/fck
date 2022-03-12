@@ -18,7 +18,7 @@ use llvm_sys::{
 	target_machine::*
 };
 
-use type_things::*;
+use type_things::prelude::*;
 use crate::nodes::{ ASTNode, ASTNodeType };
 
 /// False constant of type `LLVMBool`

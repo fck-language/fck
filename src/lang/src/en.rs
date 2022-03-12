@@ -1,6 +1,4 @@
 //! Language file for English
-//!
-//! Encoding: UTF-8
 
 use crate::keywords::*;
 
@@ -49,26 +47,3 @@ pub const MESSAGES: Messages = Messages{
         ],
     }
 };
-
-//  0 "and"
-//  1 "or"
-//  2 "not"
-//  3 "if"
-//  4 "else"
-//  5 "elif"
-//  6 "case"
-//  7 "option"
-//  8 "default"
-//  9 "iterate"
-// 10 "to"
-// 11 "import"
-// 12 "step"
-// 13 "while"
-// 14 "def"
-// 15 "return"
-// 16 "continue"
-// 17 "break"
-// 18 "silent"
-// 19 "as"
-// 20 "true"
-// 21 "false"

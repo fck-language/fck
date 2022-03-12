@@ -1,7 +1,6 @@
 //! Language file for French
 //!
-//! Encoding: UTF-8
-//! Development version
+//! **Development version**
 
 use crate::keywords::*;
 

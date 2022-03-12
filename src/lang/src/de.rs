@@ -1,7 +1,6 @@
 //! Language file for German
 //!
-//! Development version
-//! Encoding: UTF-8
+//! **Development version**
 
 use crate::keywords::*;
 

@@ -1,7 +1,6 @@
 ﻿//! Language file for Korean
 //!
-//! Encoding: UTF-16
-//! Development version
+//! **Development version**
 
 use crate::keywords::*;
 

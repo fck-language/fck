@@ -7,6 +7,7 @@ edition = "2018"
 homepage = "https://github.com/RosiePuddles/fck/tree/main/lang"
 readme = "README.md"
 license = "GPL-3.0"
+include = ["/fckl equivalents"]
 
 [badges]
 maintenance = {status = "as-is"}
