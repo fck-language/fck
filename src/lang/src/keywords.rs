@@ -29,13 +29,13 @@ impl Keywords<'_> {
     /// Checks is an identifier is either a keyword or variable keyword
     ///
     /// Returns the list index, and index within the list
-    pub fn contains(&self, identifier: &str) -> Option<(u8, u8)> {
+    pub fn contains(&self, identifier: &str) -> Option<(u8, u16)> {
         match self.keywords.iter().position(|&x| x == identifier) {
-            Some(position) => return Some((0, position as u8)),
+            Some(position) => return Some((0, position as u16)),
             _ => {}
         }
         match self.var_keywords.iter().position(|&x| x == identifier) {
-            Some(position) => return Some((1, position as u8)),
+            Some(position) => return Some((1, position as u16)),
             _ => {}
         }
         None
@@ -71,7 +71,7 @@ pub struct ErrorHolder<'a> {
     pub not_here_errors: [ErrorMessages<'a>; 1],
     /// Type related errors, such as returning the wrong type
     /// Code 04**
-    pub type_errors: [ErrorMessages<'a>; 1],
+    pub type_errors: [ErrorMessages<'a>; 2],
 }
 
 impl ErrorHolder<'_> {

@@ -43,7 +43,8 @@ pub const MESSAGES: Messages = Messages{
             ErrorMessages{ name: "Cannot use a keyword here", desc: "Need to use an identifier that's not a keyword" }
         ],
         type_errors: [
-            ErrorMessages{ name: "Expected type {} got {}", desc: "Returned when one type was found that cannot be cast into the required type" }
+            ErrorMessages{ name: "Expected type _ got _", desc: "Returned when one type was found that cannot be cast into the required type" },
+            ErrorMessages{ name: "Type with type ID _ does not exist", desc: "Returned when one type was found that cannot be cast into the required type" }
         ],
     }
 };

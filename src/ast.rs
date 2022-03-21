@@ -645,7 +645,7 @@ impl Parser {
 
     fn expr(&mut self) -> Result<ASTNode, Error> {
         let mut tok = self.current_tok.clone().unwrap();
-        let default_values = |x: u8| match x {
+        let default_values = |x: u16| match x {
             0 => ASTNodeType::Int(0),
             1 => ASTNodeType::Float(0.),
             2 => ASTNodeType::Bool(false),
@@ -660,7 +660,7 @@ impl Parser {
         // check for new variable assignments
         if tok.matches_list(1) {
             let var_type = match tok.type_ {
-                TokType::Keyword(_, v) => v,
+                TokType::Keyword(_, v) => v as u16,
                 _ => unreachable!()
             };
             self.next();

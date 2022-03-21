@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 llvm-sys = "130.0.3"
+phf = { version = "0.10.1", features = ["macros"] }

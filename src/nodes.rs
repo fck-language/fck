@@ -25,7 +25,7 @@ pub enum ASTNodeType {
     VarGetItem,      //
     /// Variable assignment. Holds if the variable should be returned, the variable type, and
     /// identifier(language formatted)
-    VarAssign(bool, u8, String),
+    VarAssign(bool, u16, String),
     VarReassign,     //
     VarSubFunc,      //
     MethodCall,      //
@@ -38,8 +38,9 @@ pub enum ASTNodeType {
     UnaryPlus,       // None
     UnaryMinus,      // None
     Static,          //
-    As(u8),              //
+    As(u16),              //
     Range,           // None
+    /// If condition. Contains the label for the conditional
     If(Option<String>),              // Number of elif statements
     Else,            // Else or default node
     AtName,          //

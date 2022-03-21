@@ -48,7 +48,7 @@ pub enum TokType {
 	/// Identifier. Holds identifier string and language key
 	Identifier(String, String),
 	/// Keyword
-	Keyword(u8, u8),
+	Keyword(u8, u16),
 	/// Question mark
 	QuestionMark,
 	/// Dot

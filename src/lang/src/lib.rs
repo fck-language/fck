@@ -36,3 +36,24 @@ pub fn get_associated_messages(lang_code: &str) -> Option<keywords::Messages<'st
         }
     }
 }
+
+/// Custom format macro
+///
+/// Used similarly to the normal `format!` macro, with some alterations. The first variable can be
+/// a `&str` or `String` and can be a variable. Any `_` is replaced with the index appropriate
+/// value. All formatting is the `std::fmt::Display` not `std::fmt::Debug` so beware. this is
+/// required to be able to use language specific string formats that can be formatted such as error
+/// messages with information embedded in them. **DO NOT CALL THIS WITH ONLY A FORMAT STRING**
+#[macro_export]
+macro_rules! fmt {
+    ($f: expr, $($a: expr), *) => {{
+        let mut out = String::new();
+		let F = format!(" {} ", $f);
+		let mut iter = F.split('_');
+		$(
+		out = format!("{}{}{}", out, iter.next().unwrap(), $a);
+		)*
+		out = format!("{}{}", out, iter.next().unwrap());
+        out.get(1..out.len() - 1).unwrap().to_string()
+    }}
+}

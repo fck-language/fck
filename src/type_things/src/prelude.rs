@@ -3,53 +3,103 @@
 //! These include the type structs, function call signature structs, and wider reaching module
 //! struct that holds the `LLVMModule` for compilation. This is here because of circular referencing
 use std::{
-	collections::HashMap,
 	ffi::{ CStr, CString },
 	fmt::Formatter
 };
+use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 
-use llvm_sys::{
-	LLVMModule,
-	prelude::{ LLVMValueRef, LLVMBasicBlockRef },
-	core::{ LLVMConstNull, LLVMInt32Type, LLVMPrintModuleToString, LLVMDisposeMessage }
-};
+use llvm_sys::{LLVMModule, prelude::{LLVMValueRef, LLVMBasicBlockRef}, core::{LLVMConstNull, LLVMInt32Type, LLVMPrintModuleToString, LLVMDisposeMessage}, LLVMValue};
+use phf::Map;
 
-/// Generic type struct
+use crate::primitives::{INT, NULL_TYPE};
+
+/// fck Type
 ///
-/// This is the generic struct that all the other types are derived from. It's probably fairly
-/// inefficient because I'm having to make this up as I go along and haven't read up on it yet but
-/// it works so leave me alone
-pub struct fckType {
+/// This struct contains the functions and names for a type. It does not contain the type ID or a
+/// value. The type ID comes from teh index of a type in the list of all used types, and the value
+/// of a type is contained within a separate struct
+// #[derive(Debug)]
+pub struct Type {
 	/// Names of the type for different languages. The keys are the language codes and the values
 	/// are the names in that language. This will probably change in a bit
-	names: HashMap<String, String>,
+	pub names: Map<&'static str, &'static str>,
+	/// Operations that the type implement
+	/// Each function requires the `Module`, and current `LLVMBasicBlockRef` along with:
+	/// 1. The value calling the function (LHS)
+	/// 2. The second value (RHS)
+	///
+	/// Most of the time if these are flipped it won't matter, but it's always nice not to have to
+	/// "find a bug" only to realise the arguments were the wrong way around
+	pub ops: Map<&'static str, Map<u16, unsafe fn(&mut Module, LLVMBasicBlockRef, Value, Value) -> (LLVMBasicBlockRef, Value)>>,
 	/// Functions that the type implements. The keys are the function names, which are converted by
 	/// the parser into the original identifiers, and the values are the function
-	functions: HashMap<String, FuncCallSig>
+	pub functions: Map<&'static str, FuncCallSig>
+}
+
+impl Debug for Type {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}{:?}, {}{}", '{', self.names,
+						  self.ops.entries().fold(String::new(), |acc, (k, v)| {
+							  format!("{}, ({} => {:?})", acc, k, v.keys().fold(String::new(), |sub_acc, sk| format!("{}, {}", acc, sk)))
+						  }),
+						  '}')
+	}
+}
+
+/// Value struct for holding a value
+///
+/// This struct holds a value and type ID for that value
+#[derive(Copy, Clone, Debug)]
+pub struct Value {
+	pub value: LLVMValueRef,
+	pub type_: u16
+}
+
+impl Value {
+	pub fn new(value: LLVMValueRef, type_: u16) -> Self {
+		Value{ value, type_ }
+	}
 }
 
 /// Function holder for the type struct
 ///
 /// This holds the arguments, return type ID, and function used by the compiler to run the function
-#[derive(Hash)]
 pub struct FuncCallSig {
 	/// Function arguments (ordered)
-	args: Vec<FuncArg>,
+	pub(crate) args: Vec<FuncArg>,
 	/// Return type ID
-	ret: u8,
-	/// Function used th compile the function into LLVM IR
-	body: fn () -> u8
+	pub(crate) ret: u16,
+	/// Function used to compile the function into LLVM IR
+	///
+	/// The two `LLVMValueRef`s are for the previous value (i.e. a returned one) and the value of
+	/// the type instance respectively
+	pub(crate) body: unsafe fn (&mut Module, LLVMBasicBlockRef, Value, Value) -> (LLVMBasicBlockRef, Value)
+}
+
+impl Hash for FuncCallSig {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.args.iter().map(|x| state.write_u8(x.type_.clone()));
+		state.write_u16(self.ret.clone());
+		state.finish();
+	}
+}
+
+impl Debug for FuncCallSig {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}{:?}, {}{}", '{', self.args, self.ret, '}')
+	}
 }
 
 /// Function argument
 ///
 /// Holds the argument name and type ID
-#[derive(Hash)]
+#[derive(Hash, Debug)]
 pub struct FuncArg {
 	/// Argument name
-	name: String,
+	pub(crate) name: &'static str,
 	/// Argument type ID
-	type_: u8
+	pub(crate) type_: u8
 }
 
 /// Holder for LLVMModule
@@ -66,14 +116,17 @@ pub struct Module {
 	/// Vector holding all the named block names
 	strings: Vec<CString>,
 	/// Current function to make sure that any new blocks are added to the right function
-	pub current_fn: LLVMValueRef
+	pub current_fn: LLVMValueRef,
+	/// All the types that are currently being used. This is initialised to having just the
+	/// primitives and null type
+	pub types: Vec<Type>
 }
 
 impl Module {
 	/// Initialise a new Module
 	pub unsafe fn new(module: *mut LLVMModule) -> Self {
 		let blank = CString::new("").unwrap();
-		Module { module, blank, strings: vec![], current_fn: LLVMConstNull(LLVMInt32Type()) }
+		Module { module, blank, strings: vec![], current_fn: LLVMConstNull(LLVMInt32Type()), types: vec![NULL_TYPE, INT] }
 	}
 	/// Make a new CString and return it as a `*const i8`
 	///

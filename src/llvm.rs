@@ -18,7 +18,7 @@ use llvm_sys::{
 	target_machine::*
 };
 
-use type_things::prelude::*;
+use type_things::{prelude::*, primitives::null_value};
 use crate::nodes::{ ASTNode, ASTNodeType };
 
 /// False constant of type `LLVMBool`
@@ -50,34 +50,32 @@ pub fn ir_to_module(module_name: &str, asts: Vec<ASTNode>) -> Module {
 	// Create the main function that returns an i32 and make a block within that
 	let main_fn;
 	let mut bb;
-	let mut val;
-    unsafe {
-        let main_type = LLVMFunctionType(LLVMInt32Type(), vec![].as_mut_ptr(), 0, LLVM_FALSE);
-        main_fn = LLVMAddFunction(module.module, module.new_ptr_i8("main"), main_type);
+	let mut val = null_value();
+	unsafe {
+		let main_type = LLVMFunctionType(LLVMInt32Type(), vec![].as_mut_ptr(), 0, LLVM_FALSE);
+		main_fn = LLVMAddFunction(module.module, module.new_ptr_i8("main"), main_type);
 		bb = LLVMAppendBasicBlock(main_fn, module.blank.as_ptr());
-		val = llvm_int(0, LLVMInt32Type());
-    }
+	}
 	module.current_fn = main_fn;
 	
 	for ast in asts {
-		let out = build_ast(&mut module, bb, val, ast);
-		bb = out.0;
-		val = out.1;
+		let out = match build_ast(&mut module, bb, val, ast) {
+			Ok((bb_, val_)) => {
+				bb = bb_;
+				val = val_;
+			}
+			Err(e) => println!("{}", e)
+		};
 	}
 	
 	// Add in a ret i32 0 at the end so it doesn't have a meltdown
 	unsafe {
 		let builder = LLVMCreateBuilder();
         LLVMPositionBuilderAtEnd(builder, bb);
-		LLVMBuildRet(builder, llvm_int(0, LLVMInt32Type()));
+		LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, LLVM_FALSE));
 	}
 	
 	module
-}
-
-/// Useful function to make an integer
-unsafe fn llvm_int(val: c_ulonglong, t: LLVMTypeRef) -> LLVMValueRef {
-	LLVMConstInt(t, val, LLVM_FALSE)
 }
 
 /// Gets the default target string
@@ -93,25 +91,29 @@ pub fn get_default_target_triple() -> CString {
 }
 
 /// Builds the ASTs to the module
-fn build_ast(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, ast: ASTNode) -> (LLVMBasicBlockRef, LLVMValueRef) {
+fn build_ast(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, ast: ASTNode) -> Result<(LLVMBasicBlockRef, Value), String> {
 	unsafe {
-		let out = match ast.node_type {
+		let out = match match ast.node_type {
 			// Terminal values
 			ASTNodeType::VarAssign(ret, var_type, name) => build_var_assign(module, bb, val, ret, var_type, name, ast.child_nodes.get(0).unwrap().clone()),
 			ASTNodeType::ArithOp(v) => build_arith_op(module, bb, val, v, ast.child_nodes),
-			ASTNodeType::Int(v) => (bb, llvm_int(v as c_ulonglong, LLVMInt32Type())),
+			ASTNodeType::Int(v) => Ok((bb, Value::new(LLVMConstInt(LLVMInt64Type(), v as c_ulonglong, LLVM_TRUE), 1))),
 			ASTNodeType::CompOp(v) => build_comp_op(module, bb, val, v, ast.child_nodes),
 			ASTNodeType::If(_) => build_if(module, bb, val, ast.child_nodes),
-			_ => (bb, val)
+			_ => Ok((bb, val))
+		} {
+			Ok((bb_, val_)) => {
+				bb = bb_;
+				val = val_;
+			}
+			Err(e) => return Err(e)
 		};
-		bb = out.0;
-		val = out.1;
 	}
-	(bb, val)
+	Ok((bb, val))
 }
 
 /// Builds a `ASTNodeType::VarAssign` AST node to the module
-unsafe fn build_var_assign(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, ret: bool, _var_type: u8, name: String, value: ASTNode) -> (LLVMBasicBlockRef, LLVMValueRef) {
+unsafe fn build_var_assign(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, ret: bool, _var_type: u16, name: String, value: ASTNode) -> Result<(LLVMBasicBlockRef, Value), String> {
 	let builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, bb);
 	let var = LLVMBuildAlloca(
@@ -119,43 +121,74 @@ unsafe fn build_var_assign(module: &mut Module, mut bb: LLVMBasicBlockRef, mut v
 		LLVMInt32Type(),
 		module.new_ptr_i8(&*name) as *const c_char
 	);
-	let child_out = build_ast(module, bb, llvm_int(0, LLVMInt32Type()), value);
+	let child_out = match build_ast(module, bb, null_value(), value) {
+		Ok(t) => t,
+		Err(e) => return Err(e)
+	};
 	bb = child_out.0;
 	LLVMBuildStore(
 		builder,
-		child_out.1,
+		child_out.1.value,
 		var
 	);
 	if ret {
 		val = child_out.1.clone()
 	}
-	(bb, val)
+	Ok((bb, val))
 }
 
 /// Builds a `ASTNodeType::ArithOp` AST node to the module
-unsafe fn build_arith_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, v: Vec<char>, children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
+unsafe fn build_arith_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, v: Vec<char>, children: Vec<ASTNode>) -> Result<(LLVMBasicBlockRef, Value), String> {
 	let builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, bb);
 	let mut children = children.iter();
-	let build_out = build_ast(module, bb, val, children.next().unwrap().clone());
+	let build_out = match build_ast(module, bb, val, children.next().unwrap().clone()) {
+		Ok(t) => t,
+		Err(e) => return Err(e)
+	};
 	bb = build_out.0;
 	val = build_out.1;
 	for c in v {
-		let build_out = build_ast(module, bb, val, children.next().unwrap().clone());
-		bb = build_out.0;
-		let f = match c {
-			'+' => LLVMBuildAdd,
-			'-' => LLVMBuildSub,
-			'*' => LLVMBuildMul,
-			'/' => LLVMBuildUDiv,
-			_ => unreachable!()
+		let build_out = match build_ast(module, bb, val, children.next().unwrap().clone()) {
+			Ok(t) => t,
+			Err(e) => return Err(e)
 		};
-		val = f(builder, val, build_out.1, module.blank.as_ptr());
+		bb = build_out.0;
+		let val_type = match module.types.get(val.type_.clone() as usize) {
+			Some(t) => t,
+			None => return Err( "oops".to_string() )
+		};
+		let f = match get_op_fn(val_type, &build_out.1.type_,
+		match c {
+			'+' => "add",
+			'-' => "sub",
+			'*' => "mult",
+			_ => ""
+		}
+		) {
+			Ok(f) => f,
+			Err((M, m)) => return Err(format!("{:0>2}{:0>2}", M, m))
+		};
+		let res = f(module, bb, val, build_out.1);
+		bb = res.0;
+		val = res.1;
+		// 	None => return Err(format!("Type \"{}\" (ID: {}) does not implement adding shit", val_type.names.get("en").unwrap(), val.type_))
 	}
-	(bb, val)
+	Ok((bb, val))
 }
 
-unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVMValueRef, mut children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
+fn get_op_fn<'a>(self_type: &'a Type, other_id: &'a u16, name: &'a str) -> Result<&'a unsafe fn(&mut Module, LLVMBasicBlockRef, Value, Value) -> (LLVMBasicBlockRef, Value), (u8, u8)> {
+	let all_ops = match self_type.ops.get(name) {
+		Some(map) => map,
+		None => return Err((5, 3))
+	};
+	match all_ops.get(&other_id) {
+		Some(f) => Ok(f),
+		None => return Err((5, 4))
+	}
+}
+
+unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, mut children: Vec<ASTNode>) -> Result<(LLVMBasicBlockRef, Value), String> {
 	let builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, bb);
 	let mut else_node: Option<ASTNode> = None;
@@ -169,14 +202,20 @@ unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVM
 	
 	let mut children_iter = children.iter();
 	while let Some(node) = children_iter.next() {
-		val = LLVMConstNull(LLVMInt1Type());
-		let res = build_ast(module, bb, val, node.clone());
+		val = null_value();
+		let res = match build_ast(module, bb, val, node.clone()) {
+			Ok(t) => t,
+			Err(e) => return Err(e)
+		};
 		let mut if_true = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
 		let if_false = LLVMAppendBasicBlock(module.current_fn, module.blank.as_ptr());
-		LLVMBuildCondBr(builder, res.1, if_true, if_false);
+		LLVMBuildCondBr(builder, res.1.value, if_true, if_false);
 		let body = children_iter.next().unwrap().clone();
 		for ast in body.child_nodes {
-			let res = build_ast(module, if_true, val, ast);
+			let res = match build_ast(module, if_true, val, ast) {
+				Ok(t) => t,
+				Err(e) => return Err(e)
+			};
 			if_true = res.0;
 		}
 		bb = if_false;
@@ -187,7 +226,10 @@ unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVM
 	
 	if let Some(node) = else_node {
 		for ast in node.child_nodes {
-			let res = build_ast(module, bb, LLVMConstNull(LLVMInt1Type()), ast);
+			let res = match build_ast(module, bb, null_value(), ast) {
+				Ok(t) => t,
+				Err(e) => return Err(e)
+			};
 			bb = res.0;
 		}
 	}
@@ -196,22 +238,26 @@ unsafe fn build_if(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: LLVM
 	LLVMBuildBr(builder, final_block);
 	
 	
-	(final_block, val)
+	Ok((final_block, val))
 }
 
-unsafe fn build_comp_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut _val: LLVMValueRef, mut cmp_ops: Vec<char>, mut children: Vec<ASTNode>) -> (LLVMBasicBlockRef, LLVMValueRef) {
+unsafe fn build_comp_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut _val: Value, mut cmp_ops: Vec<char>, mut children: Vec<ASTNode>) -> Result<(LLVMBasicBlockRef, Value), String> {
 	let builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, bb);
 	// Build first pair of comparisons
-	let mut rhs = llvm_int(0, LLVMInt32Type());
-	let res = build_ast(module, bb, rhs, children.pop().unwrap());
+	let res = match build_ast(module, bb, null_value(), children.pop().unwrap()) {
+		Ok(t) => t,
+		Err(e) => return Err(e)
+	};
 	bb = res.0;
-	rhs = res.1;
-	let mut lhs = llvm_int(0, LLVMInt32Type());
-	let res = build_ast(module, bb, lhs, children.pop().unwrap());
+	let rhs = res.1;
+	let res = match build_ast(module, bb, null_value(), children.pop().unwrap()) {
+		Ok(t) => t,
+		Err(e) => return Err(e)
+	};
 	bb = res.0;
-	lhs = res.1;
-	let val = LLVMBuildICmp(
+	let lhs = res.1;
+	let val = Value::new(LLVMBuildICmp(
 		builder,
 		match cmp_ops.pop().unwrap() {
 			'l' => LLVMIntPredicate::LLVMIntULT,
@@ -222,9 +268,9 @@ unsafe fn build_comp_op(module: &mut Module, mut bb: LLVMBasicBlockRef, mut _val
 			'n' => LLVMIntPredicate::LLVMIntNE,
 			_ => unreachable!()
 		},
-		lhs, rhs, module.new_ptr_i8("")
-	);
-	(bb, val)
+		lhs.value, rhs.value, module.new_ptr_i8("")
+	), 1);
+	Ok((bb, val))
 }
 
 /// Builds a module to an object file

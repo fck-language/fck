@@ -49,7 +49,8 @@ pub const MESSAGES: Messages = Messages{
             ErrorMessages{ name: "", desc: "" }
         ],
         type_errors: [
-            ErrorMessages{ name: "", desc: "" }
+            ErrorMessages{ name: "", desc: "" },
+            ErrorMessages{ name: "Type with type ID _ does not exist", desc: "Returned when one type was found that cannot be cast into the required type" }
         ]
     }
 };
