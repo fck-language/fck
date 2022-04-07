@@ -52,22 +52,28 @@ pub struct Token {
     pub pos_end: Position
 }
 
+/// Allow us to check if a token is of a specific type
+impl PartialEq<TokType> for Token {
+    fn eq(&self, other: &TokType) -> bool {
+        &self.type_ == other
+    }
+}
+
+/// Allow us to check if a token is a keyword in a specific list
+impl PartialEq<u8> for Token {
+    fn eq(&self, other: &u8) -> bool {
+        if let TokType::Keyword(v, _) = self.type_ {
+            &v == other
+        } else {
+            false
+        }
+    }
+}
+
 impl Token {
     /// Generates a new token from a given token type, value, and starting and ending positions
     pub fn new(type_: TokType, pos_start: Position, pos_end: Position) -> Token {
         return Token{type_, pos_start, pos_end};
-    }
-    /// Checks is a token matches a specific type and value
-    pub fn matches(&self, other: TokType) -> bool {
-        self.type_ == other
-    }
-    /// Checks if a token is a keyword in a specific keyword list
-    pub fn matches_list(&self, list: u8) -> bool {
-        if let TokType::Keyword(v, _) = self.type_ {
-            v == list
-        } else {
-            false
-        }
     }
 }
 
