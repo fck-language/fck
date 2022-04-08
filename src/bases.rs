@@ -1,9 +1,7 @@
-//! Base file with all the "building blocks" of everything else in
+//! All the base structs and one enum that everything else builds upon
 
-use crate::tokens::TokType;
-// use crate::types::*;
-
-use std::collections::HashMap;
+use llvm_sys::prelude::{LLVMBuilderRef, LLVMValueRef};
+use type_things::prelude::{Module, LLVMMemoryTime, Value};
 
 /// Position container. Is the basis for positions of tokens and nodes.
 ///
@@ -33,10 +31,10 @@ impl Position {
     }
 }
 
-/// Display for position of the form `[ln:{ln:02}, col:{col:02}]`
+/// Display for position of the form `[ln:{ln:03}, col:{col:03}]`
 impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "[ln:{:02}, col:{:02}]", self.ln, self.col)
+        write!(f, "[ln:{:03}, col:{:03}]", self.ln, self.col)
     }
 }
 
@@ -90,6 +88,90 @@ impl std::fmt::Debug for Token {
     }
 }
 
+/// Token type enum
+///
+/// Contains all the possible token types with each type holding the required data
+#[derive(PartialEq, Clone, Debug)]
+pub enum TokType {
+	/// Integer literal
+	Int(u64),
+	/// Float literal
+	Float(f64),
+	/// String literal
+	String(String),
+	/// Plus operator
+	Plus,
+	/// Minus operator
+	Minus,
+	/// Modulus operator
+	Mod,
+	/// Multiply operator
+	Mult,
+	/// Divide operator
+	Div,
+	/// Floor divide operator
+	FDiv,
+	/// Power operator
+	Pow,
+	/// Left parentheses (
+	LParen,
+	/// Right parentheses )
+	RParen,
+	/// Left curly parentheses {
+	LParenCurly,
+	/// Right curly parentheses }
+	RParenCurly,
+	/// Left square parentheses [
+	LParenSquare,
+	/// Right square parentheses ]
+	RParenSquare,
+	/// At identifier
+	At(String),
+	/// Boolean negation
+	Not,
+	/// Colon
+	Colon,
+	/// Identifier. Holds identifier string and language key
+	Identifier(String, String),
+	/// Keyword
+	Keyword(u8, u16),
+	/// Question mark
+	QuestionMark,
+	/// Dot
+	Dot,
+	/// Equals operator
+	Eq,
+	/// Not equals operator
+	NE,
+	/// Less than operator
+	LT,
+	/// Greater than operator
+	GT,
+	/// Less than or equals operator
+	LTE,
+	/// Greater than or equals operator
+	GTE,
+	/// Comma
+	Comma,
+	/// New line
+	Newline,
+	/// Variable assignment
+	Set(bool),
+	/// Add value to current variable
+	SetPlus(bool),
+	/// Subtract value from current variable
+	SetMinus(bool),
+	/// Modulus current variable
+	SetMod(bool),
+	/// Multiply variable
+	SetMult(bool),
+	/// Divide variable
+	SetDiv(bool),
+	/// Floor divide variable
+	SetFDiv(bool),
+	/// Power current variable
+	SetPow(bool),
+}
 
 pub struct Context<'a> {
     display_name: String,

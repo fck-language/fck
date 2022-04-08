@@ -1,6 +1,5 @@
 //! Contains the lexer and parser for fck. There are language agnostic and as such cannot use regex.
 
-use crate::tokens::TokType;
 use crate::bases::*;
 use crate::err_wrn::*;
 use lang::keywords::Keywords;
