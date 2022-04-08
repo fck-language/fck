@@ -22,6 +22,7 @@ fck is the first coding language built around collaboration; allowing you to wri
 - [Flavours](#flavours)
 - [Things of note](#things-of-note)
 - [Syntax highlighting](#syntax-highlighting)
+- [External Dependencies](#external-dependencies)
 - [Contributing](#contributing)
 
 ---
@@ -62,6 +63,17 @@ fck has separate packages available for syntax highlighting for several major ID
 - [VS Code]() ***Not started***
 - [Visual Studio]() ***Not started***
 - [Notepad++]() ***Not started***
+
+# External Dependencies
+
+fck has a few external dependencies, but we try to limit this. Currently, we rely upon a total of 4 crates (3 for fck and 1 for the type system). These are explained below:
+
+| Crate                                                   | Version | What we use it for                                                                                                                                                      |
+|---------------------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`llvm-sys`](https://crates.io/crates/llvm-sys/130.0.3) | 130.0.3 | This gives us bindings to LLVM and is the basis of the compilers                                                                                                        |
+| [`clap`](https://crates.io/crates/clap/3.1.6)           | 3.1.6   | Clap runs the main part of the CLI such as parsing arguments and help. It's a really nice crate                                                                         |
+| [`colored`](https://crates.io/crates/colored/2.0.0)     | 2.0.0   | Formatting terminal text is different for different platforms, so we let `colored` take care of it for us                                                               |
+| [`phf`](https://crates.io/crates/phf/0.10.1)            | 0.10.1  | Used for having hash map like tables as constants. Required so that the built-in types can be constants, and don't have to be returned from functions (speed basically) |
 
 # Contributing
 

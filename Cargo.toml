@@ -15,11 +15,17 @@ categories = ["internationalization"]
 maintenance = {status = "actively-developed"}
 
 [dependencies]
-# external
+## External
+# CLI things
 clap = "3.1.6"
+# LLVM for compiling
 llvm-sys = "130"
+# Some nice cross platform formatting
 colored = "2.0.0"
-# internal
+
+## Internal
+# Multi-lingual handling
 lang = { git = "https://github.com/fck-language/lang" }
+# Type system
 type_things = { path = "src/type_things", version = "0.1.0" }
 
