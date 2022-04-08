@@ -624,7 +624,7 @@ impl Parser {
             return self.expr()
         }
         if self.current_tok.is_some() {
-            if !self.current_tok.clone().unwrap() == TokType::Keyword(0, 3) {
+            if self.current_tok.clone().unwrap() != TokType::Keyword(0, 3) {
                 return Err(Error::new(pos_start, self.current_tok.clone().unwrap().pos_end, 0302));
             }
             self.next();
@@ -658,7 +658,7 @@ impl Parser {
         let mut pos_end = tok.pos_end.clone();
 
         // check for new variable assignments
-        if tok.matches_list(1) {
+        if tok == 1 {
             let var_type = match tok.type_ {
                 TokType::Keyword(_, v) => v as u16,
                 _ => unreachable!()
