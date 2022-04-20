@@ -1378,6 +1378,7 @@ impl Parser {
         }
 
         let mut out: Vec<ASTNode> = vec![];
+        self.skip_newlines();
         while self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
             out.push(match self.expr() {
                 Ok(n) => n,
