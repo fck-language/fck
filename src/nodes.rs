@@ -9,9 +9,9 @@ use std::fmt::Formatter;
 /// These are all all the types an AST node can be, and contain type specific values
 #[derive(Debug, Clone, PartialEq)]
 pub enum ASTNodeType {
-    /// Integer type
+    /// 64 bit integer type
     Int(i64),
-    /// Float type
+    /// 64 bit float type
     Float(f64),
     /// Boolean type
     Bool(bool),
@@ -93,15 +93,19 @@ impl ASTNode {
 
 impl std::fmt::Debug for ASTNode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let mut out = String::new();
-        out.push_str(&*format!("{}{:?} [{} {}]\n", match self.child_nodes.len() {
-            0 => '|',
-            _ => '-'
-        }, self.node_type, self.pos_start, self.pos_end));
+        let pad = f.width().unwrap_or(0) + 1;
+        let mut out = String::from(' ').repeat(pad - 1);
+        
+        out.push_str(
+            &*format!("{}{:?} [{} {}]\n",
+                      if self.child_nodes.is_empty() { '|' } else { '-' },
+                      self.node_type, self.pos_start, self.pos_end
+            )
+        );
         if self.child_nodes.len() > 0 {
-            for node in self.child_nodes.iter() {
-                out.push_str(&*format!("{:?}", node).replace("|", " |").replace("-", " -"));
-            }
+            self.child_nodes.iter().map(
+                |n| out.push_str(&*format!("{:pad$?}", n))
+            );
         }
         write!(f, "{}", out)
     }

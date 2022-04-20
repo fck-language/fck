@@ -1,10 +1,13 @@
-//! This is the source code for fck(pure). This is the basis for all other fck flavours
+//! This is the source code for fck (pure). This is the basis for all other fck flavours
+//!
+//! This controls the initial instantiation of all command line options, but deals with very little
+//! handling of actual data. Anything interesting always happens somewhere else
 
 extern crate lang;
 extern crate clap;
 
 use crate::shell::shell;
-use clap::{Arg, App};
+use clap::{Arg, Command};
 use std::{
     env::current_dir,
     io::Read,
@@ -15,7 +18,6 @@ use colored::*;
 use lang::get_associated_keywords;
 use crate::config_file::ConfigFile;
 
-mod tokens;
 mod bases;
 mod ast;
 mod nodes;
@@ -36,7 +38,7 @@ fn main() {
     //     "fr"
     // );
     // std::process::exit(0);
-    let app = App::new("fck (pure)")
+    let app = Command::new("fck (pure)")
         .version(&*format!("v{}", env!("CARGO_PKG_VERSION")))
         .arg(Arg::new("version")
             .short('v')
@@ -52,18 +54,14 @@ fn main() {
             .long("info")
             .takes_value(false)
             .help("Returns info about the current installation of fck"))
-        .arg(Arg::new("dump tokens")
-            .long("dump-tok")
-            .takes_value(false)
-            .help("Dumps the tokens after lexing"))
-        .arg(Arg::new("dump ASTs")
-            .long("dump-ast")
-            .takes_value(false)
-            .help("Dump the ASTs after parsing"))
         .arg(Arg::new("dump LLVM IR")
             .long("dump-llvm")
             .takes_value(false)
             .help("Dump the LLVM IR code to a .ll file"))
+        .arg(Arg::new("debug mode")
+            .long("debug")
+            .takes_value(false)
+            .help("Dumps all possible debug things"))
         .get_matches();
 
     if app.is_present("info") {
@@ -77,16 +75,15 @@ fn main() {
     } else if app.is_present("file") {
         run_file(
             app.value_of("file").unwrap(), config_file,
-            app.is_present("dump tokens"),
-            app.is_present("dump ASTs"),
-            app.is_present("dump LLVM IR"),
+            app.is_present("dump LLVM IR") || app.is_present("debug mode"),
+             app.is_present("debug mode")
         );
     } else {
         shell(config_file, app.is_present("dump tokens"), app.is_present("dump ASTs"));
     }
 }
 
-fn run_file(path: &str, config_file: ConfigFile, dump_tok: bool, dump_ast: bool, dump_llvm: bool) {
+fn run_file(path: &str, config_file: ConfigFile, dump_llvm: bool, debug: bool) {
     let file_name = get_file_name(path);
     let full_file_path = format!("{}/{}", current_dir().unwrap().to_str().unwrap(), path.get(..path.len() - 4).unwrap().to_string());
     let mut file = String::new();
@@ -99,44 +96,53 @@ fn run_file(path: &str, config_file: ConfigFile, dump_tok: bool, dump_ast: bool,
         println!("File \"{}\" does not exist!", path);
         exit(2);
     }
+    let keywords = get_associated_keywords(&*config_file.default_lang).unwrap();
     let tokens = match ast::Lexer::new(
         file,
-        get_associated_keywords(&*config_file.default_lang).unwrap(),
+        keywords,
         config_file.default_lang
     ).make_tokens() {
         Ok(toks) => toks,
         Err(e) => {
-            println!("{}", e);
+            println!("{}{}", if debug { "Token error: " } else { "" }, e);
             exit(1)
         }
     };
-    if dump_tok {
-        for t in tokens.iter() {
-            println!("{}", t)
+    if debug {
+        println!("{}", keywords.debug_words.get(0).unwrap().bold().underline());
+        for (i, tok) in tokens.iter().enumerate() {
+            println!("{} {:5}", format!("{:>03})", i).bold(), tok);
         }
+        println!();
     }
-    let ast_vec = match ast::Parser::new(tokens).parse() {
+    let (ast_vec, st_vec) = match ast::Parser::new(tokens).parse() {
         Ok(asts) => asts,
         Err(e) => {
-            println!("{}", e);
+            println!("{}{}", if debug { "Parse error: " } else { "" }, e);
             exit(1)
         }
     };
-    if dump_ast {
+    if debug {
+        println!("{}", keywords.debug_words.get(1).unwrap().bold().underline());
         for (i, ast) in ast_vec.iter().enumerate() {
-            println!("** {} **\n{:?}", i + 1, ast)
+            println!("{}:\n{:?}", format!("{:>03}", i).bold(), ast)
         }
+        println!("{}", keywords.debug_words.get(2).unwrap().bold().underline());
+        for (i, st) in st_vec.iter().enumerate() {
+            println!("{}) {:5?}", format!("{:>03}", i).bold(), st)
+        }
+        println!();
     }
     let module = llvm::ir_to_module(&*file_name, ast_vec);
-    println!("LLVM IR generated");
+    println!("{}", keywords.debug_words.get(3).unwrap());
     if dump_llvm {
-        print!("Writing to file...\r");
+        print!("{}...\r", keywords.debug_words.get(4).unwrap());
         let ll_path = format!("{}.ll", full_file_path);
         let here = Path::new(&ll_path);
         if let Err(e) = std::fs::write(here, format!("{}", module)) {
-            println!("Unable to write to file `{}.ll`:\n{}", full_file_path, e)
+            println!("{} `{}.ll`:\n{}", keywords.debug_words.get(5).unwrap(), full_file_path, e)
         } else {
-            println!("Written LLVM IR to file {}.ll", full_file_path);
+            println!("{} {}.ll", keywords.debug_words.get(6).unwrap(), full_file_path);
         };
     }
     llvm::to_object_file(module.module.to_owned(), format!("{}.o", full_file_path));

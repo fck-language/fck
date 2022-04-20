@@ -388,6 +388,9 @@ pub struct Parser {
     /// Represents if the current token can be discarded after processing or if it needs to be added
     /// to `self.intermediate` in case the parser needs to back-track
     safe: bool,
+    /// All the symbol tables for all the scopes. We got them all. Symbol tables, other symbol
+    /// tables, more shit, other things. Anything you could want
+    symbol_tables: Vec<SymbolTable>,
 }
 
 impl Parser {
@@ -403,6 +406,7 @@ impl Parser {
             current_tok: Some(current_tok.clone()),
             previous_end: current_tok.pos_start,
             safe: false,
+            symbol_tables: vec![SymbolTable::new()],
         };
     }
 
@@ -439,6 +443,15 @@ impl Parser {
         self.next();
     }
 
+    // Symbol table things
+    fn new_scope(&mut self, name: Option<String>) {
+        self.symbol_tables.push(
+            self.symbol_tables.last().unwrap().new_child(
+                self.symbol_tables.len(), name
+            )
+        );
+    }
+
     // General useful functions
     /// Skips new lines. Don't care about them
     fn skip_newlines(&mut self) {
@@ -462,8 +475,8 @@ impl Parser {
     /// float b := 12
     /// ```
     /// is two ASTs, both performing variable assignments
-    pub fn parse(&mut self) -> Result<Vec<ASTNode>, Error> {
-        let mut out: Vec<ASTNode> = vec![];
+    pub fn parse(&mut self) -> Result<(Vec<ASTNode>, Vec<SymbolTable>), Error> {
+        let mut out_ast: Vec<ASTNode> = vec![];
 
         // Loop through tokens to create an ast
         loop {
@@ -474,7 +487,7 @@ impl Parser {
             if self.current_tok.is_none() { break; }
 
             match self.statement() {
-                Ok(ast) => out.push(ast),
+                Ok(ast) => out_ast.push(ast),
                 Err(error) => return Err(error)
             }
             if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ != TokType::Newline {
@@ -485,7 +498,7 @@ impl Parser {
                 ));
             }
         }
-        return Ok(out);
+        return Ok((out_ast, self.symbol_tables.clone()));
     }
 
     /// First grammar rule
@@ -715,6 +728,9 @@ impl Parser {
                 }
                 _ => return Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_start, 0306))
             }
+            let mut last = self.symbol_tables.pop().unwrap();
+            last.push(var_name.clone());
+            self.symbol_tables.push(last);
             return Ok(ASTNode::new(ASTNodeType::VarAssign(ret, var_type, var_name),
                                    Vec::from([expr]),
                                    pos_start,
@@ -1155,6 +1171,7 @@ impl Parser {
 
         // if(0.3) elif(0.5) else(0.4)
         if tok == TokType::Keyword(0, 3) {
+            self.new_scope(loop_value.clone());
             let mut children = vec![];
 
             // if(0.3) statement
