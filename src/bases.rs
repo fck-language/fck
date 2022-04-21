@@ -140,7 +140,7 @@ pub enum TokType {
 	/// Right square parentheses ]
 	RParenSquare,
 	/// At identifier
-	At(String),
+	Label(String),
 	/// Boolean negation
 	Not,
 	/// Colon
@@ -170,7 +170,7 @@ pub enum TokType {
 	/// New line
 	Newline,
 	/// Variable assignment
-	Set(bool),
+	Set,
 	/// Add value to current variable
 	SetPlus(bool),
 	/// Subtract value from current variable

@@ -95,7 +95,7 @@ fn build_ast(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, ast
 	unsafe {
 		let out = match match ast.node_type {
 			// Terminal values
-			ASTNodeType::VarAssign(ret, var_type, name) => build_var_assign(module, bb, val, ret, var_type, name, ast.child_nodes.get(0).unwrap().clone()),
+			ASTNodeType::VarAssign(var_type, name) => build_var_assign(module, bb, val, var_type, name, ast.child_nodes.get(0).unwrap().clone()),
 			ASTNodeType::ArithOp(v) => build_arith_op(module, bb, val, v, ast.child_nodes),
 			ASTNodeType::Int(v) => Ok((bb, Value::new(LLVMConstInt(LLVMInt64Type(), v as c_ulonglong, LLVM_TRUE), 1))),
 			ASTNodeType::CompOp(v) => build_comp_op(module, bb, val, v, ast.child_nodes),
@@ -113,7 +113,7 @@ fn build_ast(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, ast
 }
 
 /// Builds a `ASTNodeType::VarAssign` AST node to the module
-unsafe fn build_var_assign(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, ret: bool, _var_type: u16, name: String, value: ASTNode) -> Result<(LLVMBasicBlockRef, Value), String> {
+unsafe fn build_var_assign(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, _var_type: u16, name: String, value: ASTNode) -> Result<(LLVMBasicBlockRef, Value), String> {
 	let builder = LLVMCreateBuilder();
 	LLVMPositionBuilderAtEnd(builder, bb);
 	let var = LLVMBuildAlloca(
@@ -131,9 +131,7 @@ unsafe fn build_var_assign(module: &mut Module, mut bb: LLVMBasicBlockRef, mut v
 		child_out.1.value,
 		var
 	);
-	if ret {
-		val = child_out.1.clone()
-	}
+	val = child_out.1.clone();
 	Ok((bb, val))
 }
 

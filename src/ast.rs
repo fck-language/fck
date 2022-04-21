@@ -68,6 +68,9 @@ impl Lexer {
                     self.advance();
                 } else if self.current_char == '#' {
                     self.advance();
+                    self.skip_comment();
+                } else if self.current_char == '!' {
+                    self.advance();
                     if self.current_char == '!' {
                         self.advance();
                         let lang_code = match self.make_identifier().type_ {
@@ -81,9 +84,15 @@ impl Lexer {
                                                           0101))
                         }
                         self.keyword_code = lang_code;
+                        if self.current_char == '\n' {
+                            self.current_pos.advance_ln();
+                        }
                         self.advance();
                     } else {
-                        self.skip_comment();
+                        match self.make_not_equals(pos_start) {
+                            Ok(t) => tokens.push(t),
+                            Err(e) => return Err(e)
+                        }
                     }
                 } else {
                     let tok_type_opt = match self.current_char {
@@ -100,6 +109,7 @@ impl Lexer {
                         ';' => Some(TokType::Newline),
                         '?' => Some(TokType::QuestionMark),
                         '.' => Some(TokType::Dot),
+                        ':' => Some(TokType::Colon),
                         _ => None
                     };
                     if let Some(tok_type) = tok_type_opt {
@@ -110,12 +120,10 @@ impl Lexer {
                     }
 
                     let tok = match match self.current_char {
-                        '!' => self.make_not_equals(),
                         '<' => self.single_double_token('=', TokType::LT, TokType::LTE),
                         '>' => self.single_double_token('=', TokType::GT, TokType::GTE),
                         '*' => self.single_double_token('*', TokType::Mult, TokType::Pow),
                         '/' => self.single_double_token('/', TokType::Div, TokType::FDiv),
-                        ':' => self.make_set(),
                         '=' => self.make_equals(),
                         '@' => self.make_loop_identifier(),
                         '\'' | '"' => self.make_string(self.current_char),
@@ -193,7 +201,7 @@ impl Lexer {
         let id = self.make_identifier();
         match id.type_ {
             TokType::Identifier(_, v) => Ok(
-                Token::new(TokType::At(v),
+                Token::new(TokType::Label(v),
                            pos_start,
                            self.current_pos.clone())
             ),
@@ -237,9 +245,7 @@ impl Lexer {
 
     /// Called by `self.make_tokens` when a '!' is found. Will check for a "!=", "!!", or character
     /// after it otherwise an `Err(Error)` is returned.
-    fn make_not_equals(&mut self) -> Result<Token, Error> {
-        let pos_start = self.current_pos.clone();
-        self.advance();
+    fn make_not_equals(&mut self, pos_start: Position) -> Result<Token, Error> {
         if self.current_char == '=' {
             self.advance();
             return Ok(Token::new(TokType::NE, pos_start,
@@ -264,8 +270,7 @@ impl Lexer {
                            pos_start,
                            self.current_pos.clone()));
         }
-        // self.advance();
-        return Err(Error::new(pos_start, self.current_pos.clone(), 0202));
+        return Ok(Token::new(TokType::Set, pos_start, self.current_pos.clone()));
     }
 
     /// General function called by `self.make_tokens` when we want to check for one of two tokens
@@ -343,7 +348,7 @@ impl Lexer {
         self.advance();
         return Ok(Token::new(
             match tok_type {
-                0 => TokType::Set(ret),
+                0 => TokType::Set,
                 1 => TokType::SetPlus(ret),
                 2 => TokType::SetMinus(ret),
                 3 => TokType::SetMod(ret),
@@ -364,6 +369,7 @@ impl Lexer {
             while !(self.current_char == '\n' || self.char_index + 1 == self.split_text.len()) {
                 self.advance();
             }
+            self.current_pos.advance_ln();
         } else {
             while self.current_char != '#' && self.char_index + 1 != self.split_text.len() {
                 self.advance();
@@ -598,7 +604,7 @@ impl Parser {
         // continue(0.16) and break(0.17) keywords
         // TODO: The fuck is this?
         let mut out;
-        if let TokType::At(v) = tok.type_ {
+        if let TokType::Label(v) = tok.type_ {
             self.safe = true;
             self.next();
             if self.current_tok.is_none() {
@@ -695,17 +701,15 @@ impl Parser {
                 expr = ASTNode::new_v(default_values(var_type),
                                     Position::new(),
                                     Position::new());
-                return Ok(ASTNode::new(ASTNodeType::VarAssign(false, var_type, var_name),
+                return Ok(ASTNode::new(ASTNodeType::VarAssign(var_type, var_name),
                                        Vec::from([expr]),
                                        pos_start,
                                        pos_end));
             };
 
-            let mut ret = false;
             let mut pos_end = self.current_tok.clone().unwrap().pos_end;
             match self.current_tok.clone().unwrap().type_ {
-                TokType::Set(r) => {
-                    ret = r;
+                TokType::Set => {
                     self.next();
                     if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
                         expr = ASTNode::new_v(default_values(var_type),
@@ -732,7 +736,7 @@ impl Parser {
             let mut last = self.symbol_tables.pop().unwrap();
             last.push(var_name.clone());
             self.symbol_tables.push(last);
-            return Ok(ASTNode::new(ASTNodeType::VarAssign(ret, var_type, var_name),
+            return Ok(ASTNode::new(ASTNodeType::VarAssign(var_type, var_name),
                                    Vec::from([expr]),
                                    pos_start,
                                    pos_end));
@@ -1158,7 +1162,7 @@ impl Parser {
             ASTNode::new_v(ASTNodeType::Bool(false), pos_start, tok.pos_end)
         } else {
             match tok.type_ {
-                TokType::At(v) => {
+                TokType::Label(v) => {
                     self.next();
                     match self.nameable_methods(Some(v)) {
                         Ok(n) => n,
@@ -1282,14 +1286,14 @@ impl Parser {
             };
             if self.current_tok.is_none() {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
-            } else if self.current_tok.clone().unwrap().type_ == TokType::Set(false) {
+            } else if self.current_tok.clone().unwrap().type_ == TokType::Set {
                 self.next();
                 if self.current_tok.is_none() {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0304));
                 }
                 let tok = self.current_tok.clone().unwrap();
                 if let TokType::Identifier(_, v) = tok.type_ {
-                    child_nodes.push(ASTNode::new(ASTNodeType::VarAssign(false, 0, v), vec![], tok.pos_start, tok.pos_end));
+                    child_nodes.push(ASTNode::new(ASTNodeType::VarAssign(0, v), vec![], tok.pos_start, tok.pos_end));
                     self.next();
                 } else {
                     return Err(Error::new(tok.pos_start, tok.pos_end, 0304));
