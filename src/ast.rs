@@ -360,7 +360,8 @@ impl Lexer {
     /// Called by `self.make_tokens` when a comment is found. This skips the comment. Big surprise
     fn skip_comment(&mut self) {
         if self.current_char == '#' {
-            while self.current_char != '\n' || self.char_index + 1 != self.split_text.len() {
+            self.advance();
+            while !(self.current_char == '\n' || self.char_index + 1 == self.split_text.len()) {
                 self.advance();
             }
         } else {
