@@ -214,7 +214,7 @@ pub struct SymbolTable {
     /// removed from the `variables` map to save on memory
     checker: Vec<bool>,
 	/// Scope index. This tells the symbol table which symbol table to look at for variables
-	scope_index: Vec<usize>,
+	pub scope_index: Vec<usize>,
     /// Scope name. Used by branching statements
     name: Option<String>
 }
@@ -248,6 +248,14 @@ impl SymbolTable {
 	pub fn push(&mut self, name: String) {
 		self.variables.push(name);
 		self.checker.push(false);
+	}
+	
+	pub fn find(&self, name: &String) -> Option<usize> {
+		self.variables.iter().position(|f| f == name)
+	}
+	
+	pub fn found(&mut self, index: usize) {
+		self.checker[index] = true;
 	}
 }
 

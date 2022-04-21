@@ -682,8 +682,8 @@ impl Parser {
             };
             tok = self.current_tok.clone().unwrap();
             let var_name;
-            if let TokType::Identifier(_, v) = tok.type_ {
-                var_name = v;
+            if let TokType::Identifier(lang, v) = tok.type_ {
+                var_name = format!("{}:{}", lang, v);
             } else {
                 return Err(Error::new(tok.pos_start, tok.pos_end, 0304));
             }
@@ -741,12 +741,27 @@ impl Parser {
         // TODO: static(previously silent) variable assignments
 
         // Variable access and reassignment
-        if let TokType::Identifier(_, var_name) = tok.type_ {
+        if let TokType::Identifier(lang, var_name) = tok.type_ {
+            let keyed_name = format!("{}:{}", lang, var_name);
             self.safe = true;
             self.next();
             if self.current_tok.is_none() {
+                let mut current_scope_index = self.symbol_tables.last().unwrap().scope_index.clone();
+                let mut st_index = 0;
+                let mut var_index = 0;
+                while let Some(i) = current_scope_index.pop() {
+                    if let Some(pos) = self.symbol_tables.get(i).unwrap().find(&keyed_name) {
+                        var_index = pos;
+                        st_index = i;
+                        break
+                    }
+                }
+                if current_scope_index.is_empty() {
+                    return Err(Error::new(pos_start, pos_end, 0000))
+                }
+                self.symbol_tables[st_index].found(var_index);
                 self.safe = false;
-                return Ok(ASTNode::new_v(ASTNodeType::VarAccess(var_name),
+                return Ok(ASTNode::new_v(ASTNodeType::VarAccess(st_index, var_index),
                                        pos_start,
                                        pos_end));
             } else {

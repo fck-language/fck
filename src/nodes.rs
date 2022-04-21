@@ -20,7 +20,7 @@ pub enum ASTNodeType {
     /// List type
     List,
     /// Variable access. Holds the variable name(language formatted)
-    VarAccess(String),
+    VarAccess(usize, usize),
     VarGetRange,     //
     VarGetItem,      //
     /// Variable assignment. Holds if the variable should be returned, the variable type, and

@@ -81,7 +81,7 @@ pub fn shell(config_file: ConfigFile, dt: bool, dast: bool) {
             }
         };
         if dast {
-            for (i, ast) in ast_list.iter().enumerate() {
+            for (i, ast) in ast_list.0.iter().enumerate() {
                 println!("** {} **\n{:?}", i + 1, ast)
             }
         }
