@@ -33,7 +33,7 @@ impl Lexer {
             split_text: full_text.chars().collect(),
             current_pos: Position::new(),
             char_index: 0,
-            current_char: full_text.chars().nth(0).unwrap(),
+            current_char: full_text.chars().nth(0).unwrap_or(char::from(0)),
             keywords,
             keyword_code,
         };
