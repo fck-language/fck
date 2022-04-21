@@ -471,7 +471,7 @@ impl Parser {
     ///
     /// The reason it returns a `Vec<ASTNode>` not just an `ASTNode` is because one piece of code
     /// cannot be placed into a single AST. The ASTs are ordered. For example
-    /// ```
+    /// ```fck
     /// int a := 5
     /// float b := 12
     /// ```
@@ -503,7 +503,7 @@ impl Parser {
     }
 
     /// First grammar rule
-    /// ```
+    /// ```regex
     /// [return|continue|break|(expr)]
     /// ```
     fn statement(&mut self) -> Result<ASTNode, Error> {
@@ -1168,7 +1168,7 @@ impl Parser {
                 TokType::Int(v) => ASTNode::new_v(ASTNodeType::Int(v as i64), pos_start, tok.pos_end),
                 TokType::Float(v) => ASTNode::new_v(ASTNodeType::Float(v), pos_start, tok.pos_end),
                 TokType::String(v) => ASTNode::new_v(ASTNodeType::String(v), pos_start, tok.pos_end),
-                TokType::Identifier(_, v) => ASTNode::new_v(ASTNodeType::VarAccess(v), pos_start, tok.pos_end),
+                // TokType::Identifier(_, v) => ASTNode::new_v(ASTNodeType::VarAccess(v), pos_start, tok.pos_end),
                 _ => {
                     match self.nameable_methods(None) {
                         Ok(n) => n,
