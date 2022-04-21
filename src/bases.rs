@@ -127,6 +127,10 @@ pub enum TokType {
 	FDiv,
 	/// Power operator
 	Pow,
+	/// Increment
+	Increment,
+	/// Decrement
+	Decrement,
 	/// Left parentheses (
 	LParen,
 	/// Right parentheses )
@@ -172,19 +176,19 @@ pub enum TokType {
 	/// Variable assignment
 	Set,
 	/// Add value to current variable
-	SetPlus(bool),
+	SetPlus,
 	/// Subtract value from current variable
-	SetMinus(bool),
+	SetMinus,
 	/// Modulus current variable
-	SetMod(bool),
+	SetMod,
 	/// Multiply variable
-	SetMult(bool),
+	SetMult,
 	/// Divide variable
-	SetDiv(bool),
+	SetDiv,
 	/// Floor divide variable
-	SetFDiv(bool),
+	SetFDiv,
 	/// Power current variable
-	SetPow(bool),
+	SetPow,
 }
 
 pub struct Context<'a> {

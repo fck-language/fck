@@ -96,8 +96,6 @@ impl Lexer {
                     }
                 } else {
                     let tok_type_opt = match self.current_char {
-                        '+' => Some(TokType::Plus),
-                        '-' => Some(TokType::Minus),
                         '%' => Some(TokType::Mod),
                         '(' => Some(TokType::LParen),
                         ')' => Some(TokType::RParen),
@@ -120,10 +118,9 @@ impl Lexer {
                     }
 
                     let tok = match match self.current_char {
+                        '+' | '-' | '*' | '/' => self.make_op_or_set(),
                         '<' => self.single_double_token('=', TokType::LT, TokType::LTE),
                         '>' => self.single_double_token('=', TokType::GT, TokType::GTE),
-                        '*' => self.single_double_token('*', TokType::Mult, TokType::Pow),
-                        '/' => self.single_double_token('/', TokType::Div, TokType::FDiv),
                         '=' => self.make_equals(),
                         '@' => self.make_loop_identifier(),
                         '\'' | '"' => self.make_string(self.current_char),
@@ -290,6 +287,71 @@ impl Lexer {
                              self.current_pos.clone()));
     }
 
+    fn make_op_or_set(&mut self) -> Result<Token, Error> {
+        let pos_start = self.current_pos.clone();
+        match self.current_char {
+            '+' => {
+                self.advance();
+                if self.current_char == '+' {
+                    self.advance();
+                    return Ok(Token::new(TokType::Increment, pos_start, self.current_pos.clone()))
+                } else if self.current_char == '=' {
+                    self.advance();
+                    return Ok(Token::new(TokType::SetPlus, pos_start, self.current_pos.clone()))
+                } else {
+                    return Ok(Token::new(TokType::Plus, pos_start, self.current_pos.clone()))
+                }
+            }
+            '-' => {
+                self.advance();
+                if self.current_char == '-' {
+                    self.advance();
+                    return Ok(Token::new(TokType::Decrement, pos_start, self.current_pos.clone()))
+                } else if self.current_char == '=' {
+                    self.advance();
+                    return Ok(Token::new(TokType::SetMinus, pos_start, self.current_pos.clone()))
+                } else {
+                    return Ok(Token::new(TokType::Minus, pos_start, self.current_pos.clone()))
+                }
+            }
+            '*' => {
+                self.advance();
+                if self.current_char == '*' {
+                    self.advance();
+                    if self.current_char == '=' {
+                        self.advance();
+                        return Ok(Token::new(TokType::SetPow, pos_start, self.current_pos.clone()))
+                    } else {
+                        return Ok(Token::new(TokType::Pow, pos_start, self.current_pos.clone()))
+                    }
+                } else if self.current_char == '=' {
+                    self.advance();
+                    return Ok(Token::new(TokType::SetMult, pos_start, self.current_pos.clone()))
+                } else {
+                    return Ok(Token::new(TokType::Mult, pos_start, self.current_pos.clone()))
+                }
+            }
+            '/' => {
+                self.advance();
+                if self.current_char == '/' {
+                    self.advance();
+                    if self.current_char == '=' {
+                        self.advance();
+                        return Ok(Token::new(TokType::SetFDiv, pos_start, self.current_pos.clone()))
+                    } else {
+                        return Ok(Token::new(TokType::FDiv, pos_start, self.current_pos.clone()))
+                    }
+                } else if self.current_char == '=' {
+                    self.advance();
+                    return Ok(Token::new(TokType::SetDiv, pos_start, self.current_pos.clone()))
+                } else {
+                    return Ok(Token::new(TokType::Div, pos_start, self.current_pos.clone()))
+                }
+            }
+            _ => unreachable!()
+        }
+    }
+    
     /// Called by `self.make_tokens` when a ':' is found. This parses one or two more characters to
     /// decide what kind of assignment operation is being performed. It makes use of the ordering of
     /// token type values to make the code simpler
@@ -349,13 +411,13 @@ impl Lexer {
         return Ok(Token::new(
             match tok_type {
                 0 => TokType::Set,
-                1 => TokType::SetPlus(ret),
-                2 => TokType::SetMinus(ret),
-                3 => TokType::SetMod(ret),
-                4 => TokType::SetPow(ret),
-                5 => TokType::SetMult(ret),
-                6 => TokType::SetFDiv(ret),
-                7 => TokType::SetDiv(ret),
+                1 => TokType::SetPlus,
+                2 => TokType::SetMinus,
+                3 => TokType::SetMod,
+                4 => TokType::SetPow,
+                5 => TokType::SetMult,
+                6 => TokType::SetFDiv,
+                7 => TokType::SetDiv,
                 _ => unreachable!()
             },
             pos_start,
