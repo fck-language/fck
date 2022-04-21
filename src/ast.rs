@@ -368,8 +368,8 @@ impl Lexer {
             while self.current_char != '#' && self.char_index + 1 != self.split_text.len() {
                 self.advance();
             }
-            self.advance();
         }
+        self.advance();
     }
 }
 
