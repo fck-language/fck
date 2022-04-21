@@ -50,6 +50,8 @@ fck has a few interesting quirks as a consequence of a few design choices. These
 Interpreted coding languages, because they're interpreted, can run code as it reads it, allowing errors to be far down the code and not impact anything before it. Because fck is both an interpreted and compiled language, the ASTs are generated for the entire file all at once. In general this will not impact you, and may even be more useful since it will pick up on errors before the code is run.
 2. **Multilingual support is further reaching than you thought**\
 Because fck is multilingual, adding a new feature has to be considered in every language currently implemented, and then documentation is needed for all the different languages. This also means that testing features takes longer that normal because all languages have to be tested.
+3. **Debug mode is only in English**\
+Debug mode is only intended to be used by people developing the language. Because Rust is in English, there isn't much point in extending multilingual support to debug. If you really do want it to be extended, that can be done though
 
 ---
 

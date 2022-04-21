@@ -23,7 +23,7 @@ pub const LLVM_TRUE: LLVMBool = 1;
 #[derive(Copy, Clone, Debug)]
 pub struct Position {
     /// Line number
-    ln: usize,
+    pub ln: usize,
     /// Column number
     pub col: usize
 }

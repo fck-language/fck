@@ -98,13 +98,13 @@ fn run_file(path: &str, config_file: ConfigFile, dump_llvm: bool, debug: bool) {
     }
     let keywords = get_associated_keywords(&*config_file.default_lang).unwrap();
     let tokens = match ast::Lexer::new(
-        file,
+        file.clone(),
         keywords,
         config_file.default_lang
     ).make_tokens() {
         Ok(toks) => toks,
         Err(e) => {
-            println!("{}{}", if debug { "Token error: " } else { "" }, e);
+            println!("{}{}\n{}", if debug { "Token error: " } else { "" }, e, e.show_position(file));
             exit(1)
         }
     };
@@ -118,7 +118,7 @@ fn run_file(path: &str, config_file: ConfigFile, dump_llvm: bool, debug: bool) {
     let (ast_vec, st_vec) = match ast::Parser::new(tokens).parse() {
         Ok(asts) => asts,
         Err(e) => {
-            println!("{}{}", if debug { "Parse error: " } else { "" }, e);
+            println!("{}{}\n{}", if debug { "Parse error: " } else { "" }, e, e.show_position(file));
             exit(1)
         }
     };

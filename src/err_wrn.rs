@@ -12,6 +12,10 @@ impl Error {
     pub fn new(pos_start: Position, pos_end: Position, error_index: u16) -> Error {
         Error{pos_start, pos_end, error_index}
     }
+    
+    pub fn show_position(&self, src: String) -> String {
+        src.split('\n').collect::<Vec<&str>>().get(self.pos_start.ln..self.pos_end.ln + 1).unwrap().join("\n")
+    }
 }
 
 impl Display for Error {
