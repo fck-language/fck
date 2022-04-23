@@ -11,7 +11,7 @@ use std::fmt::{Debug, Formatter};
 pub struct ConfigFile {
     /// The language to use if no language is specified. Also determines the language to parse the
     /// config file in
-    pub(crate) default_lang: String,
+	pub default_lang: String,
     /// Wrap length of errors and warnings
     pub(crate) wrap_length: ConfigU8,
     //TODO: the fuck is this for?

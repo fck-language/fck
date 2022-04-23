@@ -524,12 +524,8 @@ impl Parser {
     // General useful functions
     /// Skips new lines. Don't care about them
     fn skip_newlines(&mut self) {
-        while self.current_tok.is_some() {
-            if self.current_tok.clone().unwrap().type_ == TokType::Newline {
-                self.next()
-            } else {
-                return;
-            }
+        while self.current_tok.is_some() && self.current_tok.clone().unwrap() == TokType::Newline {
+            self.next()
         }
     }
 
@@ -805,35 +801,6 @@ impl Parser {
         };
 
         // TODO: static(previously silent) variable assignments
-
-        // Variable access and reassignment
-        if let TokType::Identifier(lang, var_name) = tok.type_ {
-            let keyed_name = format!("{}:{}", lang, var_name);
-            self.safe = true;
-            self.next();
-            if self.current_tok.is_none() {
-                let mut current_scope_index = self.symbol_tables.last().unwrap().scope_index.clone();
-                let mut st_index = 0;
-                let mut var_index = 0;
-                while let Some(i) = current_scope_index.pop() {
-                    if let Some(pos) = self.symbol_tables.get(i).unwrap().find(&keyed_name) {
-                        var_index = pos;
-                        st_index = i;
-                        break
-                    }
-                }
-                if current_scope_index.is_empty() {
-                    return Err(Error::new(pos_start, pos_end, 0000))
-                }
-                self.symbol_tables[st_index].found(var_index);
-                self.safe = false;
-                return Ok(ASTNode::new_v(ASTNodeType::VarAccess(st_index, var_index),
-                                       pos_start,
-                                       pos_end));
-            } else {
-                self.put_back();
-            }
-        }
 
         let node = match self.comp_expr() {
             Ok(n) => n,
@@ -1231,10 +1198,43 @@ impl Parser {
                         Err(e) => return Err(e)
                     }
                 }
-                TokType::Int(v) => ASTNode::new_v(ASTNodeType::Int(v as i64), pos_start, tok.pos_end),
-                TokType::Float(v) => ASTNode::new_v(ASTNodeType::Float(v), pos_start, tok.pos_end),
-                TokType::String(v) => ASTNode::new_v(ASTNodeType::String(v), pos_start, tok.pos_end),
-                // TokType::Identifier(_, v) => ASTNode::new_v(ASTNodeType::VarAccess(v), pos_start, tok.pos_end),
+                TokType::Int(v) => {
+                    self.next();
+                    ASTNode::new_v(ASTNodeType::Int(v as i64), pos_start, tok.pos_end)
+                },
+                TokType::Float(v) => {
+                    self.next();
+                    ASTNode::new_v(ASTNodeType::Float(v), pos_start, tok.pos_end)
+                },
+                TokType::String(v) => {
+                    self.next();
+                    ASTNode::new_v(ASTNodeType::String(v), pos_start, tok.pos_end)
+                },
+                TokType::Identifier(lang, v) => {
+                    let keyed_name = format!("{}:{}", lang, v);
+                    let mut current_scope_index = self.symbol_tables.last().unwrap().scope_index.clone();
+                    let mut st_index = 0;
+                    let mut var_index = 0;
+                    let mut found = false;
+                    while let Some(i) = current_scope_index.pop() {
+                        if let Some(pos) = self.symbol_tables.get(i).unwrap().find(&keyed_name) {
+                            var_index = pos;
+                            st_index = i;
+                            found = true;
+                            break
+                        }
+                    }
+                    if !found {
+                        return Err(Error::new(pos_start, tok.pos_end, 0000))
+                    }
+                    self.symbol_tables[st_index].found(var_index);
+                    self.next();
+                    ASTNode::new_v(
+                        ASTNodeType::VarAccess(st_index, var_index),
+                        pos_start,
+                        tok.pos_end
+                    )
+                },
                 _ => {
                     match self.nameable_methods(None) {
                         Ok(n) => n,
@@ -1243,7 +1243,6 @@ impl Parser {
                 }
             }
         };
-        self.next();
         Ok(out)
     }
 
@@ -1265,10 +1264,6 @@ impl Parser {
                 Ok(n) => n,
                 Err(e) => return Err(e)
             });
-            if !(self.current_tok.clone().is_some() && self.current_tok.clone().unwrap().type_ == TokType::RParenCurly) {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303));
-            }
-            self.next();
 
             self.skip_newlines();
 
@@ -1287,9 +1282,7 @@ impl Parser {
                 }
                 children.extend(elif_exprs);
             }
-
-            self.skip_newlines();
-
+            
             // else(0.4)
             if self.current_tok.is_some() && self.current_tok.clone().unwrap() == TokType::Keyword(0, 4) {
                 let else_pos_start = self.current_tok.clone().unwrap().pos_start;
@@ -1313,10 +1306,11 @@ impl Parser {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
                 }
                 children.push(ASTNode::new(ASTNodeType::Else, out, else_pos_start, self.current_tok.clone().unwrap().pos_end));
+                self.next();
             }
 
             let pos_end = children.clone().pop().unwrap().pos_end;
-            self.next();
+            // self.next();
             return Ok(ASTNode::new(ASTNodeType::If(loop_value), children, pos_start, pos_end));
         }
 
@@ -1488,8 +1482,8 @@ impl Parser {
         if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
             return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
         }
+        self.next();
         expr.child_nodes.extend(out);
-        self.skip_newlines();
         Ok(expr)
     }
 }
