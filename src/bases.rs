@@ -98,7 +98,7 @@ impl std::fmt::Display for Token {
 
 impl std::fmt::Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "T:{:<3?}  ps:{} pe:{}", self.type_, self.pos_start, self.pos_end)
+        write!(f, "{:.<30}{} -> {}", format!("{:0>3?}", self.type_), self.pos_start, self.pos_end)
     }
 }
 
@@ -230,7 +230,7 @@ impl SymbolTable {
 			variables: vec![],
 			aliases: HashMap::new(),
 			checker: vec![],
-			scope_index: vec![],
+			scope_index: vec![0],
 			name: None
 		}
 	}

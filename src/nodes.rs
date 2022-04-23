@@ -93,8 +93,8 @@ impl ASTNode {
 
 impl std::fmt::Debug for ASTNode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let pad = f.width().unwrap_or(0) + 1;
-        let mut out = String::from(' ').repeat(pad - 1);
+        let p = f.width().unwrap_or(0) + 1;
+        let mut out = String::from(' ').repeat(p - 1);
         
         out.push_str(
             &*format!("{}{:?} [{} {}]\n",
@@ -102,10 +102,8 @@ impl std::fmt::Debug for ASTNode {
                       self.node_type, self.pos_start, self.pos_end
             )
         );
-        if self.child_nodes.len() > 0 {
-            self.child_nodes.iter().map(
-                |n| out.push_str(&*format!("{:pad$?}", n))
-            );
+        for n in self.child_nodes.iter() {
+            out.push_str(&*format!("{:p$?}", n));
         }
         write!(f, "{}", out)
     }

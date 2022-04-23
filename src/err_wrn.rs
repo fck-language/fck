@@ -5,7 +5,7 @@ use crate::bases::Position;
 pub struct Error {
     pos_start: Position,
     pos_end: Position,
-    error_index: u16
+    pub error_index: u16
 }
 
 impl Error {

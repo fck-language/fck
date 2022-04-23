@@ -15,7 +15,7 @@ use std::{
     process::exit
 };
 use colored::*;
-use lang::get_associated_keywords;
+use lang::{get_associated_keywords, get_associated_messages};
 use crate::config_file::ConfigFile;
 
 mod bases;
@@ -45,7 +45,7 @@ fn main() {
             .long("version")
             .takes_value(false)
             .help("Returns the current versions of fck"))
-        .arg(Arg::new("file")
+        .arg(Arg::new("file or raw code")
             .takes_value(true)
             .index(1)
             .help("File or project path to run or compile"))
@@ -72,9 +72,9 @@ fn main() {
                          format!("{:<10}: {}", l, r)
                      ).collect::<Vec<String>>().join("\n")
         );
-    } else if app.is_present("file") {
+    } else if app.is_present("file or raw code") {
         run_file(
-            app.value_of("file").unwrap(), config_file,
+            app.value_of("file or raw code").unwrap(), config_file,
             app.is_present("dump LLVM IR") || app.is_present("debug mode"),
              app.is_present("debug mode")
         );
@@ -100,34 +100,41 @@ fn run_file(path: &str, config_file: ConfigFile, dump_llvm: bool, debug: bool) {
     let tokens = match ast::Lexer::new(
         file.clone(),
         keywords,
-        config_file.default_lang
+        config_file.default_lang.clone()
     ).make_tokens() {
         Ok(toks) => toks,
         Err(e) => {
-            println!("{}{}\n{}", if debug { "Token error: " } else { "" }, e, e.show_position(file));
+            println!("{}{}", if debug { "Token error: " } else { "" }, e);
+            println!("{}\n{}",
+                     get_associated_messages(&*config_file.default_lang).unwrap().errors.get_name(e.error_index - 1),
+                     e.show_position(file));
             exit(1)
         }
     };
     if debug {
-        println!("{}", keywords.debug_words.get(0).unwrap().bold().underline());
+        let w = (tokens.len() as f64).log10() as usize + 1;
+        println!("{}", format!("{}({})", keywords.debug_words.get(0).unwrap(), tokens.len()).bold().underline());
         for (i, tok) in tokens.iter().enumerate() {
-            println!("{} {:5}", format!("{:>03})", i).bold(), tok);
+            println!("{} {:5?}", format!("{:0>w$})", i).bold(), tok);
         }
         println!();
     }
     let (ast_vec, st_vec) = match ast::Parser::new(tokens).parse() {
         Ok(asts) => asts,
         Err(e) => {
-            println!("{}{}\n{}", if debug { "Parse error: " } else { "" }, e, e.show_position(file));
+            println!("{}{}", if debug { "Parse error: " } else { "" }, e);
+            println!("{}\n{}",
+                     get_associated_messages(&*config_file.default_lang.clone()).unwrap().errors.get_name(e.error_index - 1),
+                     e.show_position(file));
             exit(1)
         }
     };
     if debug {
-        println!("{}", keywords.debug_words.get(1).unwrap().bold().underline());
+        println!("{}", format!("{}({})", keywords.debug_words.get(1).unwrap(), ast_vec.len()).bold().underline());
         for (i, ast) in ast_vec.iter().enumerate() {
             println!("{}:\n{:?}", format!("{:>03}", i).bold(), ast)
         }
-        println!("{}", keywords.debug_words.get(2).unwrap().bold().underline());
+        println!("{}", format!("{}({})", keywords.debug_words.get(2).unwrap(), st_vec.len()).bold().underline());
         for (i, st) in st_vec.iter().enumerate() {
             println!("{}) {:5?}", format!("{:>03}", i).bold(), st)
         }
