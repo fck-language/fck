@@ -20,7 +20,7 @@ pub const LLVM_TRUE: LLVMBool = 1;
 /// Position container. Is the basis for positions of tokens and nodes.
 ///
 /// In documentation and comments, this struct will be represented as `({ln}{col})`
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Position {
     /// Line number
     pub ln: usize,
@@ -324,11 +324,11 @@ impl CompSymbolTable {
 }
 
 /// Allow us to cast a `SymbolTable` into a `CompSymbolTable`
-impl std::convert::Into<CompSymbolTable> for SymbolTable {
-	fn into(self) -> CompSymbolTable {
+impl std::convert::From<&SymbolTable> for CompSymbolTable {
+	fn from(t: &SymbolTable) -> Self {
 		CompSymbolTable {
-			values: Vec::with_capacity(self.variables.len()),
-			name: self.name
+			values: Vec::with_capacity(t.variables.len()),
+			name: t.name.clone()
 		}
 	}
 }

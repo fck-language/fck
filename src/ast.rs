@@ -536,8 +536,8 @@ impl Parser {
     /// The reason it returns a `Vec<ASTNode>` not just an `ASTNode` is because one piece of code
     /// cannot be placed into a single AST. The ASTs are ordered. For example
     /// ```fck
-    /// int a := 5
-    /// float b := 12
+    /// int a = 5
+    /// float b = 12
     /// ```
     /// is two ASTs, both performing variable assignments
     pub fn parse(&mut self) -> Result<(Vec<ASTNode>, Vec<SymbolTable>), Error> {

@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Debug};
 use crate::bases::Position;
 
 #[derive(Clone)]
@@ -19,6 +19,12 @@ impl Error {
 }
 
 impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(E{:04}) [{} -> {}]", self.error_index, self.pos_start, self.pos_end)
+    }
+}
+
+impl Debug for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "(E{:04}) [{} -> {}]", self.error_index, self.pos_start, self.pos_end)
     }
