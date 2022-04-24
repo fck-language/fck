@@ -1186,8 +1186,10 @@ impl Parser {
         let pos_start = tok.pos_start.clone();
 
         let out = if tok ==  TokType::Keyword(0, 20) {
+            self.next();
             ASTNode::new_v(ASTNodeType::Bool(true), pos_start, tok.pos_end)
         } else if tok == TokType::Keyword(0, 21) {
+            self.next();
             ASTNode::new_v(ASTNodeType::Bool(false), pos_start, tok.pos_end)
         } else {
             match tok.type_ {
