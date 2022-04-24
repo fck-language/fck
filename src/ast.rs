@@ -1266,8 +1266,10 @@ impl Parser {
                 Ok(n) => n,
                 Err(e) => return Err(e)
             });
-
-            self.skip_newlines();
+            
+            if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TokType::Newline {
+                self.next()
+            }
 
             // Check for elif(0.5) statements
             if self.current_tok.is_some() && self.current_tok.clone().unwrap() == TokType::Keyword(0, 5) {
@@ -1283,6 +1285,9 @@ impl Parser {
                     })
                 }
                 children.extend(elif_exprs);
+                if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TokType::Newline {
+                    self.next()
+                }
             }
             
             // else(0.4)
@@ -1292,10 +1297,16 @@ impl Parser {
                 if self.current_tok.is_none() {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302));
                 }
+                if self.current_tok.clone().unwrap().type_ == TokType::Newline {
+                    self.next()
+                }
                 if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
                     return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302));
                 }
                 self.next();
+                if self.current_tok.clone().unwrap().type_ == TokType::Newline {
+                    self.next()
+                }
                 let mut out = vec![];
                 while self.current_tok.is_some() && self.current_tok.clone().unwrap() != TokType::RParenCurly {
                     out.push(match self.expr() {
@@ -1464,7 +1475,11 @@ impl Parser {
         };
         if self.current_tok.is_none() {
             return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303));
-        } else if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
+        }
+        if self.current_tok.clone().unwrap().type_ == TokType::Newline {
+            self.next()
+        }
+        if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
             return Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0303));
         }
         self.next();
