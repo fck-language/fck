@@ -572,7 +572,9 @@ impl Parser {
                 ));
             }
         }
-        return Ok((out_ast, self.symbol_tables.clone()));
+        let mut st_out = self.symbol_tables.clone();
+        st_out.reverse();
+        return Ok((out_ast, st_out));
     }
 
     /// First grammar rule
