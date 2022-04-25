@@ -6,6 +6,7 @@ use lang::keywords::Keywords;
 use crate::nodes::{ASTNode, ASTNodeType};
 use lang::get_associated_keywords;
 use std::collections::HashMap;
+use type_things::symbol_tables::SymbolTable;
 
 /// Lexer for fck
 ///

@@ -4,22 +4,40 @@
 //! struct that holds the `LLVMModule` for compilation. This is here because of circular referencing
 use std::{
 	ffi::{ CStr, CString },
-	fmt::Formatter
+	fmt::{ Formatter, Display, Debug },
+	hash::{ Hash, Hasher },
+	os::raw::c_char
 };
-use std::fmt::Debug;
-use std::hash::{Hash, Hasher};
 
-use llvm_sys::{LLVMModule, prelude::{LLVMValueRef, LLVMBasicBlockRef}, core::{LLVMConstNull, LLVMInt32Type, LLVMPrintModuleToString, LLVMDisposeMessage}, LLVMValue};
+use llvm_sys::{
+	LLVMModule,
+	prelude::{ LLVMValueRef, LLVMBasicBlockRef, LLVMBuilderRef, LLVMTypeRef },
+	core::{
+		LLVMConstNull, LLVMInt32Type, LLVMPrintModuleToString, LLVMDisposeMessage, LLVMBuildAlloca
+	},
+	LLVMValue
+};
 use phf::Map;
 
 use crate::primitives::{INT, NULL_TYPE};
+use crate::symbol_tables::CompSymbolTable;
+
+/// LLVM memory allocation trait
+///
+/// This is implemented by anything that requires memory allocation (and eventually deallocation)
+pub trait LLVMMemoryTime<T> {
+	/// Allocate the required memory for the struct. This returns the value ref pointing to the
+	/// allocated space
+    unsafe fn allocate(&self, builder: LLVMBuilderRef, module: &mut Module) -> T;
+	/// Deallocate the memory the struct previously held
+    unsafe fn deallocate(&self, builder: LLVMBuilderRef, module: &mut Module);
+}
 
 /// fck Type
 ///
 /// This struct contains the functions and names for a type. It does not contain the type ID or a
 /// value. The type ID comes from teh index of a type in the list of all used types, and the value
 /// of a type is contained within a separate struct
-// #[derive(Debug)]
 pub struct Type {
 	/// Names of the type for different languages. The keys are the language codes and the values
 	/// are the names in that language. This will probably change in a bit
@@ -34,7 +52,9 @@ pub struct Type {
 	pub ops: Map<&'static str, Map<u16, unsafe fn(&mut Module, LLVMBasicBlockRef, Value, Value) -> (LLVMBasicBlockRef, Value)>>,
 	/// Functions that the type implements. The keys are the function names, which are converted by
 	/// the parser into the original identifiers, and the values are the function
-	pub functions: Map<&'static str, FuncCallSig>
+	pub functions: Map<&'static str, FuncCallSig>,
+	/// LLVM type. We use this to allocate space in the `LLVMMemoryTime` trait
+	pub llvm_type: unsafe fn () -> LLVMTypeRef
 }
 
 impl Debug for Type {
@@ -79,7 +99,7 @@ pub struct FuncCallSig {
 
 impl Hash for FuncCallSig {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		self.args.iter().map(|x| state.write_u8(x.type_.clone()));
+		self.args.iter().map(|x| state.write_u16(x.type_.clone()));
 		state.write_u16(self.ret.clone());
 		state.finish();
 	}
@@ -99,7 +119,7 @@ pub struct FuncArg {
 	/// Argument name
 	pub(crate) name: &'static str,
 	/// Argument type ID
-	pub(crate) type_: u8
+	pub(crate) type_: u16
 }
 
 /// Holder for LLVMModule
@@ -119,14 +139,23 @@ pub struct Module {
 	pub current_fn: LLVMValueRef,
 	/// All the types that are currently being used. This is initialised to having just the
 	/// primitives and null type
-	pub types: Vec<Type>
+	pub types: Vec<Type>,
+	/// Holds the symbol tables in scope
+	current_scope: Vec<CompSymbolTable>,
+	/// Holds the remaining symbol tables. These each have the correct capacity, but are empty
+	remaining_symbol_tables: Vec<CompSymbolTable>
 }
 
 impl Module {
 	/// Initialise a new Module
-	pub unsafe fn new(module: *mut LLVMModule) -> Self {
+	pub unsafe fn new(module: *mut LLVMModule, mut remaining_symbol_tables: Vec<CompSymbolTable>) -> Self {
 		let blank = CString::new("").unwrap();
-		Module { module, blank, strings: vec![], current_fn: LLVMConstNull(LLVMInt32Type()), types: vec![NULL_TYPE, INT] }
+		Module {
+			module, blank, strings: vec![],
+			current_fn: LLVMConstNull(LLVMInt32Type()), types: vec![NULL_TYPE, INT],
+			current_scope: vec![remaining_symbol_tables.pop().unwrap()],
+			remaining_symbol_tables
+		}
 	}
 	/// Make a new CString and return it as a `*const i8`
 	///
@@ -140,8 +169,8 @@ impl Module {
 	}
 }
 
-impl std::fmt::Display for Module {
-	/// Returns the LLVM IR code
+impl Display for Module {
+	/// Returns the LLVM IR code for the module (specifically `self.module`)
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		let module_string;
 		unsafe {

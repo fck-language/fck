@@ -6,3 +6,4 @@ pub mod checker;
 pub mod primitives;
 pub mod prelude;
 mod int;
+pub mod symbol_tables;

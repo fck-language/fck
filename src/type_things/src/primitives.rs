@@ -1,7 +1,9 @@
 //! fck primitive types
 //!
 //! The primitives that make up the rest of fck
-use crate::{ prelude::{ Type, Value }, int };
+use crate::{
+	prelude::{ Type, Value },
+};
 use phf::{Map, phf_map};
 use llvm_sys::{
 	core::*
@@ -20,7 +22,8 @@ pub const INT: Type = Type {
 		"mult" => int::INT_OPS_MULT,
 		"cast" => int::INT_OPS_CAST
 	},
-	functions: phf_map!{}
+	functions: phf_map!{},
+	llvm_type: unsafe { || { LLVMInt64Type() }}
 };
 
 pub const NULL_TYPE: Type = Type {
@@ -28,7 +31,8 @@ pub const NULL_TYPE: Type = Type {
 		"en" => "null"
 	},
 	ops: phf_map!{},
-	functions: phf_map!{}
+	functions: phf_map!{},
+	llvm_type: unsafe { || { LLVMInt1Type() }}
 };
 
 pub fn null_value() -> Value {

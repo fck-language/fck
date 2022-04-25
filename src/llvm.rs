@@ -18,7 +18,11 @@ use llvm_sys::{
 	target_machine::*
 };
 
-use type_things::{prelude::*, primitives::null_value};
+use type_things::{
+	prelude::{ Value, Type, Module },
+	primitives::null_value,
+	symbol_tables::CompSymbolTable
+};
 use crate::nodes::{ ASTNode, ASTNodeType };
 
 /// False constant of type `LLVMBool`
@@ -38,13 +42,13 @@ unsafe fn init() {
 }
 
 /// Main function of the file. Turns the asts into an LLVM module
-pub fn ir_to_module(module_name: &str, asts: Vec<ASTNode>) -> Module {
+pub fn ir_to_module(module_name: &str, asts: Vec<ASTNode>, symbol_tables: Vec<CompSymbolTable>) -> Module {
 	let mut module: Module;
 	unsafe {
 		init();
 		let llvm_module = LLVMModuleCreateWithName(CString::new(module_name).unwrap().as_bytes_with_nul().as_ptr() as *const c_char);
 		LLVMSetTarget(llvm_module, get_default_target_triple().as_ptr() as *const _);
-		module = Module::new(llvm_module);
+		module = Module::new(llvm_module, symbol_tables);
 	}
 	
 	// Create the main function that returns an i32 and make a block within that
