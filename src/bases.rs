@@ -191,15 +191,3 @@ pub enum TokType {
 	/// Power current variable
 	SetPow,
 }
-
-pub struct Context<'a> {
-    display_name: String,
-    full_text: String,
-    parent: Option<&'a Context<'a>>
-}
-
-impl Context<'_> {
-    pub fn new<'a>(display_name: String, full_text: String, parent: Option<&'a Context>) -> Context<'a> {
-        Context{display_name, full_text, parent}
-    }
-}
