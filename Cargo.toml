@@ -28,4 +28,3 @@ colored = "2.0.0"
 lang = { git = "https://github.com/fck-language/lang" }
 # Type system
 type_things = { path = "src/type_things", version = "0.1.0" }
-
