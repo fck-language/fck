@@ -141,12 +141,15 @@ fn run_file(path: &str, config_file: ConfigFile, dump_llvm: bool, debug: bool) {
         }
         println!();
     }
-    let module = llvm::ir_to_module(
-        &*file_name, ast_vec,
-        st_vec.iter().map(
-            |t| t.into()
-        ).collect::<Vec<CompSymbolTable>>()
-    );
+    let module;
+    unsafe {
+        module = llvm::ir_to_module(
+            &*file_name, ast_vec,
+            st_vec.iter().map(
+                |t| t.into()
+            ).collect::<Vec<CompSymbolTable>>()
+        );
+    }
     println!("{}", keywords.debug_words.get(3).unwrap());
     if dump_llvm {
         print!("{}...\r", keywords.debug_words.get(4).unwrap());

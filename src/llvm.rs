@@ -42,28 +42,21 @@ unsafe fn init() {
 }
 
 /// Main function of the file. Turns the asts into an LLVM module
-pub fn ir_to_module(module_name: &str, asts: Vec<ASTNode>, symbol_tables: Vec<CompSymbolTable>) -> Module {
-	let mut module: Module;
-	unsafe {
-		init();
-		let llvm_module = LLVMModuleCreateWithName(CString::new(module_name).unwrap().as_bytes_with_nul().as_ptr() as *const c_char);
-		LLVMSetTarget(llvm_module, get_default_target_triple().as_ptr() as *const _);
-		module = Module::new(llvm_module, symbol_tables);
-	}
+pub unsafe fn ir_to_module(module_name: &str, asts: Vec<ASTNode>, symbol_tables: Vec<CompSymbolTable>) -> Module {
+	init();
+	let llvm_module = LLVMModuleCreateWithName(CString::new(module_name).unwrap().as_bytes_with_nul().as_ptr() as *const c_char);
+	LLVMSetTarget(llvm_module, get_default_target_triple().as_ptr() as *const _);
+	let mut module = Module::new(llvm_module, symbol_tables);
 	
 	// Create the main function that returns an i32 and make a block within that
-	let main_fn;
-	let mut bb;
 	let mut val = null_value();
-	unsafe {
-		let main_type = LLVMFunctionType(LLVMInt32Type(), vec![].as_mut_ptr(), 0, LLVM_FALSE);
-		main_fn = LLVMAddFunction(module.module, module.new_ptr_i8("main"), main_type);
-		bb = LLVMAppendBasicBlock(main_fn, module.blank.as_ptr());
-	}
+	let main_type = LLVMFunctionType(LLVMInt32Type(), vec![].as_mut_ptr(), 0, LLVM_FALSE);
+	let main_fn = LLVMAddFunction(module.module, module.new_ptr_i8("main"), main_type);
+	let mut bb = LLVMAppendBasicBlock(main_fn, module.blank.as_ptr());
 	module.current_fn = main_fn;
 	
 	for ast in asts {
-		let out = match build_ast(&mut module, bb, val, ast) {
+		match build_ast(&mut module, bb, val, ast) {
 			Ok((bb_, val_)) => {
 				bb = bb_;
 				val = val_;
@@ -73,11 +66,9 @@ pub fn ir_to_module(module_name: &str, asts: Vec<ASTNode>, symbol_tables: Vec<Co
 	}
 	
 	// Add in a ret i32 0 at the end so it doesn't have a meltdown
-	unsafe {
-		let builder = LLVMCreateBuilder();
-        LLVMPositionBuilderAtEnd(builder, bb);
-		LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, LLVM_FALSE));
-	}
+	let builder = LLVMCreateBuilder();
+	LLVMPositionBuilderAtEnd(builder, bb);
+	LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, LLVM_FALSE));
 	
 	module
 }
@@ -95,24 +86,21 @@ pub fn get_default_target_triple() -> CString {
 }
 
 /// Builds the ASTs to the module
-fn build_ast(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, ast: ASTNode) -> Result<(LLVMBasicBlockRef, Value), String> {
-	unsafe {
-		let out = match match ast.node_type {
-			// Terminal values
-			ASTNodeType::VarAssign(var_type, name) => build_var_assign(module, bb, val, var_type, name, ast.child_nodes.get(0).unwrap().clone()),
-			ASTNodeType::ArithOp(v) => build_arith_op(module, bb, val, v, ast.child_nodes),
-			ASTNodeType::Int(v) => Ok((bb, Value::new(LLVMConstInt(LLVMInt64Type(), v as c_ulonglong, LLVM_TRUE), 1))),
-			ASTNodeType::CompOp(v) => build_comp_op(module, bb, val, v, ast.child_nodes),
-			ASTNodeType::If(_) => build_if(module, bb, val, ast.child_nodes),
-			_ => Ok((bb, val))
-		} {
-			Ok((bb_, val_)) => {
-				bb = bb_;
-				val = val_;
-			}
-			Err(e) => return Err(e)
-		};
-	}
+unsafe fn build_ast(module: &mut Module, mut bb: LLVMBasicBlockRef, mut val: Value, ast: ASTNode) -> Result<(LLVMBasicBlockRef, Value), String> {
+	match match ast.node_type {
+		ASTNodeType::VarAssign(var_type, name) => build_var_assign(module, bb, val, var_type, name, ast.child_nodes.get(0).unwrap().clone()),
+		ASTNodeType::ArithOp(v) => build_arith_op(module, bb, val, v, ast.child_nodes),
+		ASTNodeType::Int(v) => Ok((bb, Value::new(LLVMConstInt(LLVMInt64Type(), v as c_ulonglong, LLVM_TRUE), 1))),
+		ASTNodeType::CompOp(v) => build_comp_op(module, bb, val, v, ast.child_nodes),
+		ASTNodeType::If(_) => build_if(module, bb, val, ast.child_nodes),
+		_ => Ok((bb, val))
+	} {
+		Ok((bb_, val_)) => {
+			bb = bb_;
+			val = val_;
+		}
+		Err(e) => return Err(e)
+	};
 	Ok((bb, val))
 }
 
