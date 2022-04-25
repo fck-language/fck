@@ -26,7 +26,7 @@ pub enum ASTNodeType {
     /// Variable assignment. Holds if the variable should be returned, the variable type, and
     /// identifier(language formatted)
     VarAssign(u16, String),
-    VarReassign,     //
+    VarReassign(usize, usize),     //
     VarSubFunc,      //
     MethodCall,      //
     Ternary(bool, bool),         //

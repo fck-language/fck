@@ -1232,21 +1232,70 @@ impl Parser {
                     while let Some(i) = current_scope_index.pop() {
                         if let Some(pos) = self.symbol_tables.get(i).unwrap().find(&keyed_name) {
                             var_index = pos;
-                            st_index = i;
                             found = true;
+                            self.symbol_tables[i].found(var_index);
                             break
                         }
+                        st_index += 1;
                     }
                     if !found {
                         return Err(Error::new(pos_start, tok.pos_end, 0000))
                     }
-                    self.symbol_tables[st_index].found(var_index);
                     self.next();
-                    ASTNode::new_v(
-                        ASTNodeType::VarAccess(st_index, var_index),
-                        pos_start,
-                        tok.pos_end
-                    )
+                    if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ == TokType::Newline {
+                        return Ok(ASTNode::new_v(
+                            ASTNodeType::VarAccess(st_index, var_index),
+                            pos_start,
+                            tok.pos_end
+                        ))
+                    }
+                    // Check for variable reassignments
+                    let t = match self.current_tok.clone().unwrap().type_ {
+                        TokType::Set | TokType::SetPlus | TokType::SetMinus | TokType::SetMult | TokType::SetDiv | TokType::SetPow | TokType::SetFDiv | TokType::SetMod => {
+                            self.current_tok.clone().unwrap().type_
+                        }
+                        _ => return Ok(ASTNode::new_v(
+                            ASTNodeType::VarAccess(st_index, var_index),
+                            pos_start,
+                            tok.pos_end
+                        ))
+                    };
+                    self.next();
+                    return match self.expr() {
+                        Ok(e) => {
+                            let e_pos_start = e.pos_start.clone();
+                            let pos_end = e.pos_end.clone();
+                            Ok(ASTNode::new(
+                                ASTNodeType::VarReassign(st_index, var_index),
+                                vec![match t {
+                                    TokType::Set => e,
+                                    _ => ASTNode::new(
+                                        ASTNodeType::ArithOp(vec![
+                                            match t {
+                                                TokType::SetPlus => '+',
+                                                TokType::SetMinus => '-',
+                                                TokType::SetMult => '*',
+                                                TokType::SetDiv => '/',
+                                                TokType::SetPow => 'p',
+                                                TokType::SetFDiv => 'f',
+                                                TokType::SetMod => '%',
+                                                _ => unreachable!()
+                                            }
+                                        ]),
+                                        vec![
+                                            ASTNode::new_v(
+                                                ASTNodeType::VarAccess(st_index, var_index),
+                                                Position::new(), Position::new()
+                                            ), e
+                                        ],
+                                        e_pos_start, pos_end
+                                    )
+                                }],
+                                pos_start, pos_end
+                            ))
+                        }
+                        Err(e) => Err(e)
+                    }
                 },
                 _ => {
                     match self.nameable_methods(None) {
