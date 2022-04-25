@@ -97,7 +97,6 @@ impl Lexer {
                     }
                 } else {
                     let tok_type_opt = match self.current_char {
-                        '%' => Some(TokType::Mod),
                         '(' => Some(TokType::LParen),
                         ')' => Some(TokType::RParen),
                         '{' => Some(TokType::LParenCurly),
@@ -119,7 +118,7 @@ impl Lexer {
                     }
 
                     let tok = match match self.current_char {
-                        '+' | '-' | '*' | '/' => self.make_op_or_set(),
+                        '+' | '-' | '*' | '/' | '%' => self.make_op_or_set(),
                         '<' => self.single_double_token('=', TokType::LT, TokType::LTE),
                         '>' => self.single_double_token('=', TokType::GT, TokType::GTE),
                         '=' => self.make_equals(),
@@ -313,6 +312,15 @@ impl Lexer {
                     return Ok(Token::new(TokType::SetMinus, pos_start, self.current_pos.clone()))
                 } else {
                     return Ok(Token::new(TokType::Minus, pos_start, self.current_pos.clone()))
+                }
+            }
+            '%' => {
+                self.advance();
+                if self.current_char == '=' {
+                    self.advance();
+                    return Ok(Token::new(TokType::SetMod, pos_start, self.current_pos.clone()))
+                } else {
+                    return Ok(Token::new(TokType::Mod, pos_start, self.current_pos.clone()))
                 }
             }
             '*' => {
