@@ -6,12 +6,14 @@ extern crate lang;
 use crate::ast;
 
 use lang::{get_associated_keywords, get_associated_messages};
+use lang::keywords::Keywords;
 use crate::config_file::ConfigFile;
+use crate::err_wrn::Error;
 
 /// JIT shell
 ///
-/// Shell that uses JIT compilation with options to dump tokens and ASTs for each input
-pub fn shell(config_file: ConfigFile, dt: bool, dast: bool) {
+/// Shell that uses JIT compilation with debug option
+pub fn shell(config_file: ConfigFile, debug: bool) {
     let mut current_language = get_associated_keywords(&*config_file.default_lang).unwrap();
     let mut keyword_code = config_file.default_lang;
 
@@ -48,7 +50,7 @@ pub fn shell(config_file: ConfigFile, dt: bool, dast: bool) {
                 continue
             }
         };
-        if dt {
+        if debug {
             for t in tokens.iter() {
                 println!("{}", t)
             }
@@ -80,7 +82,7 @@ pub fn shell(config_file: ConfigFile, dt: bool, dast: bool) {
                 continue;
             }
         };
-        if dast {
+        if debug {
             for (i, ast) in ast_list.0.iter().enumerate() {
                 println!("** {} **\n{:?}", i + 1, ast)
             }

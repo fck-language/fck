@@ -5,6 +5,7 @@ use std::fs::read_to_string;
 use std::path::Path;
 use lang::get_associated_keywords;
 use std::fmt::{Debug, Formatter};
+use lang::keywords::Keywords;
 
 /// Config file struct that holds all the configurable options
 #[derive(Clone)]
@@ -13,48 +14,135 @@ pub struct ConfigFile {
     /// config file in
 	pub default_lang: String,
     /// Wrap length of errors and warnings
-    pub(crate) wrap_length: ConfigU8,
-    //TODO: the fuck is this for?
-    pub(crate) shell_language_info: bool,
+    pub wrap_length: ConfigU8,
+    /// When `true` this will inform the user when the shell language has been changed
+    pub shell_language_info: bool,
     /// Number of previous lines to save when using the shell
-    pub(crate) history_length: ConfigU8,
+    pub history_length: ConfigU8,
+    /// Profile name
+    pub name: Option<String>,
+    /// Profile github account
+    pub github: Option<String>,
+    /// Profile email
+    pub email: Option<String>,
 }
 
 impl ConfigFile {
     /// Creates a new ConfigFile strict from a given initial language code with default values
-    pub fn new(default_language: String) -> ConfigFile {
-        ConfigFile {
-            default_lang: default_language,
+    pub fn new() -> ConfigFile {
+        // don't you dare comment on how messy this is. please
+        let config_file_path = format!("{}/.fck", std::env::var("HOME").unwrap());
+        let config_file = Path::new(&config_file_path);
+        if !config_file.exists() {
+            println!(".fck config file does not exist and is required!\n\
+            This file should be in your $HOME directory");
+            std::process::exit(1)
+        };
+        let file_res = read_to_string(config_file);
+        if file_res.is_err() {
+            println!("{}", file_res.err().unwrap());
+            std::process::exit(1)
+        }
+        let file = match read_to_string(config_file) {
+            Ok(contents) => contents,
+            Err(e) => {
+                println!("{}", e);
+                std::process::exit(1)
+            }
+        };
+        let mut lines = file.lines();
+        let lang;
+        match lines.nth(0) {
+            Some(l) => lang = l.to_string().to_owned(),
+            None => {
+                println!("Lang code needed");
+                std::process::exit(1)
+            }
+        }
+    
+        let config_keys = match get_associated_keywords(&*lang) {
+            None => {
+                println!("Unknown language code in config file '{}'!\nLanguage code should be the first line in the config file", lang);
+                std::process::exit(1)
+            }
+            Some(k) => k.config_keys
+        };
+    
+        
+        let mut out = ConfigFile {
+            default_lang: lang,
             wrap_length: ConfigU8::new(70, 25, u8::MAX),
             shell_language_info: false,
             history_length: ConfigU8::new(100, 0, u8::MAX),
+            name: None, github: None, email: None
+        };
+    
+        for line in lines {
+            if line.trim() == "" || line.trim().chars().nth(0).unwrap() == '#'{
+                continue;
+            }
+            let split: Vec<&str> = line.split('=').collect::<Vec<&str>>().iter().map(|x| x.trim()).collect();
+            assert_eq!(split.len(), 2, "Each line should contain a key and associated value!\n{}", line);
+            match config_keys.iter().position(|&x| x == split[0].trim()) {
+                None => {
+                    println!("Unknown config file key '{}'!", split[0]);
+                }
+                Some(p) => {
+                    match out.value_type(p) {
+                        0 => {
+                            let res = split[1].trim().parse::<u8>();
+                            if res.is_err() {
+                                println!("Cannot parse {} as integer", split[1].trim())
+                            } else {
+                                out.set(p, split[1].trim())
+                            }
+                        }
+                        1 => {
+                            let res = split[1].trim().parse::<bool>();
+                            if res.is_err() {
+                                println!("Cannot parse {} as integer", split[1].trim())
+                            } else {
+                                out.set(p, split[1].trim())
+                            }
+                        }
+                        2 => out.set(p, split[1].trim()),
+                        _ => unreachable!()
+                    }
+                }
+            }
         }
+        out
     }
 
     /// Set a certain config option, indexed by value:
     /// 0. wrap length
     /// 1. shell language info
     /// 2. shell history length
-    pub fn new_value(&mut self, key_index: usize, int_value: Option<u8>, _string_value: Option<String>) {
+    /// 3. profile name
+    /// 4. profile github
+    /// 5. profile email
+    pub fn set(&mut self, key_index: usize, value: &str) {
         match key_index {
-            0 => self.wrap_length.set(int_value.unwrap()),
-            1 => self.shell_language_info = int_value.unwrap() != 0,
-            2 => self.history_length.set(int_value.unwrap()),
+            0 => self.wrap_length.set(value.parse::<u8>().unwrap()),
+            1 => self.shell_language_info = value.parse::<bool>().unwrap(),
+            2 => self.history_length.set(value.parse::<u8>().unwrap()),
+            3 => self.name = Some(value.to_string()),
+            4 => self.github = Some(value.to_string()),
+            5 => self.email = Some(value.to_string()),
             _ => {}
         };
     }
 
-    /// Function to determine what type of value each configurable option takes
+    /// Function to determine what type of value each configurable option takes. Returns from 0 to 2
+    /// inclusive for `u8`, `bool`, and `String` respectively
     pub fn value_type(&mut self, key_index: usize) -> u8 {
-        // 0 => just what the fuck
-        // 1 => u8
-        // 2 => bool
-        // 3 => String
+        // 0 => u8
+        // 1 => bool
+        // 2 => String
         match key_index {
-            0 => 1,
-            1 => 2,
-            2 => 1,
-            _ => 0
+            0 | 2 => 0,
+            1 => 1,
+            _ => 2
         }
     }
 }
@@ -87,12 +175,7 @@ impl ConfigU8 {
     /// Sets a new value. If this new value is outside of the range for the struct it's set to the
     /// min or max depending on which way the value is outside the range
     pub fn set(&mut self, mut value: u8) {
-        if value < self.min_value {
-            value = self.min_value.clone()
-        } else if value > self.max_value {
-            value = self.max_value.clone()
-        }
-        self.value = value
+        self.value = value.max(self.min_value).min(self.max_value)
     }
 }
 
@@ -100,77 +183,4 @@ impl Debug for ConfigU8 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ({} -> {})", self.value, self.min_value, self.max_value)
     }
-}
-
-/// Parses the config file and returns a `ConfigFile` struct
-pub fn read_config_file<'a>() -> ConfigFile {
-    // don't you dare comment on how messy this is. please
-    let config_file_path = format!("{}/.fck", std::env::var("HOME").unwrap());
-    let config_file = Path::new(&config_file_path);
-    if !config_file.exists() {
-        println!(".fck config file does not exist and is required!\n\
-        This file should be in your $HOME directory");
-        std::process::exit(1)
-    };
-    let read_res = read_to_string(config_file);
-    if read_res.is_err() {
-        println!("Could not read config file!\n{}", read_res.err().unwrap());
-        std::process::exit(1)
-    }
-    let raw_file = read_res.ok().unwrap();
-    let mut read_file = raw_file.lines().collect::<Vec<&str>>();
-
-    let keyword_match = get_associated_keywords(read_file[0].clone());
-    if keyword_match.is_none() {
-        println!("Unknown language code in config file '{}'!\nLanguage code should be the first line in the config file", read_file[0]);
-        std::process::exit(1)
-    }
-    let config_keys = keyword_match.unwrap();
-    let config_keys = config_keys.config_keys.iter();
-    read_file.reverse();
-
-    let mut out = ConfigFile::new(read_file.pop().unwrap().to_string());
-
-    for line in read_file {
-        if line.trim() == "" {
-            continue;
-        }
-        let split: Vec<&str> = line.split('=').collect::<Vec<&str>>().iter().map(|x| x.trim()).collect();
-        assert_eq!(split.len(), 2, "Each line should contain a key and associated value!\n{}", line);
-        let position = config_keys.clone().position(|&x| x == split[0]);
-        if position.is_none() {
-            println!("Unknown config file key '{}'!", split[0]);
-            continue;
-        }
-        match out.value_type(position.unwrap()) {
-            0 => panic!("No"),
-            1 => {
-                match split[1].parse::<u8>() {
-                    Ok(v) => out.new_value(position.unwrap(),
-                                           Some(v),
-                                           None),
-                    Err(e) => {
-                        println!("{}", e);
-                        continue;
-                    }
-                }
-            }
-            2 => {
-                match split[1].parse::<bool>() {
-                    Ok(v) => out.new_value(position.unwrap(),
-                                           Some(if v { 1 } else { 0 }),
-                                           None),
-                    Err(e) => {
-                        println!("{}", e);
-                        continue;
-                    }
-                }
-            }
-            3 => out.new_value(position.unwrap(),
-                               None,
-                               Some(split[1].to_string())),
-            _ => {}
-        }
-    }
-    out
 }

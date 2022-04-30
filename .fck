@@ -1,4 +1,9 @@
 en
-wrapLength=70
-shellLanguageInfo=false
-historyLength=100
+# shell
+wrapLength = 70
+shellLanguageInfo = false
+historyLength = 100
+# profile
+name = your name here
+github = GitHub profile name
+email = email goes here
