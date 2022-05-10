@@ -20,6 +20,8 @@ maintenance = {status = "actively-developed"}
 llvm-sys = "130"
 # Some nice cross platform formatting
 colored = "2.0.0"
+# Initialising new projects with git
+git2 = "0.13"
 
 ## Internal
 # Multi-lingual handling
