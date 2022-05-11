@@ -6,6 +6,7 @@ use std::path::Path;
 use lang::get_associated_keywords;
 use std::fmt::{Debug, Formatter};
 use lang::keywords::Keywords;
+use dirs::home_dir;
 
 /// Config file struct that holds all the configurable options
 #[derive(Clone)]
@@ -31,19 +32,25 @@ impl ConfigFile {
     /// Creates a new ConfigFile strict from a given initial language code with default values
     pub fn new() -> ConfigFile {
         // don't you dare comment on how messy this is. please
-        let config_file_path = format!("{}/.fck", std::env::var("HOME").unwrap());
-        let config_file = Path::new(&config_file_path);
-        if !config_file.exists() {
+        let mut home;
+        if let Some(f) = home_dir() {
+            home = f
+        } else {
+            todo!("error about can't find home directory or something")
+        }
+        home.push(".fck");
+        if !home.exists() {
+            todo!("language based error on can't fin {:?}", home);
             println!(".fck config file does not exist and is required!\n\
-            This file should be in your $HOME directory");
+            This file should be in your home directory");
             std::process::exit(1)
         };
-        let file_res = read_to_string(config_file);
+        let file_res = read_to_string(home.clone());
         if file_res.is_err() {
             println!("{}", file_res.err().unwrap());
             std::process::exit(1)
         }
-        let file = match read_to_string(config_file) {
+        let file = match read_to_string(home.clone()) {
             Ok(contents) => contents,
             Err(e) => {
                 println!("{}", e);

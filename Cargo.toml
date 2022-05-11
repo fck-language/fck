@@ -22,6 +22,8 @@ llvm-sys = "130"
 colored = "2.0.0"
 # Initialising new projects with git
 git2 = "0.13"
+# System dependant file locations
+dirs = "4.0.0"
 
 ## Internal
 # Multi-lingual handling
