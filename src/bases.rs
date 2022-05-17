@@ -91,15 +91,16 @@ impl Token {
 }
 
 impl std::fmt::Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "Type: {:<3?} \n\t{pad}pos_start: {}\n\t{pad}pos_end  : {}",
                self.type_, self.pos_start, self.pos_end, pad=String::from(' ').repeat(f.width().unwrap_or(0)))
     }
 }
 
 impl std::fmt::Debug for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:.<30}{} -> {}", format!("{:0>3?}", self.type_), self.pos_start, self.pos_end)
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+		let w = f.width().unwrap_or(30);
+        write!(f, "{:.<w$}{} -> {}", format!("{:0>3?}", self.type_), self.pos_start, self.pos_end)
     }
 }
 
@@ -190,4 +191,6 @@ pub enum TokType {
 	SetFDiv,
 	/// Power current variable
 	SetPow,
+	/// Comment token. Used exclusively by the translator to return comments
+	Comment(String, String)
 }

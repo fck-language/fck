@@ -5,3 +5,4 @@ pub mod err_wrn;
 pub mod llvm;
 pub mod nodes;
 pub mod shell;
+pub mod translator;

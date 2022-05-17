@@ -2,93 +2,125 @@ use lang::{
 	get_associated_keywords,
 	keywords::Keywords
 };
+use reqwest::{ blocking::Client, header::CONTENT_TYPE };
+use std::collections::HashMap;
+use crate::{
+	ast::Lexer,
+	err_wrn::Error,
+	bases::{ Token, Position, TokType }
+};
 
-pub fn translate(file_name: &str, mut initial_lang: Keywords, target_lang_code: &str) -> Result<(), String> {
-	if !std::path::Path::new(file_name).exists() {
-		return Err(format!("File \"{}\" does not exist", file_name))
-	}
-	let mut translated = format!("#!{}", target_lang_code);
-	let target_lang = match get_associated_keywords(target_lang_code) {
+pub fn translate(contents: String, initial_lang: Keywords<'static>, init_lang_code: String, target_lang_code: &str, mut comments: bool) -> Result<String, Error> {
+	let target_keywords = match get_associated_keywords(target_lang_code) {
 		Some(k) => k,
-		None => return Err(format!("Unknown lang code \"{}\"", target_lang_code))
-	};
-	let original = match std::fs::read_to_string(file_name) {
-		Ok(s) => s.chars().collect::<Vec<char>>(),
-		Err(e) => return Err(format!("{}", e))
-	};
-	println!("{}", std::fs::read_to_string(file_name).unwrap());
-	let mut iter = original.iter();
-	let mut blank = 0usize;
-	loop {
-		if let Some(c) = iter.next() {
-			let mut temp = String::new();
-			if c == &'#' {
-				if let Some(c) = iter.next() {
-					if c == &'#' {
-						while let Some(c) = iter.next() {
-							if c == &'\n' { break }
-						}
-					} else if c == &'!' {
-						let mut new_code = String::new();
-						if let Some(c) = iter.next() {
-							new_code.push(*c)
-						} else {
-							translated.push_str("#!");
-							break
-						}
-						if let Some(c) = iter.next() {
-							new_code.push(*c)
-						} else {
-							translated.push_str("#!");
-							translated.push_str(&*new_code);
-							break
-						}
-						initial_lang = get_associated_keywords(&*new_code)
-							.unwrap_or(initial_lang);
-						if let Some(c) = iter.next() {
-							if c != &'\n' {
-								translated.push(*c)
-							}
-						} else {
-							break
-						}
-					}
-				}
-			} else if c.is_alphabetic() {
-				temp.push(*c);
-				while let Some(c) = iter.next() {
-					if c.is_alphabetic() {
-						temp.push(*c);
-					} else {
-						// Get keyword index
-						if let Some(i) = initial_lang.keywords.iter().position(|&arg| arg == &*temp) {
-							translated.push_str(target_lang.keywords.get(i).unwrap())
-						} else if let Some(i) = initial_lang.var_keywords.iter().position(|&arg| arg == &*temp) {
-							translated.push_str(target_lang.var_keywords.get(i).unwrap())
-						} else {
-							translated.push_str(&*temp);
-						}
-						translated.push(*c);
-						break
-					}
-				}
-			} else if c == &' ' || c == &'\t' {
-				blank += 1;
-			} else {
-				translated.push(*c);
-			}
-		} else {
-			break
+		None => {
+			todo!("Make error here")
 		}
+	};
+	let client = Client::new();
+	let lex = match Lexer::new(contents, initial_lang, init_lang_code, true).make_tokens() {
+		Ok(toks) => toks,
+		Err(e) => return Err(e)
+	};
+	
+	let mut res = String::new();
+	let mut previous = Position::new();
+	previous.advance();
+	for t in lex {
+		if t.pos_start.ln != previous.ln {
+			res.extend(vec![' '].repeat(t.pos_start.col - 1))
+		} else {
+			res.extend(vec![' '].repeat(t.pos_start.col - previous.col))
+		}
+		res.extend(
+			match t.type_ {
+				TokType::Int(i) => format!("{}", i),
+				TokType::Float(i) => format!("{}", i),
+				TokType::String(i) => format!("{:?}", i),
+				TokType::Plus => "+".to_string(),
+				TokType::Minus => "-".to_string(),
+				TokType::Mod => "%".to_string(),
+				TokType::Mult => "*".to_string(),
+				TokType::Div => "/".to_string(),
+				TokType::FDiv => "//".to_string(),
+				TokType::Pow => "**".to_string(),
+				TokType::Increment => "++".to_string(),
+				TokType::Decrement => "--".to_string(),
+				TokType::LParen => "(".to_string(),
+				TokType::RParen => ")".to_string(),
+				TokType::LParenCurly => "{".to_string(),
+				TokType::RParenCurly => "}".to_string(),
+				TokType::LParenSquare => "[".to_string(),
+				TokType::RParenSquare => "]".to_string(),
+				TokType::Label(l) => format!("@{}", l),
+				TokType::Not => "!".to_string(),
+				TokType::Colon => ":".to_string(),
+				TokType::Identifier(i, n) => format!("{}:{}", i, n),
+				TokType::Keyword(i, n) => target_keywords.get_word(i, n).to_string(),
+				TokType::QuestionMark => "?".to_string(),
+				TokType::Dot => ".".to_string(),
+				TokType::Eq => "==".to_string(),
+				TokType::NE => "!=".to_string(),
+				TokType::LT => "<".to_string(),
+				TokType::GT => ">".to_string(),
+				TokType::LTE => "<=".to_string(),
+				TokType::GTE => ">=".to_string(),
+				TokType::Comma => ",".to_string(),
+				TokType::Newline => {
+					if t.pos_start.col == t.pos_end.col { "\n" } else { ";" }.to_string()
+				},
+				TokType::Set => "=".to_string(),
+				TokType::SetPlus => "+=".to_string(),
+				TokType::SetMinus => "-=".to_string(),
+				TokType::SetMod => "%=".to_string(),
+				TokType::SetMult => "*=".to_string(),
+				TokType::SetDiv => "/=".to_string(),
+				TokType::SetFDiv => "//=".to_string(),
+				TokType::SetPow => "**=".to_string(),
+				TokType::Comment(c, l) => {
+					let mut inner = c;
+					if comments {
+						let pre = inner.chars().map_while(|c| if c == ' ' { Some(' ') } else { None }).collect::<Vec<_>>().len();
+						let post = inner.chars().rev().map_while(|c| if c == ' ' { Some(' ') } else { None }).collect::<Vec<_>>().len();
+						inner = inner.get(pre..inner.len() - post).unwrap().to_string();
+						match client
+							.post("https://libretranslate.de/translate")
+							.body(format!("{{\"q\":\"{}\",\"source\":\"{}\",\"target\":\"{}\",\"format\":\"text\"}}", inner, l, target_lang_code))
+							.header(CONTENT_TYPE, "application/json").send() {
+							Ok(r) => {
+								if r.status().as_u16() == 200 {
+									let temp = r.text().unwrap();
+									let temp = temp.get(19..temp.len() - 3).unwrap().to_string();
+									
+									// find unicode characters and replace
+									let mut split = temp.split("\\u").collect::<Vec<&str>>();
+									let mut out = split.first().unwrap().to_string();
+									split.remove(0);
+									for t in split {
+										out.extend(match u32::from_str_radix(&t[0..4], 16) {
+											Ok(n) => format!("{}{}", std::char::from_u32(n).unwrap(), &t[4..]),
+											Err(_) => format!("\\u{}", t)
+										}.chars());
+									}
+									inner = out;
+								} else {
+									comments = false;
+									println!("Got {}", r.status());
+									break
+								}
+							},
+							Err(e) => {
+								println!("Got {}", e.status().unwrap());
+								break
+							}
+						};
+						inner = format!("{}{}{}", " ".repeat(pre), inner, " ".repeat(post));
+					}
+					if t.pos_end.ln != t.pos_start.ln { format!("##{}\n", inner) } else { format!("#{}#", inner) }
+				}
+			}.chars()
+		);
+		previous = t.pos_end.clone()
 	}
-	println!("**\n{}\n**", translated);
-	if let Err(e) = std::fs::write(
-		format!("{}_{}.fck",
-				file_name.get(..file_name.len() - 4).unwrap(),
-				target_lang_code
-		), translated) {
-		Err(format!("{}", e))
-	} else {
-		Ok(())
-	}
+	Ok(res)
 }

@@ -24,10 +24,12 @@ colored = "2.0.0"
 git2 = "0.13"
 # System dependant file locations
 dirs = "4.0.0"
+# Translator comment translation POST request handling
+reqwest = { version = "0.11.10", features = ["blocking"] }
 
 ## Internal
 # Multi-lingual handling
-lang = { git = "https://github.com/fck-language/lang" }
+lang = { path = "../lang" }#{ git = "https://github.com/fck-language/lang" }
 # Type system
 type_things = { path = "src/type_things", version = "0.1.0" }
 

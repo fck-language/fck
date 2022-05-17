@@ -68,15 +68,16 @@ fck has separate packages available for syntax highlighting for several major ID
 
 # External Dependencies
 
-fck has a few external dependencies, but we try to limit this. Currently, we rely upon a total of 5 crates (4 for fck proper and 1 for the type system). These are explained below:
+fck has a few external dependencies, but we try to limit this. Currently, we rely upon a total of 6 crates (5 for fck proper and 1 for the type system). These are explained below:
 
 | Crate                                                   | Version | What we use it for                                                                                                                                                      |
 |---------------------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`llvm-sys`](https://crates.io/crates/llvm-sys/130.0.3) | 130.0.3 | This gives us bindings to LLVM and is the basis of the compilers                                                                                                        |
 | [`colored`](https://crates.io/crates/colored/2.0.0)     | 2.0.0   | Formatting terminal text is different for different platforms, so we let `colored` take care of it for us                                                               |
 | [`git2`](https://crates.io/crates/git2/0.13.25)         | 0.13.25 | For project git initialisation                                                                                                                                          |
-| [`phf`](https://crates.io/crates/phf/0.10.1)            | 0.10.1  | Used for having hash map like tables as constants. Required so that the built-in types can be constants, and don't have to be returned from functions (speed basically) |
 | [`dirs`](https://crates.io/crates/dirs/4.0.0)           | 4.0.0   | This gives us system dependent directory locations such as the home directory and application storage location                                                          |
+| [`reqwest`](https://crates.io/crates/reqwest/0.11.10)   | 0.11.10 | We use this when translating files. If the `--comment` flag is present, then comments are translated using LibreTranslate. `reqwest` handles the POST requests for us   |
+| [`phf`](https://crates.io/crates/phf/0.10.1)            | 0.10.1  | Used for having hash map like tables as constants. Required so that the built-in types can be constants, and don't have to be returned from functions (speed basically) |
 
 This project also uses [`clap`](https://crates.io/crates/clap/3.1.15) version 3.1.15 through the [`lang`](https://github.com/fck-language/lang) dependency for command line argument parsing
 

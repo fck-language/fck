@@ -25,11 +25,12 @@ pub struct Lexer {
     pub(crate) keywords: Keywords<'static>,
     /// The string associated with the current keywords
     pub(crate) keyword_code: String,
+    comment_handler: fn(&mut Lexer) -> Option<Token>
 }
 
 impl Lexer {
     /// Returns a new lexer with all fields completed appropriately
-    pub fn new(full_text: String, keywords: Keywords<'static>, keyword_code: String) -> Lexer {
+    pub fn new(full_text: String, keywords: Keywords<'static>, keyword_code: String, include_comments: bool) -> Lexer {
         return Lexer {
             split_text: full_text.chars().collect(),
             current_pos: Position::new(),
@@ -37,6 +38,7 @@ impl Lexer {
             current_char: full_text.chars().nth(0).unwrap_or(char::from(0)),
             keywords,
             keyword_code,
+            comment_handler: if include_comments { Lexer::include_comment } else { Lexer::skip_comment }
         };
     }
 
@@ -69,7 +71,7 @@ impl Lexer {
                     self.advance();
                 } else if self.current_char == '#' {
                     self.advance();
-                    self.skip_comment();
+                    if let Some(tok) = (self.comment_handler)(self) { tokens.push(tok) };
                 } else if self.current_char == '!' {
                     self.advance();
                     if self.current_char == '!' {
@@ -287,6 +289,8 @@ impl Lexer {
                              self.current_pos.clone()));
     }
 
+    /// Will return either an operation token, or reassignment token (such as `+=`). This is wrapped
+    /// in a `Result`
     fn make_op_or_set(&mut self) -> Result<Token, Error> {
         let pos_start = self.current_pos.clone();
         match self.current_char {
@@ -360,81 +364,10 @@ impl Lexer {
             _ => unreachable!()
         }
     }
-    
-    /// Called by `self.make_tokens` when a ':' is found. This parses one or two more characters to
-    /// decide what kind of assignment operation is being performed. It makes use of the ordering of
-    /// token type values to make the code simpler
-    fn make_set(&mut self) -> Result<Token, Error> {
-        let pos_start = self.current_pos.clone();
-        self.advance();
-        let mut tok_type = 0u8;
-        if !":>".contains(self.current_char) {
-            tok_type = match self.current_char {
-                '+' => {
-                    self.advance();
-                    1
-                }
-                '-' => {
-                    self.advance();
-                    2
-                }
-                '%' => {
-                    self.advance();
-                    3
-                }
-                '*' => {
-                    self.advance();
-                    match self.current_char {
-                        '*' => {
-                            self.advance();
-                            4
-                        }
-                        ':'|'>' => 5,
-                        _ => return Err(Error::new(pos_start, self.current_pos.clone(), 0202))
-                    }
-                }
-                '/' => {
-                    self.advance();
-                    match self.current_char {
-                        '/' => {
-                            self.advance();
-                            6
-                        }
-                        ':'|'>' => 7,
-                        _ => return Err(Error::new(pos_start, self.current_pos.clone(), 0202))
-                    }
-                }
-                _ => return Ok(Token::new(TokType::Colon, pos_start, self.current_pos.clone()))
-            };
-        }
-        let ret = match self.current_char {
-            ':' => false,
-            '>' => true,
-            _ => {
-                self.advance();
-                return Ok(Token::new(TokType::Colon, pos_start,
-                                     self.current_pos.clone()));
-            }
-        };
-        self.advance();
-        return Ok(Token::new(
-            match tok_type {
-                0 => TokType::Set,
-                1 => TokType::SetPlus,
-                2 => TokType::SetMinus,
-                3 => TokType::SetMod,
-                4 => TokType::SetPow,
-                5 => TokType::SetMult,
-                6 => TokType::SetFDiv,
-                7 => TokType::SetDiv,
-                _ => unreachable!()
-            },
-            pos_start,
-            self.current_pos.clone()));
-    }
 
-    /// Called by `self.make_tokens` when a comment is found. This skips the comment. Big surprise
-    fn skip_comment(&mut self) {
+    /// Called by `self.make_tokens` when a comment is found if comments are being ignored. This
+    /// will skip over any comment
+    fn skip_comment(&mut self) -> Option<Token> {
         if self.current_char == '#' {
             self.advance();
             while !(self.current_char == '\n' || self.char_index + 1 == self.split_text.len()) {
@@ -447,6 +380,30 @@ impl Lexer {
             }
         }
         self.advance();
+        None
+    }
+    
+    /// Called by `self.make_tokens` when a comment is found if comments are being included. This
+    /// will include the comment (with the current language key) for the translator to use
+    fn include_comment(&mut self) -> Option<Token> {
+        let mut pos_start = self.current_pos.clone();
+        pos_start.col -= 1;
+        let mut out = String::new();
+        if self.current_char == '#' {
+            self.advance();
+            while !(self.current_char == '\n' || self.char_index + 1 == self.split_text.len()) {
+                out.push(self.current_char);
+                self.advance();
+            }
+            self.current_pos.advance_ln();
+        } else {
+            while self.current_char != '#' && self.char_index + 1 != self.split_text.len() {
+                out.push(self.current_char);
+                self.advance();
+            }
+        }
+        self.advance();
+        Some(Token::new(TokType::Comment(out, self.keyword_code.clone()), pos_start, self.current_pos.clone()))
     }
 }
 
@@ -734,11 +691,11 @@ impl Parser {
     fn expr(&mut self) -> Result<ASTNode, Error> {
         let mut tok = self.current_tok.clone().unwrap();
         let default_values = |x: u16| match x {
-            0 => ASTNodeType::Int(0),
-            1 => ASTNodeType::Float(0.),
-            2 => ASTNodeType::Bool(false),
-            3 => ASTNodeType::String(String::new()),
-            4 => ASTNodeType::List,
+            1 => ASTNodeType::Int(0),
+            2 => ASTNodeType::Float(0.),
+            3 => ASTNodeType::Bool(false),
+            4 => ASTNodeType::String(String::new()),
+            5 => ASTNodeType::List,
             _ => unreachable!()
         };
 
@@ -748,7 +705,7 @@ impl Parser {
         // check for new variable assignments
         if tok == 1 {
             let var_type = match tok.type_ {
-                TokType::Keyword(_, v) => v as u16,
+                TokType::Keyword(_, v) => v as u16 + 1, // Add 1 because type 0 is null
                 _ => unreachable!()
             };
             self.next();

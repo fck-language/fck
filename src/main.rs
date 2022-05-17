@@ -11,14 +11,13 @@ extern crate git2;
 
 use crate::shell::shell;
 use std::{
-    env::{ current_dir, args },
+    env::{current_dir, args},
     io::Read,
-    path::Path,
     process::exit,
-	fs::{ File, write, create_dir_all, create_dir }
+    fs::{File, write, create_dir_all, create_dir, read_to_string, canonicalize},
+    ffi::OsStr,
+    path::PathBuf
 };
-use std::borrow::BorrowMut;
-use std::path::PathBuf;
 use colored::*;
 use git2::Repository;
 use lang::{Command, get_associated_keywords, get_associated_messages, get_cli, keywords::Keywords};
@@ -34,6 +33,7 @@ mod shell;
 mod config_file;
 mod err_wrn;
 mod llvm;
+mod translator;
 
 /// Reads the local config file and parses arguments accordingly
 ///
@@ -93,14 +93,62 @@ fn main() {
         }
         Command::Shell => shell(config_file, false),
         Command::Build { path, llvm} => {
-            run_file(path, config_file, llvm)
+            if path.is_file() {
+                match path.extension() {
+                    None => unimplemented!("the fuck kinda file has no file extension"),
+                    Some(t) => match t.to_str() {
+                        None => {}
+                        Some("fck") => run_file(path.clone(), config_file, llvm),
+                        Some("hck") => todo!("Can't run a header file darling xx"),
+                        Some(v) => todo!("error because you cant run a .{} file", v)
+                    }
+                }
+            }
         }
         Command::Run { path, llvm, no_build } => {
-            if !no_build {
-                run_file(path, config_file, llvm)
-            }
-            if no_build {
-                unimplemented!("Haven't yet added in the --no-build option")
+            if path.is_file() {
+                if no_build {
+                    todo!("warning because not allowed fucker")
+                }
+                match path.extension() {
+                    None => unimplemented!("the fuck kinda file has no file extension"),
+                    Some(t) => match t.to_str() {
+                        None => {}
+                        Some("fck") => {
+                            run_file(path.clone(), config_file, llvm);
+                            let full_name = path.to_str().unwrap().to_string();
+                            match std::process::Command::new(
+                                format!("{}{}", full_name.get(0..full_name.len() - 4).unwrap(), std::env::consts::EXE_SUFFIX)
+                            ).spawn() {
+                                Ok(child) => {
+                                    match child.wait_with_output() {
+                                        Ok(res) => {
+                                            if !res.stdout.is_empty() {
+                                                println!("{}", res.stdout.iter().fold(
+                                                    String::new(),
+                                                    |acc, c| format!("{}{}", acc, char::from(*c)))
+                                                );
+                                            }
+                                            println!("{}", res.status.code().unwrap())
+                                        }
+                                        Err(e) => {
+                                            println!("{:?}", e);
+                                            exit(1)
+                                        }
+                                    }
+                                },
+                                Err(e) => {
+                                    println!("{:?}", e);
+                                    exit(1)
+                                }
+                            };
+                        },
+                        Some("hck") => todo!("Can't run a header file darling xx"),
+                        Some(v) => todo!("error because you cant run a .{} file", v)
+                    }
+                }
+            } else {
+                unimplemented!("Haven't added in running projects yet sorry")
             }
         }
         Command::Test { .. } => { unimplemented!() }
@@ -108,30 +156,52 @@ fn main() {
         Command::Lint { .. } => { unimplemented!() }
         Command::Raw { .. } => {}
         Command::Doc { .. } => {}
+        Command::Translate { path, output, target_language, comment } => {
+            if path.is_file() {
+                if path.extension() == Some(&OsStr::new("fck")) {
+                    let contents = read_to_string(path.clone()).unwrap();
+                    match translator::translate(contents, lang, config_file.default_lang, &*target_language, comment) {
+                        Ok(f) => {
+                            if !output.exists() { create_dir(output.parent().unwrap()); }
+                            if path != output {
+                                write(output, f);
+                            }
+                        }
+                        Err(e) => {
+                            println!("{:?}", e);
+                            exit(1)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
-// TODO: Need to refactor this function to return Result<(), Error>
+// The idea was that in order to ensure the file had been built to an executable, the result of this would have to be Ok(()). It doesn't.
+// If something goes wrong then the code will exit. therefore if nothing goes wrong then the file was made properly tada all is well in the world xx
 fn run_file(path: PathBuf, config_file: ConfigFile, dump_llvm: bool) {
     let mut cwd = current_dir().unwrap();
     cwd.push(path.clone());
-	let full_file_path = cwd.file_stem().unwrap().to_str().unwrap().to_string();
+	let full_file_path = cwd.to_str().unwrap().to_string();
+    let full_file_path = full_file_path.get(0..full_file_path.len() - 4).unwrap().to_string();
 	let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
 	let mut file = String::new();
     if let Ok(mut file_container) = File::open(cwd.clone()) {
         if file_container.read_to_string(&mut file).is_err() {
-            println!("Failed to read file \"{}\"", cwd.to_str().unwrap());
+            println!("Failed to read file \"{}\"", canonicalize(cwd).unwrap().to_str().unwrap());
             exit(5)
         };
     } else {
-        println!("File \"{}\" does not exist!", cwd.to_str().unwrap());
+        println!("File \"{}\" does not exist!", canonicalize(cwd).unwrap().to_str().unwrap());
         exit(2);
     }
     let keywords = get_associated_keywords(&*config_file.default_lang).unwrap();
     let tokens = match ast::Lexer::new(
         file.clone(),
         keywords,
-        config_file.default_lang.clone()
+        config_file.default_lang.clone(),
+        false
     ).make_tokens() {
         Ok(toks) => toks,
         Err(e) => {
@@ -190,11 +260,11 @@ fn run_file(path: PathBuf, config_file: ConfigFile, dump_llvm: bool) {
     if dump_llvm {
         print!("{}...\r", keywords.debug_words.get(4).unwrap());
         let ll_path = format!("{}.ll", full_file_path);
-        let here = Path::new(&ll_path);
-        if let Err(e) = std::fs::write(here, format!("{}", module)) {
-            println!("{} `{}.ll`:\n{}", keywords.debug_words.get(5).unwrap(), full_file_path, e)
+        let here = PathBuf::from(&ll_path);
+        if let Err(e) = write(here, format!("{}", module)) {
+            println!("{} `{}`:\n{}", keywords.debug_words.get(5).unwrap(), canonicalize(format!("{}.ll", full_file_path)).unwrap().to_str().unwrap(), e)
         } else {
-            println!("{} {}.ll", keywords.debug_words.get(6).unwrap(), full_file_path);
+            println!("{} {}", keywords.debug_words.get(6).unwrap(), canonicalize(format!("{}.ll", full_file_path)).unwrap().to_str().unwrap());
         };
     }
     llvm::to_object_file(module.module.to_owned(), format!("{}.o", full_file_path));

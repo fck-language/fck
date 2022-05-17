@@ -42,7 +42,7 @@ pub fn shell(config_file: ConfigFile, debug: bool) {
         current_index %= config_file.history_length.value;
         // cursor_index = current_index;
 
-        let mut lexer = ast::Lexer::new(given, current_language.clone(), keyword_code.clone());
+        let mut lexer = ast::Lexer::new(given, current_language.clone(), keyword_code.clone(), false);
         let tokens = match lexer.make_tokens() {
             Ok(t) => t,
             Err(e) => {
