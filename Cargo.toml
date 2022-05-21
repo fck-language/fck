@@ -17,7 +17,7 @@ maintenance = {status = "actively-developed"}
 [dependencies]
 ## External
 # LLVM for compiling
-llvm-sys = "130"
+llvm-sys = "140"
 # Some nice cross platform formatting
 colored = "2.0.0"
 # Initialising new projects with git
@@ -29,7 +29,7 @@ reqwest = { version = "0.11.10", features = ["blocking"] }
 
 ## Internal
 # Multi-lingual handling
-lang = { path = "../lang" }#{ git = "https://github.com/fck-language/lang" }
+lang = { git = "https://github.com/fck-language/lang" }
 # Type system
 type_things = { path = "src/type_things", version = "0.1.0" }
 
