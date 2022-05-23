@@ -28,7 +28,11 @@ pub fn translate(contents: String, initial_lang: Keywords<'static>, init_lang_co
 	previous.advance();
 	for t in lex {
 		if t.pos_start.ln != previous.ln {
-			res.extend(vec![' '].repeat(t.pos_start.col - 1))
+			if (t.pos_start.col - 1) % 4 == 0 {
+				res.extend(vec!['\t'].repeat((t.pos_start.col - 1) / 4))
+			} else {
+				res.extend(vec![' '].repeat(t.pos_start.col - 1))
+			}
 		} else {
 			res.extend(vec![' '].repeat(t.pos_start.col - previous.col))
 		}

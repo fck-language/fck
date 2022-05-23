@@ -54,8 +54,11 @@ impl Lexer {
     pub fn make_tokens(&mut self) -> Result<Vec<Token>, Error> {
         let mut tokens: Vec<Token> = vec![];
         while self.char_index < self.split_text.len() {
-            if " \t".contains(self.current_char) {
-                self.advance();
+            if self.current_char == ' ' {
+                self.advance()
+            } else if self.current_char == '\t' {
+                self.current_pos.col += 3;
+                self.advance()
             } else if self.current_char.is_numeric() || self.current_char == '.' {
                 tokens.push(self.make_number());
             } else if self.current_char.is_alphabetic() {
