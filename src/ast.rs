@@ -161,7 +161,11 @@ impl Lexer {
 
         return Token::new(
             if has_dot {
-                TokType::Float(value.parse::<f64>().unwrap())
+                if let Ok(v) = value.parse::<f64>() {
+                    TokType::Float(v)
+                } else {
+                    TokType::Dot
+                }
             } else {
                 TokType::Int(value.parse::<u64>().unwrap())
             },
