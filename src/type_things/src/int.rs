@@ -9,7 +9,7 @@ use llvm_sys::{
 pub const INT_OPS_ADD: Map<
 	u16, unsafe fn(&mut Module, LLVMBasicBlockRef, Value, Value) -> (LLVMBasicBlockRef, Value)
 > = phf_map!{
-	1u16 => unsafe { |module: &mut Module, bb: LLVMBasicBlockRef, self_val: Value, r_val: Value| -> (LLVMBasicBlockRef, Value) {
+	0u16 => unsafe { |module: &mut Module, bb: LLVMBasicBlockRef, self_val: Value, r_val: Value| -> (LLVMBasicBlockRef, Value) {
 		let builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, bb);
 		( bb, Value { value: LLVMBuildAdd(
@@ -17,7 +17,7 @@ pub const INT_OPS_ADD: Map<
 			self_val.value,
 			r_val.value,
 			module.blank.as_ptr()
-		), type_: 1 })
+		), type_: 0 })
 	}}
 };
 
@@ -25,7 +25,7 @@ pub const INT_OPS_ADD: Map<
 pub const INT_OPS_SUB: Map<
 	u16, unsafe fn(&mut Module, LLVMBasicBlockRef, Value, Value) -> (LLVMBasicBlockRef, Value)
 > = phf_map!{
-	1u16 => unsafe { |module: &mut Module, bb: LLVMBasicBlockRef, self_val: Value, r_val: Value| -> (LLVMBasicBlockRef, Value) {
+	0u16 => unsafe { |module: &mut Module, bb: LLVMBasicBlockRef, self_val: Value, r_val: Value| -> (LLVMBasicBlockRef, Value) {
 		let builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, bb);
 		( bb, Value { value: LLVMBuildSub(
@@ -41,7 +41,7 @@ pub const INT_OPS_SUB: Map<
 pub const INT_OPS_MULT: Map<
 	u16, unsafe fn(&mut Module, LLVMBasicBlockRef, Value, Value) -> (LLVMBasicBlockRef, Value)
 > = phf_map!{
-	1u16 => unsafe { |module: &mut Module, bb: LLVMBasicBlockRef, self_val: Value, r_val: Value| -> (LLVMBasicBlockRef, Value) {
+	0u16 => unsafe { |module: &mut Module, bb: LLVMBasicBlockRef, self_val: Value, r_val: Value| -> (LLVMBasicBlockRef, Value) {
 		let builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, bb);
 		( bb, Value { value: LLVMBuildMul(
@@ -49,7 +49,7 @@ pub const INT_OPS_MULT: Map<
 			self_val.value,
 			r_val.value,
 			module.blank.as_ptr()
-		), type_: 1 })
+		), type_: 0 })
 	}}
 };
 
@@ -57,7 +57,7 @@ pub const INT_OPS_MULT: Map<
 pub const INT_OPS_CAST: Map<
 	u16, unsafe fn(&mut Module, LLVMBasicBlockRef, Value, Value) -> (LLVMBasicBlockRef, Value)
 > = phf_map!{
-	1u16 => unsafe { |module: &mut Module, bb: LLVMBasicBlockRef, self_val: Value, r_val: Value| -> (LLVMBasicBlockRef, Value) {
+	0u16 => unsafe { |module: &mut Module, bb: LLVMBasicBlockRef, self_val: Value, r_val: Value| -> (LLVMBasicBlockRef, Value) {
 		let builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, bb);
 		( bb, Value { value: LLVMBuildAdd(
@@ -65,6 +65,6 @@ pub const INT_OPS_CAST: Map<
 			self_val.value,
 			r_val.value,
 			module.blank.as_ptr()
-		), type_: 1 })
+		), type_: 0 })
 	}}
 };

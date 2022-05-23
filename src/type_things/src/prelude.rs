@@ -13,13 +13,14 @@ use llvm_sys::{
 	LLVMModule,
 	prelude::{ LLVMValueRef, LLVMBasicBlockRef, LLVMBuilderRef, LLVMTypeRef },
 	core::{
-		LLVMConstNull, LLVMInt32Type, LLVMPrintModuleToString, LLVMDisposeMessage, LLVMBuildAlloca
+		LLVMConstNull, LLVMInt32Type, LLVMPrintModuleToString,
+		LLVMDisposeMessage, LLVMBuildAlloca, LLVMSetTarget
 	},
 	LLVMValue
 };
 use phf::Map;
 
-use crate::primitives::{INT, NULL_TYPE};
+use crate::primitives::{INT};
 use crate::symbol_tables::CompSymbolTable;
 
 /// LLVM memory allocation trait
@@ -143,18 +144,24 @@ pub struct Module {
 	/// Holds the symbol tables in scope
 	current_scope: Vec<CompSymbolTable>,
 	/// Holds the remaining symbol tables. These each have the correct capacity, but are empty
-	remaining_symbol_tables: Vec<CompSymbolTable>
+	remaining_symbol_tables: Vec<CompSymbolTable>,
+	/// Target triple for the module
+	pub target_triple: CString,
+	/// Path to the module file with no extension
+	pub path: String
 }
 
 impl Module {
 	/// Initialise a new Module
-	pub unsafe fn new(module: *mut LLVMModule, mut remaining_symbol_tables: Vec<CompSymbolTable>) -> Self {
+	pub unsafe fn new(module: *mut LLVMModule, mut remaining_symbol_tables: Vec<CompSymbolTable>, target_triple: CString, path: String) -> Self {
 		let blank = CString::new("").unwrap();
+		LLVMSetTarget(module, target_triple.as_ptr() as *const _);
 		Module {
 			module, blank, strings: vec![],
-			current_fn: LLVMConstNull(LLVMInt32Type()), types: vec![NULL_TYPE, INT],
+			current_fn: LLVMConstNull(LLVMInt32Type()), types: vec![INT],
 			current_scope: vec![remaining_symbol_tables.pop().unwrap()],
-			remaining_symbol_tables
+			remaining_symbol_tables,
+			target_triple, path
 		}
 	}
 	/// Make a new CString and return it as a `*const i8`

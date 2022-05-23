@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-llvm-sys = "130.0.3"
+llvm-sys = "140"
 phf = { version = "0.10.1", features = ["macros"] }

@@ -11,7 +11,7 @@ use llvm_sys::{
 
 /// 64 bit integer type
 ///
-/// Type ID 1
+/// Type ID 0
 pub const INT: Type = Type {
 	names: phf_map!{
 		"en" => "int"
@@ -34,10 +34,3 @@ pub const NULL_TYPE: Type = Type {
 	functions: phf_map!{},
 	llvm_type: unsafe { || { LLVMInt1Type() }}
 };
-
-pub fn null_value() -> Value {
-	Value {
-		value: unsafe { LLVMConstNull(LLVMInt1Type()) },
-		type_: 0
-	}
-}
