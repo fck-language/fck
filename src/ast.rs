@@ -1283,8 +1283,8 @@ impl Parser {
             if self.current_tok.is_none() {
                 return Err(Error::new(self.previous_end, self.previous_end.advance(), 0302));
             }
-            children.push(match self.conditional_suite_generator() {
-                Ok(n) => n,
+            children.extend(match self.conditional_suite_generator() {
+                Ok((cond, body)) => [cond, body],
                 Err(e) => return Err(e)
             });
             
@@ -1294,18 +1294,16 @@ impl Parser {
 
             // Check for elif(0.5) statements
             if self.current_tok.is_some() && self.current_tok.clone().unwrap() == TokType::Keyword(0, 5) {
-                let mut elif_exprs = vec![];
                 while self.current_tok.is_some() && self.current_tok.clone().unwrap() == TokType::Keyword(0, 5) {
                     self.next();
                     if self.current_tok.is_none() {
                         return Err(Error::new(self.previous_end, self.previous_end.advance(), 0303));
                     }
-                    elif_exprs.push(match self.conditional_suite_generator() {
-                        Ok(n) => n,
+                    children.extend(match self.conditional_suite_generator() {
+                        Ok((cond, body)) => [cond, body],
                         Err(e) => return Err(e)
                     })
                 }
-                children.extend(elif_exprs);
                 if self.current_tok.is_some() && self.current_tok.clone().unwrap().type_ == TokType::Newline {
                     self.next()
                 }
@@ -1351,15 +1349,17 @@ impl Parser {
         // while(0.13)
         if tok == TokType::Keyword(0, 13) {
             self.next();
-            let expr = match self.conditional_suite_generator() {
-                Ok(n) => n,
-                Err(e) => return Err(e)
-            };
-            if self.current_tok.is_none() || self.current_tok.clone().unwrap() != TokType::RParenCurly {
-                return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
+            return match self.conditional_suite_generator() {
+                Ok((cond, body)) => {
+                    let pos_end = body.pos_end.clone();
+                    Ok(ASTNode::new(
+                        ASTNodeType::While(loop_value),
+                        vec![cond, body],
+                        pos_start, pos_end
+                    ))
+                },
+                Err(e) => Err(e)
             }
-            self.next();
-            return Ok(ASTNode::new(ASTNodeType::While(loop_value), vec![expr.clone()], pos_start, expr.pos_end));
         }
 
         // iterate(0.9)
@@ -1489,7 +1489,7 @@ impl Parser {
         Err(Error::new(pos_start, tok.pos_end, 0305))
     }
 
-    fn conditional_suite_generator(&mut self) -> Result<ASTNode, Error> {
+    fn conditional_suite_generator(&mut self) -> Result<(ASTNode, ASTNode), Error> {
         let mut expr = match self.expr() {
             Ok(n) => n,
             Err(e) => return Err(e)
@@ -1503,6 +1503,7 @@ impl Parser {
         if self.current_tok.clone().unwrap().type_ != TokType::LParenCurly {
             return Err(Error::new(self.current_tok.clone().unwrap().pos_start, self.current_tok.clone().unwrap().pos_end, 0303));
         }
+        let pos_start = self.current_tok.clone().unwrap().pos_start.clone();
         self.next();
         if self.current_tok.is_none() {
             return Err(Error::new(self.previous_end, self.previous_end.advance(), 0305));
@@ -1520,8 +1521,8 @@ impl Parser {
         if self.current_tok.is_none() || self.current_tok.clone().unwrap().type_ != TokType::RParenCurly {
             return Err(Error::new(self.previous_end, self.previous_end.advance(), 0308));
         }
+        let body = ASTNode::new(ASTNodeType::Body, out, pos_start, self.current_tok.clone().unwrap().pos_start.clone());
         self.next();
-        expr.child_nodes.extend(out);
-        Ok(expr)
+        Ok((expr, body))
     }
 }
