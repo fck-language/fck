@@ -205,8 +205,8 @@ fn run_file(path: PathBuf, config_file: ConfigFile, dump_llvm: bool) {
     ).make_tokens() {
         Ok(toks) => toks,
         Err(e) => {
-            // Uncomment this if you're developing the project. Useful for debugging
-            // dbg!("Token Error");
+            #[cfg(debug_assertions)]
+            dbg!("Token Error");
             println!("{}", e);
             println!("{}\n{}",
                      get_associated_messages(&*config_file.default_lang).unwrap().errors.get_name(e.error_index - 1),
@@ -215,19 +215,22 @@ fn run_file(path: PathBuf, config_file: ConfigFile, dump_llvm: bool) {
         }
     };
     
-    // Uncomment this if you're developing the project. Useful for debugging
-    // let w = (tokens.len() as f64).log10() as usize + 1;
-    // println!("{}", format!("{}({})", keywords.debug_words.get(0).unwrap(), tokens.len()).bold().underline());
-    // for (i, tok) in tokens.iter().enumerate() {
-    //     println!("{} {:5?}", format!("{:0>w$})", i).bold(), tok);
-    // }
-    // println!();
+    #[cfg(debug_assertions)]
+    {
+        let w = (tokens.len() as f64).log10() as usize + 1;
+        let l = tokens.iter().map(|t| format!("{:?}", t.type_).len()).max().unwrap() + 3;
+        println!("{}", format!("{}({})", keywords.debug_words.get(0).unwrap(), tokens.len()).bold().underline());
+        for (i, tok) in tokens.iter().enumerate() {
+            println!("{} {:l$?}", format!("{:0>w$})", i).bold(), tok);
+        }
+        println!();
+    }
     
     let (ast_vec, st_vec) = match ast::Parser::new(tokens).parse() {
         Ok(asts) => asts,
         Err(e) => {
-            // Uncomment this if you're developing the project. Useful for debugging
-            // dbg!("Parse Error");
+            #[cfg(debug_assertions)]
+            dbg!("Parse Error");
             println!("{}", e);
             println!("{}\n{}",
                      get_associated_messages(&*config_file.default_lang.clone()).unwrap().errors.get_name(e.error_index - 1),
@@ -236,16 +239,18 @@ fn run_file(path: PathBuf, config_file: ConfigFile, dump_llvm: bool) {
         }
     };
     
-    // Uncomment this if you're developing the project. Useful for debugging
-    // println!("{}", format!("{}({})", keywords.debug_words.get(1).unwrap(), ast_vec.len()).bold().underline());
-    // for (i, ast) in ast_vec.iter().enumerate() {
-    //     println!("{}:\n{:?}", format!("{:>03}", i).bold(), ast)
-    // }
-    // println!("{}", format!("{}({})", keywords.debug_words.get(2).unwrap(), st_vec.len()).bold().underline());
-    // for (i, st) in st_vec.iter().enumerate() {
-    //     println!("{}) {:5?}", format!("{:>03}", i).bold(), st)
-    // }
-    // println!();
+    #[cfg(debug_assertions)]
+    {
+        println!("{}", format!("{}({})", keywords.debug_words.get(1).unwrap(), ast_vec.len()).bold().underline());
+        for (i, ast) in ast_vec.iter().enumerate() {
+            println!("{}:\n{:?}", format!("{:>03}", i).bold(), ast)
+        }
+        println!("{}", format!("{}({})", keywords.debug_words.get(2).unwrap(), st_vec.len()).bold().underline());
+        for (i, st) in st_vec.iter().enumerate() {
+            println!("{}) {:5?}", format!("{:>03}", i).bold(), st)
+        }
+        println!();
+    }
     
     let module;
     unsafe {
